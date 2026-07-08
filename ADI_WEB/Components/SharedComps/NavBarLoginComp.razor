@@ -1,0 +1,127 @@
+﻿@inject NavigationManager Navigation
+@inject ILoginService _loginService
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject IJSRuntime JS
+@rendermode InteractiveServer
+
+<MudAppBar Color="Color.Transparent" Dense="true" Elevation="0">
+
+    <MudText Typo="Typo.h5" Class="ml-4 mr-6">ADI</MudText>
+
+    <!-- Usando MudButton em vez de MudMenuItem para alinhar lado a lado perfeitamente -->
+    <MudButton Href="/"
+               Variant="Variant.Text"
+               StartIcon="@Icons.Material.Filled.Home"
+               Color="Color.Primary"
+               Class="mx-2">
+        Home
+    </MudButton>
+
+    <MudButton Href="/downloads"
+               Variant="Variant.Text"
+               StartIcon="@Icons.Material.Filled.Download"
+               Color="Color.Primary"
+               Class="mx-2">
+        Download
+    </MudButton>
+
+    <MudButton Href="/user/login"
+               Variant="Variant.Text"
+               StartIcon="@Icons.Material.TwoTone.Login"
+               Color="Color.Primary"
+               Class="mx-2">
+        Login
+    </MudButton>
+
+
+
+    <MudStack Row="false"
+              AlignItems="AlignItems.Center"
+              Spacing="2"
+              Style="position: absolute; top: 15px; right: 24px; z-index: 1060;">
+
+        <MudFab Color="Color.Primary" StartIcon="@Icons.Material.Filled.Settings" Size="Size.Small" OnClick="AbrirConfiguracaoSessao" />
+
+        <MudFabMenu StartIcon="@Icons.Material.Filled.HelpOutline" Direction="Direction.Left" Color="Color.Secondary" Size="Size.Small" @bind-Open="@_open" Fixed="@_fixed" OpenOnMouseHover="false" CloseOnMenuItemClicked="true">
+
+            <MudFabMenuItem StartIcon="@Icons.Material.Outlined.Business"
+                            Label="Configurar filial de acesso"
+                            Color="Color.Tertiary"
+                            Style="color: rgb(33, 33, 33); font-size: 11px; font-weight: 600; white-space: nowrap; padding: 0 12px;" />
+
+            <MudFabMenuItem StartIcon="@Icons.Material.Outlined.Monitor"
+                            Label="Vincular minha máquina"
+                            Color="Color.Tertiary"
+                            Style="color: rgb(33, 33, 33); font-size: 11px; font-weight: 600; white-space: nowrap; padding: 0 12px;"
+                            OnClick="@(() => AbrirAjuda("maquina"))" />
+
+            <MudFabMenuItem StartIcon="@Icons.Material.Outlined.Badge"
+                            Label="Obter credenciais de acesso"
+                            Color="Color.Tertiary"
+                            Style="color: rgb(33, 33, 33); font-size: 11px; font-weight: 600; white-space: nowrap; padding: 0 12px;"
+                            OnClick="@(() => AbrirAjuda("credenciais"))" />
+
+            <MudFabMenuItem StartIcon="@Icons.Material.Outlined.LockReset"
+                            Label="Esqueci meu usuário ou senha"
+                            Color="Color.Tertiary"
+                            Style="color: rgb(33, 33, 33); font-size: 11px; font-weight: 600; white-space: nowrap; padding: 0 12px;"
+                            OnClick="@(() => AbrirAjuda("senha"))" />
+
+        </MudFabMenu>
+    </MudStack>
+</MudAppBar>
+
+@code {
+    private bool _open;
+    private bool _fixed;
+
+    //ADICIONADOS OS PARÂMETROS PARA ACEITAR O @bind-CurrentSession DA PÁGINA PAI
+    [Parameter] public DefSessionDtos CurrentSession { get; set; } = new();
+    [Parameter] public EventCallback<DefSessionDtos> CurrentSessionChanged { get; set; }
+
+    private void AbrirAjuda(string tipo)
+    {
+        switch (tipo)
+        {
+            case "filial":
+                Snackbar.Add("Instruções para configurar a filial: Acesse o menu X...", Severity.Info);
+                break;
+
+            case "maquina":
+                Snackbar.Add("Para vincular sua máquina, baixe o agente ADI...", Severity.Info);
+                break;
+
+            case "credenciais":
+                Snackbar.Add("Solicite suas credenciais ao RH ou gestor direto.", Severity.Info);
+                break;
+
+            case "senha":
+                Navigation.NavigateTo("/recuperar-senha");
+                break;
+        }
+    }
+
+    private async Task AbrirConfiguracaoSessao()
+    {
+        var parameters = new DialogParameters<DefinicoesDialog>
+        {
+            { x => x.SessionModel, CurrentSession }, // Usa a propriedade vinda do parâmetro
+            { x => x.ModoExplicativo, false }
+        };
+
+        var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Small, FullWidth = true };
+
+        var dialog = await DialogService.ShowAsync<DefinicoesDialog>("Configurações", parameters, options);
+        var result = await dialog.Result;
+
+        if (!result!.Canceled && result.Data is DefSessionDtos dadosAtualizados)
+        {
+            CurrentSession = dadosAtualizados;
+            // Notifica a página pai sobre a alteração (essencial para o funcionamento do @bind)
+            await CurrentSessionChanged.InvokeAsync(CurrentSession);
+            Snackbar.Add("Informações de sessão temporária definidas com sucesso!", Severity.Success);
+        }
+    }
+
+}

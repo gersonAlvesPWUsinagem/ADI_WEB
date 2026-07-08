@@ -1,0 +1,38 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <base href="/" />  
+    <link href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&display=swap" rel="stylesheet" />
+    <link href=@Assets["_content/MudBlazor/MudBlazor.min.css"] rel="stylesheet" />
+    <ImportMap />
+    <link rel="icon" type="image/ico" href="favicon.ico" />
+    <HeadOutlet @rendermode="InteractiveServer" />
+</head>
+
+<body>
+    <Routes @rendermode="InteractiveServer" />
+    <script src="_framework/blazor.web.js"></script>
+    <script src=@Assets["_content/MudBlazor/MudBlazor.min.js"]></script>
+    <script src="js/agente.js"></script>
+@*     <script>
+        window.obterDadosAgenteLocal = async function () {
+            try {
+                // O fetch em JavaScript roda no PC do cliente e acha o agente local
+                const response = await fetch('http://127.0.0.1:5005/api/maquina');
+                if (response.ok) {
+                    const dados = await response.json();
+                    return JSON.stringify(dados); // Devolve os dados para o Blazor como string
+                }
+                return null;
+            } catch (error) {
+                console.error("Agente local não respondendo:", error);
+                return null;
+            }
+        };
+    </script> *@
+</body>
+
+</html>

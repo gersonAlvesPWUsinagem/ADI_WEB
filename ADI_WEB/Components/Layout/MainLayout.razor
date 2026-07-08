@@ -1,0 +1,305 @@
+@inherits LayoutComponentBase
+@implements IDisposable
+@using Microsoft.AspNetCore.Components.Authorization
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject JwtAuthenticationService _jwtAuthenticationService
+@inject ILogger<NavMenu> Logger
+
+<MudThemeProvider Theme="@_theme" IsDarkMode="_isDarkMode" />
+<MudPopoverProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
+
+<MudLayout>
+    @if (ShowAppBar)
+    {
+        <MudAppBar Elevation="1">
+            @if (ShowDrawer)
+            {
+                <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@DrawerToggle" />
+            }
+
+            <MudText Typo="Typo.h6" Class="ml-3">ADI WEB</MudText>
+            <MudSpacer />
+
+    @*         <MudMenu Dense
+                     Variant="Variant.Text"
+                     Size="Size.Medium"
+                     Color="Color.Inherit"
+                     Icon="@Icons.Material.TwoTone.MoreVert">
+
+                <MudMenu StartIcon="@Icons.Material.TwoTone.Settings"
+                         IconColor="Color.Primary"
+                         Label="Settings">
+                    <MudMenuItem Icon="@Icons.Material.TwoTone.DarkMode"
+                                 IconColor="Color.Secondary"
+                                 Label="Dark Theme" />
+                </MudMenu>
+
+                <MudDivider />
+
+                <MudMenuItem Href="/"
+                             ForceLoad
+                             Icon="@Icons.Material.TwoTone.Login"
+                             IconColor="Color.Primary"
+                             Label="Sign In" />
+
+                <MudMenuItem Href="/"
+                             ForceLoad
+                             Icon="@Icons.Material.TwoTone.Logout"
+                             IconColor="Color.Primary"
+                             Label="Sign Out" />
+            </MudMenu> *@
+
+            @if (_isAuthenticated)
+            {
+              
+                    <MudMenu Dense
+                             Variant="Variant.Text"
+                             Size="Size.Medium"
+                             Color="Color.Inherit"
+                             Label="@FirstName"
+                             Icon="@Icons.Material.Filled.AccountCircle">
+
+                        @*   <MudMenuItem ForceLoad
+                                 Icon="@Icons.Material.TwoTone.Surfing"
+                                 IconColor="Color.Primary"
+                                 Label="@FirstName" /> *@
+
+                         <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1" Class="mr-3">
+                            <MudChip T="string" Size="Size.Small" Color="Color.Secondary" Variant="Variant.Filled">@SessionType</MudChip>
+                        </MudStack>
+                         <MudDivider />
+                        <MudMenu StartIcon="@Icons.Material.TwoTone.Settings"
+                                 IconColor="Color.Primary"
+                                 Label="Settings">
+                            <MudMenuItem Icon="@DarkLightModeButtonIcon"
+                                         OnClick="@DarkModeToggle"
+                                         IconColor="Color.Secondary"
+                                         Label="Dark Theme" />
+                        </MudMenu>
+
+                   
+                        @*  <MudMenu StartIcon="@Icons.Material.TwoTone.Settings"
+                             IconColor="Color.Primary"
+                             Label="">
+                        <MudChip T="string" Size="Size.Small" Color="Color.Secondary" Variant="Variant.Filled">@SessionType</MudChip>
+                    </MudMenu> *@
+
+                       
+                       @*  <MudMenuItem OnClick="EfetuarLogout"
+                                     ForceLoad
+                                     Icon="@Icons.Material.TwoTone.Logout"
+                                     IconColor="Color.Primary"
+                                     Label="Sign Out" /> *@
+                    </MudMenu>
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1" Class="mr-3">
+                        <MudText Typo="Typo.body2">Usuário</MudText>
+                    </MudStack>
+
+                
+         @*        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1" Class="mr-3">
+               @*      <MudIcon Icon="@Icons.Material.Filled.AccountCircle" Color="Color.Inherit" />
+                    <MudText Typo="Typo.body2">@FirstName</MudText> *
+                    <MudChip T="string" Size="Size.Small" Color="Color.Secondary" Variant="Variant.Filled">@SessionType</MudChip>
+                </MudStack> *@
+                <MudIconButton Icon="@Icons.Material.TwoTone.Logout"  Color="Color.Inherit" OnClick="@EfetuarLogout" >
+                    <MudText Typo="Typo.body2">Sair</MudText>
+                </MudIconButton>
+            }
+            else
+            {
+                <MudIconButton Icon="@Icons.Material.Filled.Login" Color="Color.Inherit" OnClick="@(() => Navigation.NavigateTo("/user/login"))" />
+            }
+
+           
+        </MudAppBar>
+    }
+
+    @if (ShowDrawer)
+    {
+        <MudDrawer id="nav-drawer" @bind-Open="_drawerOpen" ClipMode="DrawerClipMode.Always" Elevation="2">
+            <NavMenu />
+        </MudDrawer>
+    }
+
+    <MudMainContent Class="@(ShowAppBar ? "pt-16 pa-4" : "pa-4")">
+        @Body
+    </MudMainContent>
+</MudLayout>
+
+<div id="blazor-error-ui" data-nosnippet>
+    An unhandled error has occurred.
+    <a href="." class="reload">Reload</a>
+    <span class="dismiss">🗙</span>
+</div>
+
+@code {
+    private bool _drawerOpen = true;
+    private bool _isDarkMode;
+    private bool _isAuthenticated;
+    private MudTheme? _theme;
+    private string? _currentPath;
+    private string? _fullName;
+    private string? _level;
+    private string? _environment;
+
+    private bool IsLoginPage => _currentPath?.StartsWith("user/login", StringComparison.OrdinalIgnoreCase) == true;
+    private bool IsPublicHome => string.IsNullOrEmpty(_currentPath) || _currentPath.Equals("home", StringComparison.OrdinalIgnoreCase);
+    private bool ShowAppBar => !IsLoginPage;
+    private bool ShowDrawer => _isAuthenticated && !IsLoginPage && !IsPublicHome;
+
+    private string FirstName => string.IsNullOrWhiteSpace(_fullName)
+        ? "Usuário"
+        : _fullName.Split(' ', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? "Usuário";
+
+    private string SessionType => string.Join(" / ", new[] { _level, _environment }.Where(x => !string.IsNullOrWhiteSpace(x)));
+
+    protected override async Task OnInitializedAsync()
+    {
+        _theme = new()
+        {
+            PaletteLight = _lightPalette,
+            PaletteDark = _darkPalette,
+            LayoutProperties = new LayoutProperties()
+        };
+
+        UpdateCurrentPath();
+        Navigation.LocationChanged += OnLocationChanged;
+        AuthenticationStateProvider.AuthenticationStateChanged += OnAuthenticationStateChanged;
+
+        await LoadAuthenticationStateAsync();
+    }
+    
+    private async Task EfetuarLogout()
+    {
+        try
+        {
+            await _jwtAuthenticationService.LogoutAsync();
+
+            Snackbar.Add("Sessão encerrada com sucesso.", Severity.Info);
+            Navigation.NavigateTo("/user/login", forceLoad: true);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add("Erro ao tentar deslogar.", Severity.Error);
+            Logger.LogError(ex, "Erro no logout.");
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            var localSettings = await JS.InvokeAsync<string>("localStorage.getItem", "adi_dark_mode");
+            if (!string.IsNullOrEmpty(localSettings))
+            {
+                _isDarkMode = bool.Parse(localSettings);
+                StateHasChanged();
+            }
+        }
+    }
+
+    private void DrawerToggle() => _drawerOpen = !_drawerOpen;
+
+    private async Task DarkModeToggle()
+    {
+        _isDarkMode = !_isDarkMode;
+        await JS.InvokeVoidAsync("localStorage.setItem", "adi_dark_mode", _isDarkMode.ToString().ToLower());
+    }
+
+    public string DarkLightModeButtonIcon => _isDarkMode
+        ? Icons.Material.Rounded.AutoMode
+        : Icons.Material.Outlined.DarkMode;
+
+    private async Task LoadAuthenticationStateAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        _isAuthenticated = user.Identity?.IsAuthenticated == true;
+        _fullName = user.Claims.FirstOrDefault(x => x.Type == "Name")?.Value ?? user.Identity?.Name;
+        _level = user.Claims.FirstOrDefault(x => x.Type == "Level")?.Value;
+        _environment = FormatEnvironment(user.Claims.FirstOrDefault(x => x.Type == "Environment")?.Value);
+    }
+
+    private async void OnAuthenticationStateChanged(Task<AuthenticationState> task)
+    {
+        var authState = await task;
+        var user = authState.User;
+
+        _isAuthenticated = user.Identity?.IsAuthenticated == true;
+        _fullName = user.Claims.FirstOrDefault(x => x.Type == "Name")?.Value ?? user.Identity?.Name;
+        _level = user.Claims.FirstOrDefault(x => x.Type == "Level")?.Value;
+        _environment = FormatEnvironment(user.Claims.FirstOrDefault(x => x.Type == "Environment")?.Value);
+
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        UpdateCurrentPath();
+        StateHasChanged();
+    }
+
+    private void UpdateCurrentPath()
+    {
+        _currentPath = Navigation.ToBaseRelativePath(Navigation.Uri).Trim('/');
+    }
+
+    private static string? FormatEnvironment(string? value)
+    {
+        return EnvironmentClaimFormatter.Format(value);
+    }
+
+    public void Dispose()
+    {
+        Navigation.LocationChanged -= OnLocationChanged;
+        AuthenticationStateProvider.AuthenticationStateChanged -= OnAuthenticationStateChanged;
+    }
+
+    private readonly PaletteLight _lightPalette = new()
+    {
+        Background = "#f7f8fa",
+        Surface = "#ffffff",
+        AppbarText = "#ffffff",
+        DrawerBackground = "#ffffff",
+        DrawerText = "#2b2b2b",
+        DrawerIcon = "#6b7280",
+        Divider = "#bfbfbf",
+        GrayLight = "#e8e8e8",
+        GrayLighter = "#f9f9f9"
+    };
+
+    private readonly PaletteDark _darkPalette = new()
+    {
+        Primary = "#7e6fff",
+        Surface = "#1e1e2d",
+        Background = "#1a1a27",
+        BackgroundGray = "#151521",
+        AppbarText = "#92929f",
+        AppbarBackground = "rgba(26,26,39,0.8)",
+        DrawerBackground = "#1a1a27",
+        ActionDefault = "#74718e",
+        ActionDisabled = "#9999994d",
+        ActionDisabledBackground = "#605f6d4d",
+        TextPrimary = "#b2b0bf",
+        TextSecondary = "#92929f",
+        TextDisabled = "#ffffff33",
+        DrawerIcon = "#92929f",
+        DrawerText = "#92929f",
+        GrayLight = "#2a2833",
+        GrayLighter = "#1e1e2d",
+        Info = "#4a86ff",
+        Success = "#3dcb6c",
+        Warning = "#ffb545",
+        Error = "#ff3f5f",
+        LinesDefault = "#33323e",
+        TableLines = "#33323e",
+        Divider = "#292838",
+        OverlayLight = "#1e1e2d80",
+    };
+
+}

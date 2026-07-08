@@ -1,0 +1,91 @@
+@using Microsoft.AspNetCore.Components.Authorization
+@implements IDisposable
+@inject JwtAuthenticationService _jwtAuthenticationService
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject ILogger<NavMenu> Logger
+
+<MudStack Spacing="2" Class="pa-3">
+    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+        <MudAvatar Color="Color.Primary" Size="Size.Medium">@Initials</MudAvatar>
+        <MudStack Spacing="0">
+            <MudText Typo="Typo.subtitle2">@FirstName</MudText>
+            <MudText Typo="Typo.caption" Color="Color.Secondary">@SessionType</MudText>
+        </MudStack>
+    </MudStack>
+</MudStack>
+
+@* <MudDivider /> *@
+
+<MudNavMenu>
+    <MudNavLink Href="/main" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Dashboard">Principal</MudNavLink>
+    <MudNavLink Href="/download-agent" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Dashboard">Downloads</MudNavLink>
+    <MudNavLink Href="counter" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Add">Counter</MudNavLink>
+    <MudNavLink Href="weather" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.List">Weather</MudNavLink>
+@*     <MudNavLink OnClick="EfetuarLogout" Icon="@Icons.Material.Filled.Logout">Sair</MudNavLink>
+ *@</MudNavMenu>
+
+@code {
+    private string? _fullName;
+    private string? _level;
+    private string? _environment;
+
+    private string FirstName => string.IsNullOrWhiteSpace(_fullName)
+        ? "Usuário"
+        : _fullName.Split(' ', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? "Usuário";
+
+    private string Initials => FirstName.Length == 0 ? "U" : FirstName[..1].ToUpperInvariant();
+
+    private string SessionType => string.Join(" / ", new[] { _level, _environment }.Where(x => !string.IsNullOrWhiteSpace(x)));
+
+    protected override async Task OnInitializedAsync()
+    {
+        AuthenticationStateProvider.AuthenticationStateChanged += OnAuthenticationStateChanged;
+        await LoadUserAsync();
+    }
+
+    private async Task LoadUserAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        SetUser(authState.User);
+    }
+
+    private async void OnAuthenticationStateChanged(Task<AuthenticationState> task)
+    {
+        var authState = await task;
+        SetUser(authState.User);
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void SetUser(System.Security.Claims.ClaimsPrincipal user)
+    {
+        _fullName = user.Claims.FirstOrDefault(x => x.Type == "Name")?.Value ?? user.Identity?.Name;
+        _level = user.Claims.FirstOrDefault(x => x.Type == "Level")?.Value;
+        _environment = FormatEnvironment(user.Claims.FirstOrDefault(x => x.Type == "Environment")?.Value);
+    }
+
+    private static string? FormatEnvironment(string? value)
+    {
+        return EnvironmentClaimFormatter.Format(value);
+    }
+
+    private async Task EfetuarLogout()
+    {
+        try
+        {
+            await _jwtAuthenticationService.LogoutAsync();
+
+            Snackbar.Add("Sessão encerrada com sucesso.", Severity.Info);
+            Navigation.NavigateTo("/user/login", forceLoad: true);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add("Erro ao tentar deslogar.", Severity.Error);
+            Logger.LogError(ex, "Erro no logout.");
+        }
+    }
+
+    public void Dispose()
+    {
+        AuthenticationStateProvider.AuthenticationStateChanged -= OnAuthenticationStateChanged;
+    }
+}

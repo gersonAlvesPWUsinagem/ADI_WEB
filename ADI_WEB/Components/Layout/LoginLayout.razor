@@ -1,0 +1,94 @@
+@inherits LayoutComponentBase
+@inject IJSRuntime JS
+@inject ILogger<LoginLayout> Logger
+
+@* Provedores globais necessários para renderizar Diálogos, Popovers e Snackbars *@
+<MudThemeProvider Theme="@_theme" IsDarkMode="_isDarkMode" />
+<MudPopoverProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
+
+<MudLayout>
+    <MudMainContent>
+        @Body
+    </MudMainContent>
+</MudLayout>
+
+@code {
+    private bool _isDarkMode = false;
+    private MudTheme? _theme;
+
+    protected override void OnInitialized()
+    {
+        // Inicializa o tema imediatamente para evitar que o MudThemeProvider renderize com null
+        _theme = new MudTheme()
+        {
+            PaletteLight = _lightPalette,
+            PaletteDark = _darkPalette
+        };
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try
+            {
+                // Só acessa o LocalStorage e o JS após o circuito estar 100% interativo
+                var localSettings = await JS.InvokeAsync<string>("localStorage.getItem", "adi_dark_mode");
+                if (!string.IsNullOrEmpty(localSettings))
+                {
+                    _isDarkMode = bool.Parse(localSettings);
+                    StateHasChanged();
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning(ex, "Erro ao carregar tema no layout de login.");
+            }
+        }
+    }
+
+    // Configuração das suas paletas de cores nativas
+    private readonly PaletteLight _lightPalette = new()
+    {
+        Background = "#f5f5f5",
+        Surface = "#ffffff",
+        AppbarText = "#ffffff",
+        DrawerBackground = "#ffffff",
+        DrawerText = "#2b2b2b",
+        DrawerIcon = "#6b7280",
+        Divider = "#bfbfbf",
+        GrayLight = "#e8e8e8",
+        GrayLighter = "#f9f9f9"
+    };
+
+    private readonly PaletteDark _darkPalette = new()
+    {
+        Primary = "#7e6fff",
+        Surface = "#1e1e2d",
+        Background = "#1a1a27",
+        BackgroundGray = "#151521",
+        AppbarText = "#92929f",
+        AppbarBackground = "rgba(26,26,39,0.8)",
+        DrawerBackground = "#1a1a27",
+        ActionDefault = "#74718e",
+        ActionDisabled = "#9999994d",
+        ActionDisabledBackground = "#605f6d4d",
+        TextPrimary = "#b2b0bf",
+        TextSecondary = "#92929f",
+        TextDisabled = "#ffffff33",
+        DrawerIcon = "#92929f",
+        DrawerText = "#92929f",
+        GrayLight = "#2a2833",
+        GrayLighter = "#1e1e2d",
+        Info = "#4a86ff",
+        Success = "#3dcb6c",
+        Warning = "#ffb545",
+        Error = "#ff3f5f",
+        LinesDefault = "#33323e",
+        TableLines = "#33323e",
+        Divider = "#292838",
+        OverlayLight = "#1e1e2d80",
+    };
+}

@@ -1,0 +1,214 @@
+@using Domain.Dtos.Login
+@using System.Text.Json
+@using System.Reflection
+@inject IAgenteLocalService AgenteService
+@inject ISnackbar Snackbar
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+@inject ILogger<DefinicoesDialog> Logger
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">
+            <MudIcon Icon="@Icons.Material.Filled.Settings" Class="mr-3 mb-n1" Color="Color.Primary" />
+            @(ModoExplicativo ? "Tutorial de Configuração" : "Definir Informações de Sessão")
+        </MudText>
+    </TitleContent>
+
+    <DialogContent>
+        <EditForm Model="@SessionModel" OnValidSubmit="ConfirmarSalvar">
+            <DataAnnotationsValidator />
+
+            <MudStack Spacing="4" Class="pt-2 position-relative" Style="min-width: 320px;">
+
+                <div id="container-filial" class="position-relative">
+                    <MudTextField @bind-Value="@SessionModel.Filial" Label="Código da Filial" For="@(() => SessionModel.Filial)" InputType="InputType.Number" Variant="Variant.Outlined" Disabled="@ModoExplicativo" />
+                </div>
+                <div id="container-estabelecimento" class="position-relative">
+                    <MudTextField @bind-Value="@SessionModel.Estabelecimento" Label="Código do Estabelecimento" For="@(() => SessionModel.Estabelecimento)" InputType="InputType.Number" Variant="Variant.Outlined" Disabled="@ModoExplicativo" />
+                </div>
+                <div id="container-empresa" class="position-relative">
+                    <MudTextField @bind-Value="@SessionModel.Empresa" Label="Código da Empresa" For="@(() => SessionModel.Empresa)" InputType="InputType.Number" Variant="Variant.Outlined" Disabled="@ModoExplicativo" />
+                </div>
+                <div id="container-filial" class="position-relative">
+                    <div class="checkbox mb-3">
+                        <h5>AMBIENTE</h5>
+                        <MudItem xs="12" sm="12">
+                            <MudSelect Placeholder="Selecione o ambiente"
+                                       @bind-Value="SessionModel!.Environment"
+                                       ToStringFunc="@convertFunc"
+                                       CloseIcon="@Icons.Material.Filled.Settings"
+                                       AdornmentColor="Color.Primary">
+                                @foreach (EnvironmentEnum param in Enum.GetValues(typeof(EnvironmentEnum)))
+                                {
+                                    <MudSelectItem Value="param" />
+                                }
+                            </MudSelect>
+                        </MudItem>
+                    </div>
+                </div>
+
+                <MudDivider Class="my-2" />
+
+                <MudCard Elevation="0"
+                         Outlined="true"
+                         Class="pa-3"
+                         Style="background-color: var(--mud-palette-background-gray); border: 1px dashed var(--mud-palette-lines-default);">
+
+                    <MudText Typo="Typo.subtitle2" Class="mb-2 font-weight-bold">Segurança & Vínculo de Hardware</MudText>
+
+                    <MudStack Row="true" Spacing="2" Class="mb-2">
+                        <MudTextField @bind-Value="@SessionModel.Patrimonio" Label="Patrimônio da Máquina" For="@(() => SessionModel.Patrimonio)" ReadOnly="true" Variant="Variant.Filled" Dense="true" />
+                        <MudTextField @bind-Value="@SessionModel.IPV4" Label="Endereço IPV4" For="@(() => SessionModel.IPV4)" ReadOnly="true" Variant="Variant.Filled" Dense="true" />
+                        <MudTextField @bind-Value="@SessionModel.MacAddress" Label="Endereço Mac" For="@(() => SessionModel.MacAddress)" ReadOnly="true" Variant="Variant.Filled" Dense="true" />
+
+                    </MudStack>
+
+                    @if (!ModoExplicativo)
+                    {
+                        <MudButton Color="Color.Secondary"
+                                   Variant="Variant.Outlined"
+                                   FullWidth="true"
+                                   Size="Size.Small"
+                                   StartIcon="@Icons.Material.Filled.Computer"
+                                   Disabled="@_isCarregandoAgente"
+                                   OnClick="VincularMaquinaLocal">
+                            @(_isCarregandoAgente ? "Buscando Agente..." : "Identificar e Vincular esta Máquina")
+                        </MudButton>
+                    }
+                </MudCard>
+
+            </MudStack>
+        </EditForm>
+    </DialogContent>
+
+
+
+    <DialogActions>
+        <MudButton OnClick="Cancelar" Color="Color.Default">
+            @(ModoExplicativo ? "Sair do Guia" : "Cancelar")
+        </MudButton>
+        @if (!ModoExplicativo)
+        {
+            <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="ConfirmarSalvar">Salvar Configurações</MudButton>
+        }
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance? MudDialog { get; set; }
+    [Inject] private IDialogService? DialogService { get; set; }
+
+
+    [Parameter] public DefSessionDtos SessionModel { get; set; } = new();
+    [Parameter] public bool ModoExplicativo { get; set; } = false;
+    private int passoAtual = 1;
+    private bool _isCarregandoAgente = false;
+
+    private Func<EnvironmentEnum, string> convertFunc = ci =>
+        $"{ci.GetDisplayName()} {ci.GetDisplayDescription() ?? ""}".Trim();
+
+    // Chave única para o armazenamento local no navegador
+    private const string LocalStorageKey = "adi_session_directives";
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        // Importante em InteractiveServer: A API do navegador (localStorage) só fica disponível após a primeira renderização
+        if (firstRender && !ModoExplicativo)
+        {
+            await CarregarDiretivasDoNavegador();
+        }
+    }
+    
+
+    private void Cancelar() => MudDialog?.Cancel();
+
+    private async Task ConfirmarSalvar()
+    {
+        try
+        {
+            // Transforma o modelo preenchido em JSON e persiste no localStorage do navegador
+            var jsonDirectives = JsonSerializer.Serialize(SessionModel);
+            await JS.InvokeVoidAsync("localStorage.setItem", LocalStorageKey, jsonDirectives);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Erro ao salvar diretivas no localStorage.");
+        }
+
+        MudDialog?.Close(DialogResult.Ok(SessionModel));
+    }
+
+    private async Task CarregarDiretivasDoNavegador()
+    {
+        try
+        {
+            var jsonSaved = await JS.InvokeAsync<string?>("localStorage.getItem", LocalStorageKey);
+
+            if (!string.IsNullOrEmpty(jsonSaved))
+            {
+                var dadosSalvos = JsonSerializer.Deserialize<DefSessionDtos>(jsonSaved);
+                if (dadosSalvos != null)
+                {
+                    // Recupera os valores mantendo a mesma referência do SessionModel do componente pai
+                    SessionModel.Filial = dadosSalvos.Filial;
+                    SessionModel.Estabelecimento = dadosSalvos.Estabelecimento;
+                    SessionModel.Empresa = dadosSalvos.Empresa;
+                    SessionModel.Patrimonio = dadosSalvos.Patrimonio;
+                    SessionModel.IPV4 = dadosSalvos.IPV4;
+                    SessionModel.MacAddress = dadosSalvos.MacAddress;
+
+
+                    StateHasChanged(); // Força o MudBlazor a atualizar os inputs na tela
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Erro ao recuperar diretivas do localStorage.");
+        }
+    }
+
+    private async Task VincularMaquinaLocal()
+    {
+        _isCarregandoAgente = true;
+        try
+        {
+            var resposta = await AgenteService.ObterDadosMaquinaAsync();
+
+            if (resposta is null || string.IsNullOrEmpty(resposta.Patrimonio))
+            {
+                Snackbar.Add("O agente respondeu, mas não foi possível extrair a identidade da máquina.", Severity.Warning);
+                return;
+            }
+
+            SessionModel.Patrimonio = resposta.Patrimonio;
+            SessionModel.IPV4 = resposta.IPV4 ?? throw new Exception("Tente novamente obter parâmetros do equipamento, serviço indisponível");
+            SessionModel.MacAddress = resposta.MacAddress ?? throw new Exception("Tente novamente obter parâmetros do equipamento, serviço indisponível");
+
+            Snackbar.Add($"Máquina {SessionModel.Patrimonio} vinculada com sucesso!", Severity.Success);
+        }
+        catch (HttpRequestException)
+        {
+            bool? desejaBaixar = await DialogService!.ShowMessageBoxAsync(
+                title: "Agente de Integração não Detectado",
+                message: "Não conseguimos estabelecer conexão com o assistente local da PW Usinagem. O instalador é necessário para identificar o hardware da máquina.",
+                yesText: "Baixar Instalador",
+                noText: "Voltar");
+
+            if (desejaBaixar == true)
+            {
+                Navigation.NavigateTo("/downloads", forceLoad: true);
+            }
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _isCarregandoAgente = false;
+        }
+    }
+}
