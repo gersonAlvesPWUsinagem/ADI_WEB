@@ -1,0 +1,660 @@
+﻿@page "/glpi/termo-concessao"
+@inject HttpClient Http
+@inject ISnackbar Snackbar
+@inject IJSRuntime JS
+@inject IGeradorTermoService GeradorTermoService
+
+<h3>Gerador de Termos de TI</h3>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-6 mb-8">
+    <MudText Typo="Typo.h4" GutterBottom="true" Class="mb-4">
+        <MudIcon Icon="@ObterIconeTitulo()" Size="Size.Large" Class="mr-2" />
+        @ObterTituloDinamico()
+    </MudText>
+
+    <MudTabs ActivePanelIndexChanged="OnTabChanged" Elevation="3" Rounded="true" ApplyEffectsToContainer="true" Color="Color.Primary" Dense="true">
+
+        @* TAB 0: NOTEBOOK *@
+        <MudTabPanel Text="Notebook" Icon="@Icons.Material.Filled.Laptop">
+            <MudPaper Class="pa-6" Elevation="0">
+                <EditForm Model="@dtoNotebook" OnValidSubmit="ProcessarNotebookAsync">
+                    <MudGrid>
+                        @* Seleção do Tipo de Documento *@
+                        <MudItem xs="12">
+                            <MudRadioGroup @bind-Value="_tipoDocumento" Color="Color.Primary" Dense="true">
+                                <MudRadio Value="@("CPF")">CPF</MudRadio>
+                                <MudRadio Value="@("CNPJ")">CNPJ</MudRadio>
+                                <MudRadio Value="@("RG")">RG</MudRadio>
+                            </MudRadioGroup>
+                        </MudItem>
+
+                        @if (!_isDevolucao)
+                        {
+                            <MudItem xs="12" sm="6">
+                                <MudTextField Label="Nome do Colaborador"
+                                              @bind-Value="dtoNotebook.ColaboradorNome"
+                                              Required="true"
+                                              Variant="Variant.Outlined"
+                                              Margin="Margin.Dense" />
+                            </MudItem>
+                        }
+                        <MudItem xs="12" sm="6">
+                            <MudTextField Label="@($"Documento ({_tipoDocumento})")"
+                                          @bind-Value="dtoNotebook.ColaboradorDocumento"
+                                          Mask="@ObterMascaraSelecionada()"
+                                          Required="true"
+                                          Variant="Variant.Outlined"
+                                          Margin="Margin.Dense" />
+                        </MudItem>
+
+                        @* SELEÇÃO DE PREFIXO DE PATRIMÔNIO (NOVO) *@
+                        <MudItem xs="12">
+                            <MudText Typo="Typo.caption" Class="mud-text-secondary">Selecione o Prefixo do Patrimônio:</MudText>
+                            <MudRadioGroup @bind-Value="_prefixoPatrimonio" Color="Color.Secondary" Dense="true" Class="mt-1">
+                                <MudRadio Value="@("NT")">NT (Notebook)</MudRadio>
+                                <MudRadio Value="@("CL")">CL</MudRadio>
+                                <MudRadio Value="@("TEL")">TEL</MudRadio>
+                                <MudRadio Value="@("SKA")">SKA</MudRadio>
+                                <MudRadio Value="@("PC")">PC</MudRadio>
+                                <MudRadio Value="@("PCT")">PCT</MudRadio>
+                            </MudRadioGroup>
+                        </MudItem>
+
+                        <MudItem xs="12" sm="6">
+                            <MudTextField Label="ID / Patrimônio Notebook"
+                                          Value="dtoNotebook.NotebookId"
+                                          ValueChanged="@((string val) => OnPatrimonioChanged(val, 0))"
+                                          ValueExpression="@(() => dtoNotebook.NotebookId)"
+                                          Required="true"
+                                          Variant="Variant.Outlined"
+                                          Margin="Margin.Dense"
+                                          HelperText="Informe apenas os números/código (o prefixo é selecionado acima)" />
+                        </MudItem>
+
+                        @if (!_isDevolucao)
+                        {
+                            <MudItem xs="12" sm="6">
+                                <MudSelect Label="Tipo de Equipamento"
+                                           @bind-Value="dtoNotebook.TypeEquipamento"
+                                           Variant="Variant.Outlined"
+                                           Margin="Margin.Dense">
+                                    <MudSelectItem Value="@("USADO")">USADO</MudSelectItem>
+                                    <MudSelectItem Value="@("NOVO")">NOVO</MudSelectItem>
+                                </MudSelect>
+                            </MudItem>
+                        }
+
+                        <MudItem xs="12" Class="d-flex align-center justify-space-between mt-4">
+                            <div class="d-flex align-center gap-6">
+                                <MudSwitch @bind-Value="_isDevolucao" Color="Color.Warning" UncheckedColor="Color.Primary" Dense="true">
+                                    Tipo de Operação: <b>@(_isDevolucao ? "DEVOLUÇÃO" : "EMPRÉSTIMO")</b>
+                                </MudSwitch>
+
+                                <MudSwitch @bind-Value="dtoNotebook.IsForPdfGeneration" Color="Color.Secondary" Dense="true">
+                                    Baixar PDF diretamente
+                                </MudSwitch>
+                            </div>
+
+                            <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="@(_isDevolucao? Color.Warning: Color.Primary)" StartIcon="@(_isDevolucao? Icons.Material.Filled.SettingsBackupRestore : Icons.Material.Filled.PictureAsPdf)" Disabled="_carregando">
+                                @if (_carregando)
+                                {
+                                    <MudProgressCircular Size="Size.Small" Indeterminate="true" />
+                                }
+                                else
+                                {
+                                    <text>@(_isDevolucao ? "Devolução Notebook" : "Empréstimo Notebook")</text>
+                                }
+                            </MudButton>
+                        </MudItem>
+                    </MudGrid>
+                </EditForm>
+            </MudPaper>
+        </MudTabPanel>
+
+        @* TAB 1: CELULAR *@
+        <MudTabPanel Text="Celular" Icon="@Icons.Material.Filled.Smartphone">
+            <MudPaper Class="pa-6" Elevation="0">
+                <EditForm Model="@dtoTelefone" OnValidSubmit="ProcessarTelefoneAsync">
+                    <MudGrid>
+                        @* Seleção do Tipo de Documento *@
+                        <MudItem xs="12">
+                            <MudRadioGroup @bind-Value="_tipoDocumento" Color="Color.Primary" Dense="true">
+                                <MudRadio Value="@("CPF")">CPF</MudRadio>
+                                <MudRadio Value="@("CNPJ")">CNPJ</MudRadio>
+                                <MudRadio Value="@("RG")">RG</MudRadio>
+                            </MudRadioGroup>
+                        </MudItem>
+
+                        @if (!_isDevolucao)
+                        {
+                            <MudItem xs="12" sm="6">
+                                <MudTextField Label="Nome do Colaborador"
+                                              @bind-Value="dtoTelefone.ColaboradorNome"
+                                              Required="true"
+                                              Variant="Variant.Outlined"
+                                              Margin="Margin.Dense" />
+                            </MudItem>
+                        }
+                        <MudItem xs="12" sm="6">
+                            <MudTextField Label="@($"Documento ({_tipoDocumento})")"
+                                          @bind-Value="dtoTelefone.ColaboradorDocumento"
+                                          Mask="@ObterMascaraSelecionada()"
+                                          Required="true"
+                                          Variant="Variant.Outlined"
+                                          Margin="Margin.Dense" />
+                        </MudItem>
+
+                        @* SELEÇÃO DE PREFIXO DE PATRIMÔNIO (NOVO) *@
+                        <MudItem xs="12">
+                            <MudText Typo="Typo.caption" Class="mud-text-secondary">Selecione o Prefixo do Patrimônio:</MudText>
+                            <MudRadioGroup @bind-Value="_prefixoPatrimonio" Color="Color.Secondary" Dense="true" Class="mt-1">
+                                <MudRadio Value="@("NT")">NT</MudRadio>
+                                <MudRadio Value="@("CL")">CL (Celular)</MudRadio>
+                                <MudRadio Value="@("TEL")">TEL</MudRadio>
+                                <MudRadio Value="@("SKA")">SKA</MudRadio>
+                                <MudRadio Value="@("PC")">PC</MudRadio>
+                                <MudRadio Value="@("PCT")">PCT</MudRadio>
+                            </MudRadioGroup>
+                        </MudItem>
+
+                        <MudItem xs="12" sm="6">
+                            <MudTextField Label="ID / Patrimônio Celular"
+                                          Value="dtoTelefone.TelefoneId"
+                                          ValueChanged="@((string val) => OnPatrimonioChanged(val, 1))"
+                                          ValueExpression="@(() => dtoTelefone.TelefoneId)"
+                                          Required="true"
+                                          Variant="Variant.Outlined"
+                                          Margin="Margin.Dense"
+                                          HelperText="Informe apenas os números/código (o prefixo é selecionado acima)" />
+                        </MudItem>
+
+                        @if (!_isDevolucao)
+                        {
+                            <MudItem xs="12" sm="6">
+                                <MudSelect Label="Tipo de Equipamento"
+                                           @bind-Value="dtoTelefone.TypeEquipamento"
+                                           Variant="Variant.Outlined"
+                                           Margin="Margin.Dense">
+                                    <MudSelectItem Value="@("USADO")">USADO</MudSelectItem>
+                                    <MudSelectItem Value="@("NOVO")">NOVO</MudSelectItem>
+                                </MudSelect>
+                            </MudItem>
+                        }
+
+                        <MudItem xs="12" Class="d-flex align-center justify-space-between mt-4">
+                            <div class="d-flex align-center gap-6">
+                                <MudSwitch @bind-Value="_isDevolucao" Color="Color.Warning" UncheckedColor="Color.Primary" Dense="true">
+                                    Tipo de Operação: <b>@(_isDevolucao ? "DEVOLUÇÃO" : "EMPRÉSTIMO")</b>
+                                </MudSwitch>
+
+                                <MudSwitch @bind-Value="dtoTelefone.IsForPdfGeneration" Color="Color.Secondary" Dense="true">
+                                    Baixar PDF diretamente
+                                </MudSwitch>
+                            </div>
+
+                            <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="@(_isDevolucao? Color.Warning: Color.Primary)" StartIcon="@(_isDevolucao? Icons.Material.Filled.SettingsBackupRestore : Icons.Material.Filled.PictureAsPdf)" Disabled="_carregando">
+                                @if (_carregando)
+                                {
+                                    <MudProgressCircular Size="Size.Small" Indeterminate="true" />
+                                }
+                                else
+                                {
+                                    <text>@(_isDevolucao ? "Devolução Celular" : "Empréstimo Celular")</text>
+                                }
+                            </MudButton>
+                        </MudItem>
+                    </MudGrid>
+                </EditForm>
+            </MudPaper>
+        </MudTabPanel>
+
+        @* TAB 2: CHIP / SIM CARD (Sem prefixo de patrimônio) *@
+        <MudTabPanel Text="Chip / SIM Card" Icon="@Icons.Material.Filled.SimCard">
+            <MudPaper Class="pa-6" Elevation="0">
+                <EditForm Model="@dtoChip" OnValidSubmit="ProcessarChipAsync">
+                    <MudGrid>
+                        <MudItem xs="12">
+                            <MudRadioGroup @bind-Value="_tipoDocumento" Color="Color.Primary" Dense="true">
+                                <MudRadio Value="@("CPF")">CPF</MudRadio>
+                                <MudRadio Value="@("CNPJ")">CNPJ</MudRadio>
+                                <MudRadio Value="@("RG")">RG</MudRadio>
+                            </MudRadioGroup>
+                        </MudItem>
+
+                        @if (!_isDevolucao)
+                        {
+                            <MudItem xs="12" sm="6">
+                                <MudTextField Label="Nome do Colaborador"
+                                              @bind-Value="dtoChip.ColaboradorNome"
+                                              Required="true"
+                                              Variant="Variant.Outlined"
+                                              Margin="Margin.Dense" />
+                            </MudItem>
+                        }
+                        <MudItem xs="12" sm="6">
+                            <MudTextField Label="@($"Documento ({_tipoDocumento})")"
+                                          @bind-Value="dtoChip.Documento"
+                                          Mask="@ObterMascaraSelecionada()"
+                                          Required="true"
+                                          Variant="Variant.Outlined"
+                                          Margin="Margin.Dense" />
+                        </MudItem>
+                        <MudItem xs="12" sm="6">
+                            <MudTextField Label="Número Telefone"
+                                          @bind-Value="dtoChip.NumeroTelefone"
+                                          Mask="@_telefoneMask"
+                                          Required="true"
+                                          Variant="Variant.Outlined"
+                                          Margin="Margin.Dense" />
+                        </MudItem>
+                        @if (_isDevolucao)
+                        {
+                            <MudItem xs="12" sm="6">
+                                <MudTextField Label="Data Cadastro / Emissão"
+                                              @bind-Value="dtoChip.DataCadastro"
+                                              Placeholder="AAAA-MM-DD"
+                                              Variant="Variant.Outlined"
+                                              Margin="Margin.Dense" />
+                            </MudItem>
+                        }
+
+                        @* AQUI ESTÁ A CORREÇÃO: Envelopado com a div e com o MudSwitch de PDF adicionado *@
+                        <MudItem xs="12" Class="d-flex align-center justify-space-between mt-4">
+                            <div class="d-flex align-center gap-6">
+                                <MudSwitch @bind-Value="_isDevolucao" Color="Color.Warning" UncheckedColor="Color.Primary" Dense="true">
+                                    Tipo de Operação: <b>@(_isDevolucao ? "DEVOLUÇÃO" : "EMPRÉSTIMO")</b>
+                                </MudSwitch>
+
+                                <MudSwitch @bind-Value="dtoChip.IsForPdfGeneration" Color="Color.Secondary" Dense="true">
+                                    Baixar PDF diretamente
+                                </MudSwitch>
+                            </div>
+
+                            <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="@(_isDevolucao? Color.Warning: Color.Primary)" StartIcon="@(_isDevolucao? Icons.Material.Filled.SettingsBackupRestore : Icons.Material.Filled.SimCardDownload)" Disabled="_carregando">
+                                @if (_carregando)
+                                {
+                                    <MudProgressCircular Size="Size.Small" Indeterminate="true" />
+                                }
+                                else
+                                {
+                                    <text>@(_isDevolucao ? "Devolução Chip" : "Empréstimo Chip")</text>
+                                }
+                            </MudButton>
+                        </MudItem>
+                    </MudGrid>
+                </EditForm>
+            </MudPaper>
+        </MudTabPanel>
+
+        @* TAB 3: ENTREGA DE ACESSOS (Sem prefixo de patrimônio) *@
+        <MudTabPanel Text="Entrega de Acessos" Icon="@Icons.Material.Filled.VpnKey">
+            <MudPaper Class="pa-6" Elevation="0">
+                <EditForm Model="@dtoAcessos" OnValidSubmit="ProcessarAcessosAsync">
+                    <MudGrid>
+                        <MudItem xs="12" sm="6">
+                            <MudTextField Label="Nome do Colaborador" @bind-Value="dtoAcessos.ColaboradorNome" Required="true" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                        </MudItem>
+                        <MudItem xs="12" sm="6">
+                            <MudTextField Label="Departamento" @bind-Value="dtoAcessos.Departamento" Required="true" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                        </MudItem>
+
+                        <MudItem xs="12"><MudText Typo="Typo.subtitle2" Class="mt-2">Credenciais Windows & E-mail</MudText></MudItem>
+                        <MudItem xs="12" sm="6">
+                            <MudTextField Label="Usuário Windows" @bind-Value="dtoAcessos.UsuarioWindows" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                        </MudItem>
+                        <MudItem xs="12" sm="6">
+                            <MudTextField Label="Senha Windows" InputType="InputType.Password" @bind-Value="dtoAcessos.SenhaWindows" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                        </MudItem>
+                        <MudItem xs="12" sm="6">
+                            <MudTextField Label="E-mail Corporativo" @bind-Value="dtoAcessos.EmailCorporativo" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                        </MudItem>
+                        <MudItem xs="12" sm="6">
+                            <MudTextField Label="Senha E-mail" InputType="InputType.Password" @bind-Value="dtoAcessos.SenhaEmail" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                        </MudItem>
+
+                        <MudItem xs="12"><MudText Typo="Typo.subtitle2" Class="mt-2">Sistemas ERP / Internos</MudText></MudItem>
+                        <MudItem xs="12" sm="3">
+                            <MudTextField Label="Usuário Ômega" @bind-Value="dtoAcessos.SistemaOmegaUsuario" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                        </MudItem>
+                        <MudItem xs="12" sm="3">
+                            <MudTextField Label="Senha Ômega" InputType="InputType.Password" @bind-Value="dtoAcessos.SistemaOmegaSenha" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                        </MudItem>
+                        <MudItem xs="12" sm="3">
+                            <MudTextField Label="Usuário ADI" @bind-Value="dtoAcessos.SistemaAdiUsuario" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                        </MudItem>
+                        <MudItem xs="12" sm="3">
+                            <MudTextField Label="Senha ADI" InputType="InputType.Password" @bind-Value="dtoAcessos.SistemaAdiSenha" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                        </MudItem>
+
+                        <MudItem xs="12" Class="d-flex align-center justify-space-between mt-4">
+                            <MudSwitch @bind-Value="dtoAcessos.IsForPdfGeneration" Color="Color.Secondary" Dense="true">
+                                Baixar PDF diretamente
+                            </MudSwitch>
+
+                            <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.PictureAsPdf" Disabled="_carregando">
+                                @if (_carregando)
+                                {
+                                    <MudProgressCircular Size="Size.Small" Indeterminate="true" />
+                                }
+                                else
+                                {
+                                    <text>Gerar Termo de Acessos</text>
+                                }
+                            </MudButton>
+                        </MudItem>
+                    </MudGrid>
+                </EditForm>
+            </MudPaper>
+        </MudTabPanel>
+
+    </MudTabs>
+</MudContainer>
+
+@code {
+    private bool _carregando = false;
+    private bool _isDevolucao = false;
+    private int _tabIndex = 0;
+    private string _tipoDocumento = "CPF";
+
+    // Prefixo selecionado pelo usuário (padrão: NT)
+    private string _prefixoPatrimonio = "NT";
+    private readonly string[] _prefixosConhecidos = new[] { "NT", "CL", "TEL", "SKA-", "PC", "PCT" };
+
+    // DTOs
+    private TermoEmprestimoNotebookDto dtoNotebook = new();
+    private TermoEmprestimoTelefoneDto dtoTelefone = new();
+    private TermoEmprestimoChipDto dtoChip = new();
+    private TermoEntregaAcessosDto dtoAcessos = new();
+
+    private void OnTabChanged(int index)
+    {
+        _tabIndex = index;
+        if (_tabIndex == 3)
+        {
+            _isDevolucao = false;
+        }
+
+        // Sugestão automática do prefixo com base na aba
+        if (_tabIndex == 0) _prefixoPatrimonio = "NT";
+        if (_tabIndex == 1) _prefixoPatrimonio = "CL";
+    }
+
+    private string ObterTituloDinamico()
+    {
+        string operacao = _isDevolucao ? "Devolução" : "Empréstimo";
+
+        return _tabIndex switch
+        {
+            0 => $"Termo de {operacao} - Notebook",
+            1 => $"Termo de {operacao} - Celular",
+            2 => $"Termo de {operacao} - Chip / SIM Card",
+            3 => "Termo de Entrega de Acessos",
+            _ => "Gerador de Termos de TI"
+        };
+    }
+
+    private string ObterIconeTitulo()
+    {
+        return _tabIndex switch
+        {
+            0 => Icons.Material.Filled.Laptop,
+            1 => Icons.Material.Filled.Smartphone,
+            2 => Icons.Material.Filled.SimCard,
+            3 => Icons.Material.Filled.VpnKey,
+            _ => Icons.Material.Filled.Description
+        };
+    }
+
+    private async Task ExecutarRequisicaoAsync(Func<Task<ApiDataService<(byte[] Conteudo, string MimeType, string NomeArquivo, bool IsInline)>>> acaoService)
+    {
+        _carregando = true;
+        try
+        {
+            var response = await acaoService();
+
+            if (response != null && response.Success && response.Value.Conteudo != null && response.Value.Conteudo.Length > 0)
+            {
+                var (conteudo, mimeType, nomeArquivo, isInline) = response.Value;
+
+                string base64 = Convert.ToBase64String(conteudo);
+                string tipo = string.IsNullOrWhiteSpace(mimeType) ? "application/pdf" : mimeType;
+                string nome = string.IsNullOrWhiteSpace(nomeArquivo) ? "Termo.pdf" : nomeArquivo;
+
+                await JS.InvokeVoidAsync("downloadOrOpenPdf", base64, tipo, nome, isInline);
+                Snackbar.Add(response.Message ?? "Termo processado com sucesso!", Severity.Success);
+
+                // Limpa o formulário correspondente à aba ativa
+                LimparFormularioAbaAtual();
+            }
+            else
+            {
+                Snackbar.Add(response?.Message ?? "Falha ao gerar o termo no servidor.", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Erro ao processar requisição: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _carregando = false;
+        }
+    }
+
+    private void LimparFormularioAbaAtual()
+    {
+        switch (_tabIndex)
+        {
+            case 0:
+                dtoNotebook = new TermoEmprestimoNotebookDto();
+                break;
+            case 1:
+                dtoTelefone = new TermoEmprestimoTelefoneDto();
+                break;
+            case 2:
+                dtoChip = new TermoEmprestimoChipDto();
+                break;
+            case 3:
+                dtoAcessos = new TermoEntregaAcessosDto();
+                break;
+        }
+    }
+
+    #region [ Validação de Patrimônio ]
+
+    private void OnPatrimonioChanged(string? input, int tab)
+    {
+        if (string.IsNullOrWhiteSpace(input))
+        {
+            AtualizarIdPatrimonio(string.Empty, tab);
+            return;
+        }
+
+        string inputUpper = input.Trim().ToUpper();
+
+        // Procura se o usuário digitou algum dos prefixos conhecidos no início
+        string? prefixoEncontrado = _prefixosConhecidos.FirstOrDefault(p => inputUpper.StartsWith(p));
+
+        if (!string.IsNullOrEmpty(prefixoEncontrado))
+        {
+            // 1. Atualiza o radio automaticamente para o prefixo digitado
+            _prefixoPatrimonio = prefixoEncontrado;
+
+            // 2. Extrai apenas a parte numérica/código limpo
+            string apenasCodigo = inputUpper.Substring(prefixoEncontrado.Length).TrimStart(' ', '-', '_', '/');
+
+            AtualizarIdPatrimonio(apenasCodigo, tab);
+
+            Snackbar.Add(
+                $"Prefixo **{prefixoEncontrado}** detectado e selecionado! Mantenha apenas o código no campo.",
+                Severity.Info,
+                config => config.DuplicatesBehavior = SnackbarDuplicatesBehavior.Prevent
+            );
+        }
+        else
+        {
+            // Se digitou apenas os números, grava direto
+            AtualizarIdPatrimonio(inputUpper, tab);
+        }
+    }
+
+    private void AtualizarIdPatrimonio(string valor, int tab)
+    {
+        if (tab == 0) dtoNotebook.NotebookId = valor;
+        else if (tab == 1) dtoTelefone.TelefoneId = valor;
+    }
+
+    // Método central que GARANTE o prefixo colado sem espaço
+    private string ObterPatrimonioCompleto(string? valorCampo)
+    {
+        if (string.IsNullOrWhiteSpace(valorCampo))
+            return string.Empty;
+
+        string limpo = valorCampo.Trim().ToUpper();
+
+        // Se por algum motivo o valor do campo ainda tiver o prefixo, remove para não duplicar
+        foreach (var p in _prefixosConhecidos)
+        {
+            if (limpo.StartsWith(p))
+            {
+                limpo = limpo.Substring(p.Length).TrimStart(' ', '-', '_', '/');
+                break;
+            }
+        }
+
+        // Retorna SEMPRE concatenado sem espaço (ex: NT1234)
+        return $"{_prefixoPatrimonio}{limpo}";
+    }
+    #endregion
+
+    #region [ Processadores de Termos ]
+
+    private async Task ProcessarNotebookAsync()
+    {
+        var patrimonioFormatado = ObterPatrimonioCompleto(dtoNotebook.NotebookId);
+
+        if (_isDevolucao)
+        {
+            var dtoDevolucao = new TermoDevolucaoNotebookDto
+            {
+                ColaboradorDocumento = dtoNotebook.ColaboradorDocumento ?? string.Empty,
+                NotebookId = patrimonioFormatado,
+                IsForPdfGeneration = dtoNotebook.IsForPdfGeneration
+            };
+
+            await ExecutarRequisicaoAsync(() => GeradorTermoService.GerarTermoDevolucaoNotebookAsync(dtoDevolucao));
+        }
+        else
+        {
+            var dtoEnvio = new TermoEmprestimoNotebookDto
+            {
+                ColaboradorNome = dtoNotebook.ColaboradorNome ?? string.Empty,
+                ColaboradorDocumento = dtoNotebook.ColaboradorDocumento ?? string.Empty,
+                NotebookId = patrimonioFormatado,
+                TypeEquipamento = dtoNotebook.TypeEquipamento ?? "USADO",
+                IsForPdfGeneration = dtoNotebook.IsForPdfGeneration
+            };
+
+            await ExecutarRequisicaoAsync(() => GeradorTermoService.GerarTermoEmprestimoNotebookAsync(dtoEnvio));
+        }
+    }
+
+    private async Task ProcessarTelefoneAsync()
+    {
+        var patrimonioFormatado = ObterPatrimonioCompleto(dtoTelefone.TelefoneId);
+
+        if (_isDevolucao)
+        {
+            var dtoDevolucao = new TermoEmprestimoTelefoneDto
+            {
+                ColaboradorDocumento = dtoTelefone.ColaboradorDocumento ?? string.Empty,
+                TelefoneId = patrimonioFormatado,
+                IsForPdfGeneration = dtoTelefone.IsForPdfGeneration
+            };
+
+            await ExecutarRequisicaoAsync(() => GeradorTermoService.GerarTermoDevolucaoTelefoneAsync(dtoDevolucao));
+        }
+        else
+        {
+            var dtoEnvio = new TermoEmprestimoTelefoneDto
+            {
+                ColaboradorNome = dtoTelefone.ColaboradorNome ?? string.Empty,
+                ColaboradorDocumento = dtoTelefone.ColaboradorDocumento ?? string.Empty,
+                TelefoneId = patrimonioFormatado,
+                TypeEquipamento = dtoTelefone.TypeEquipamento ?? "USADO",
+                IsForPdfGeneration = dtoTelefone.IsForPdfGeneration
+            };
+
+            await ExecutarRequisicaoAsync(() => GeradorTermoService.GerarTermoEmprestimoTelefoneAsync(dtoEnvio));
+        }
+    }
+
+    private async Task ProcessarChipAsync()
+    {
+        if (_isDevolucao)
+        {
+            var dtoDevolucao = new TermoEmprestimoChipDto
+            {
+                Documento = dtoChip.Documento ?? string.Empty,
+                NumeroTelefone = dtoChip.NumeroTelefone ?? string.Empty,
+                DataCadastro = dtoChip.DataCadastro,
+                IsForPdfGeneration = dtoChip.IsForPdfGeneration // <-- Adicione se o DTO de Devolução suportar
+            };
+
+            await ExecutarRequisicaoAsync(() => GeradorTermoService.GerarTermoDevolucaoChipAsync(dtoDevolucao));
+        }
+        else
+        {
+            await ExecutarRequisicaoAsync(() => GeradorTermoService.GerarTermoEmprestimoChipAsync(dtoChip));
+        }
+    }
+
+    private async Task ProcessarAcessosAsync()
+    {
+        await ExecutarRequisicaoAsync(() => GeradorTermoService.GerarTermoEntregaAcessosAsync(dtoAcessos));
+    }
+
+    #endregion
+
+    #region [ Mascaras ]
+
+    private readonly PatternMask _telefoneMask = new PatternMask("(00) 00000-0000")
+    {
+        MaskChars = new[] { new MaskChar('0', @"\d") },
+        Placeholder = '_'
+    };
+
+    private readonly PatternMask _cpfMask = new PatternMask("000.000.000-00")
+    {
+        MaskChars = new[] { new MaskChar('0', @"\d") },
+        Placeholder = '_'
+    };
+
+    private readonly PatternMask _cnpjMask = new PatternMask("00.000.000/0000-00")
+    {
+        MaskChars = new[] { new MaskChar('0', @"\d") },
+        Placeholder = '_'
+    };
+
+    private readonly PatternMask _rgMask = new PatternMask("00.000.000-a")
+    {
+        MaskChars = new[] {
+            new MaskChar('0', @"\d"),
+            new MaskChar('a', @"[0-9xX]")
+        },
+        Placeholder = '_'
+    };
+
+    private PatternMask ObterMascaraSelecionada()
+    {
+        return _tipoDocumento switch
+        {
+            "CPF" => _cpfMask,
+            "CNPJ" => _cnpjMask,
+            "RG" => _rgMask,
+            _ => _cpfMask
+        };
+    }
+
+    #endregion
+}

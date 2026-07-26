@@ -12,17 +12,17 @@ namespace Domain.Services
 {
     public class LoginService : BaseHttpService, ILoginService 
     {
-        
+
 
         // O HttpClient já vem configurado com a BaseURL correta graças ao Typed Client
-        public LoginService(HttpClient httpClient, IDataSessionHelper dataSession) : base(httpClient, dataSession)
+        public LoginService(HttpClient httpClient, IDataSessionHelper dataSession)
+            : base(httpClient, dataSession)
         {
-
         }
 
         public async Task<ApiDataService<string>> FazerLogin(UserDto user)
         {
-            var result = await PostAsync<string>("Auth/auth-web", user);
+            var result = await PostAsync<string>("Auth", user);
             return result;           
         }
     }
