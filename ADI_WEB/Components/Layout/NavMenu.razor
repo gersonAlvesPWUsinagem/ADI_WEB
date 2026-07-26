@@ -17,8 +17,12 @@
 @* <MudDivider /> *@
 
 <MudNavMenu>
-    <MudNavLink Href="/main" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Dashboard">Principal</MudNavLink>
+    <MudNavLink Href="/main" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Home">Principal</MudNavLink>
     <MudNavLink Href="/download-agent" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Dashboard">Downloads</MudNavLink>
+    <MudNavGroup Title="TI" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.AdminPanelSettings" Expanded="false">
+        <MudNavLink Href="/users">Usuários</MudNavLink>
+        <MudNavLink Href="glpi/termo-concessao">Gerador de Termos</MudNavLink>
+    </MudNavGroup>
     <MudNavLink Href="counter" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Add">Counter</MudNavLink>
     <MudNavLink Href="weather" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.List">Weather</MudNavLink>
 @*     <MudNavLink OnClick="EfetuarLogout" Icon="@Icons.Material.Filled.Logout">Sair</MudNavLink>

@@ -7,33 +7,45 @@ using MudBlazor.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-#region [ Services Configuration ]
+#region [ Configurações de Framework e Interface (Blazor & MudBlazor) ]
+// Injeta componentes do MudBlazor UI
 builder.Services.AddMudServices();
 
+// Permite acessar o contexto HTTP (Cookies, Headers, Claims) em classes de serviço
 builder.Services.AddHttpContextAccessor();
 
+// Configura o Blazor Server com componentes interativos
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
+#endregion
 
-builder.Services.AddHttpClient<ILoginService, LoginService>(client =>
+#region [ Configuração do HttpClient Base da Aplicação ]
+// Registra uma instância global do HttpClient configurada com a URL Base da API.
+// Qualquer serviço injetado via DI usará essa mesma base sem precisar reconfigurar.
+builder.Services.AddScoped(sp =>
 {
-    string apiUrl = Servidores.GetBaseUrl();
-    client.BaseAddress = new Uri(apiUrl);
-})
-.ConfigurePrimaryHttpMessageHandler(() =>
-{
-    var handler = new HttpClientHandler();
-    handler.ServerCertificateCustomValidationCallback = (message, cert, chain, errors) => true;
-    return handler;
+    var handler = new HttpClientHandler
+    {
+        // Ignora a validação do certificado SSL (útil para desenvolvimento local e redes internas)
+        ServerCertificateCustomValidationCallback = (message, cert, chain, errors) => true
+    };
+
+    return new HttpClient(handler)
+    {
+        BaseAddress = new Uri(Servidores.GetBaseUrl())
+    };
 });
 #endregion
 
-#region [ Dependency Injection ]
+#region [ Injeção de Dependência - Serviços de Negócio (Domain Services) ]
+// Registre aqui todos os serviços da aplicação (Interface -> Implementação Concreta)
 builder.Services.AddScoped<IDataSessionHelper, DataSessionHelper>();
+builder.Services.AddScoped<ILoginService, LoginService>();
 builder.Services.AddScoped<IAgenteLocalService, AgenteLocalService>();
+builder.Services.AddScoped<IGeradorTermoService, GeradorTermoService>();
 #endregion
 
-#region [ Authentication & Authorization (JWT Cookie) ]
+#region [ Autenticação e Autorização (JWT via Cookie) ]
 builder.Services.AddJwtCookieAuthentication(options =>
 {
     options.CookieName = "AuthTokenADI";
@@ -48,9 +60,10 @@ builder.Services.AddAuthorization();
 builder.Services.AddCascadingAuthenticationState();
 #endregion
 
+// --- CONSTRUÇÃO DO CONTAINER DA APLICAÇÃO ---
 var app = builder.Build();
 
-#region [ Configure the HTTP request pipeline ]
+#region [ Pipeline de Tratamento de Erros e Redirecionamentos ]
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Error", createScopeForErrors: true);
@@ -60,18 +73,18 @@ if (!app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 #endregion
 
-#region [ Standard ASP.NET Core Security Middlewares ]
+#region [ Middlewares de Arquivos Estáticos e Segurança ]
 app.UseStaticFiles();
-
 app.UseRouting();
 
+// É crucial que a Autenticação venha ANTES da Autorização no pipeline
 app.UseAuthentication();
 app.UseAuthorization();
 
 app.UseAntiforgery();
 #endregion
 
-#region [ Mappings & Execution ]
+#region [ Mapeamento de Rotas e Execução da Aplicação ]
 app.MapStaticAssets();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
