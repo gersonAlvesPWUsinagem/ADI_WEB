@@ -1,4 +1,5 @@
 using ADI_WEB.Components;
+using ADI_WEB.Components.SharedComps;
 using ADI_WEB.Security;
 using Domain.Helpers;
 using Domain.Interfaces;
@@ -43,6 +44,9 @@ builder.Services.AddScoped<IDataSessionHelper, DataSessionHelper>();
 builder.Services.AddScoped<ILoginService, LoginService>();
 builder.Services.AddScoped<IAgenteLocalService, AgenteLocalService>();
 builder.Services.AddScoped<IGeradorTermoService, GeradorTermoService>();
+builder.Services.AddScoped<IPortariaService, PortariaService>();
+
+builder.Services.AddScoped<SnackbarComp>();
 #endregion
 
 #region [ Autenticação e Autorização (JWT via Cookie) ]

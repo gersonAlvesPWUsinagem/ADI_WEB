@@ -1,0 +1,249 @@
+﻿@inject IPortariaService _services
+@attribute [Authorize]
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">
+            <MudIcon Icon="@Icons.Material.Filled.ReportGmailerrorred" Color="Color.Error" Class="mr-3 mb-n1" />
+             Registro Manual de Ponto (@(TypeOcorrencia ? "ENTRADA" : "SAÍDA"))
+        </MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudTextField Value="@Element?.NOME" Label="Nome do Colaborador" ReadOnly="true" Variant="Variant.Outlined" Margin="Margin.Dense" />
+
+        <MudGrid Spacing="6">
+            <MudItem xs="6">
+                <div style="font-size: 16px;">
+                    <MudTextField T="string"
+                                  ValueChanged="@HandleValueChangedEntrada"
+                                  Value="@_itemSelected.HoraEntrada"
+                                  Label="Horário de Entrada (Manual)"
+                                  InputType="InputType.Time"
+                                  Variant="Variant.Outlined"
+                                  ReadOnly="@(!Element!.OcorrenciaEntrada)"
+                                  Adornment="Adornment.End"
+                                  AdornmentIcon="@Icons.Material.Filled.Timer"
+                                  OnAdornmentClick="GetTimeSistem"
+                                  AdornmentAriaLabel="Preencher com hora atual do sistema" />
+                </div>
+            </MudItem>
+            <MudItem xs="6">
+                <div style="font-size: 16px;">
+                    <MudTextField T="string"
+                                  ValueChanged="@HandleValueChangedSaida"
+                                  Value="@_itemSelected.HoraSaida"
+                                  Label="Horário de Saída (Manual)"
+                                  InputType="InputType.Time"
+                                  Variant="Variant.Outlined"
+                                  ReadOnly="@(!Element!.OcorrenciaSaida)"
+                                  Adornment="Adornment.End"
+                                  AdornmentIcon="@Icons.Material.Filled.Timer"
+                                  OnAdornmentClick="GetTimeSistem"
+                                  AdornmentAriaLabel="Preencher com hora atual do sistema" />
+                </div>
+            </MudItem>
+        </MudGrid>
+        <MudDivider Class="my-6" />
+  
+        <MudGrid>
+            <MudItem xs="12">
+                <MudText Typo="Typo.h6" Color="Color.Primary" GutterBottom="true">
+                    Motivos Frequentes (Sem Crachá ou Outro Problema)
+                </MudText>
+            </MudItem>
+
+            <MudItem Class="d-flex justify-center flex-grow-1 gap-4" xs="12">
+                <div class="d-flex flex-wrap gap-2">
+                    @foreach (var motivo in motivos)
+                    {
+                        <MudFab StartIcon="@Icons.Material.Filled.Bookmark"
+                                Label="@motivo"
+                                Size="Size.Small"
+                                Color="Color.Primary"
+                                OnClick="@(() => InserirMotivo(motivo))"
+                                Class="mb-2" Disabled=@(!string.IsNullOrEmpty(_itemSelected.Ocorrencia) && !Element!.OcorrenciaEntrada) />
+                    }
+                </div>
+            </MudItem>
+
+        </MudGrid>
+        <MudItem xs="12" Class="mt-4">
+            <MudText Typo="Typo.h6" Color="Color.Primary" GutterBottom="true">
+                Detalhes da Ocorrência (Obrigatório)
+            </MudText>
+        </MudItem>
+        <MudTextField T="string" ReadOnly=@(!string.IsNullOrEmpty(_itemSelected.Ocorrencia) && !Element!.OcorrenciaEntrada)
+                      Label="Descreva o motivo da ocorrência ou do registro manual"
+                      @bind-Text="_itemSelected!.Ocorrencia"
+                      MaxLength="@limitCaracter"
+                      Lines="3"
+                      AutoGrow
+                      Immediate="true"
+                      HelperText="@(string.Format("Caracteres restantes: {0} de {1}", (limitCaracter - (string.IsNullOrEmpty(_itemSelected?.Ocorrencia) ? 0 : _itemSelected.Ocorrencia.Length)), limitCaracter))"
+                      Variant="Variant.Outlined" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton Color="Color.Default" OnClick="Cancel">Cancelar</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Success" OnClick="Gravar" Disabled="@(string.IsNullOrEmpty(_itemSelected?.Ocorrencia))">Salvar Ocorrência</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private List<string> motivos = new List<string>
+    {
+        "Esqueci o crachá em casa",
+        "Crachá perdido",
+        "Crachá danificado (Não leitura)",
+        "Problema na catraca/leitor",
+        "Saída antecipada"        
+    };
+
+    private void InserirMotivo(string motivo)
+    {
+        if (!string.IsNullOrEmpty(_itemSelected.Ocorrencia))
+        {
+            // Adicionado espaço e quebra de linha para melhor formatação visual
+            _itemSelected.Ocorrencia += "\n";
+        }
+        _itemSelected.Ocorrencia += $"[Motivo Frequente: {motivo}]";
+        StateHasChanged();
+    }
+
+    [CascadingParameter] private IMudDialogInstance? MudDialog { get; set; }
+
+    [Parameter] public ControlePessoaDto Element { get; set; } = new ControlePessoaDto();
+    [Parameter] public bool TypeOcorrencia { get; set; } // true para Entrada, false para Saída (segundo a lógica do pai)
+    [Parameter] public string? Operador { get; set; }
+    private int limitCaracter { get; set; } = 200;
+    // Removido 'textLimit' e ajustado diretamente no HelperText
+    private PortariaOcorrenciaDto _itemSelected { get; set; } = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (Element != null)
+        {
+            _itemSelected!.Id = Element.ID;
+            _itemSelected.HoraEntrada = Element.HoraEntrada;
+            _itemSelected.HoraSaida = Element.HoraSaida;
+            _itemSelected.Ocorrencia = Element.Ocorrencia;
+            _itemSelected.Operador1 = Element.Operador1;
+            _itemSelected.Operador2 = Element.Operador2;
+            _itemSelected.DataApEntrada = Element.DataApEntrada;
+            _itemSelected.DataApSaida = Element.DataApSaida;
+            _itemSelected.Nome = Element.NOME;
+        }
+
+        await base.OnInitializedAsync();
+    }
+
+    // Métodos ValueChanged e OnOcorreciaChanged mantidos (necessários)
+
+    private Task HandleValueChangedEntrada(string newValue)
+    {
+        if (_itemSelected != null)
+        {
+            _itemSelected.HoraEntrada = newValue;
+        }
+        return Task.CompletedTask;
+    }
+
+    private Task HandleValueChangedSaida(string newValue)
+    {
+        if (_itemSelected != null)
+        {
+            _itemSelected!.HoraSaida = newValue;
+        }
+        return Task.CompletedTask;
+    }
+
+    private void OnOcorreciaChanged(string newValue)
+    {
+        _itemSelected.Ocorrencia = newValue;
+        StateHasChanged();
+    }
+
+    private void Cancel() => MudDialog!.Cancel();
+
+    private void Gravar()
+    {
+
+        var isValid = true;
+        _itemSelected.Id = Element.ID;
+
+        // A lógica de setar o operador deve ser baseada em qual ocorrência está ativa no ELEMENT
+        _itemSelected.Operador1 = Element.OcorrenciaEntrada ? Operador : null;
+        _itemSelected.Operador2 = Element.OcorrenciaSaida ? Operador : null;
+
+        // Validações ajustadas (Mensagens UX)
+        if (Element.OcorrenciaEntrada && string.IsNullOrEmpty(_itemSelected.Operador1))
+        {
+            _snackbarComp.Message("Não foi possível identificar o operador. Recarregue a página.", Severity.Error, Color.Error);
+            isValid = false;
+        }
+        else if (Element.OcorrenciaEntrada && string.IsNullOrEmpty(_itemSelected.HoraEntrada))
+        {
+            _snackbarComp.Message("Por favor, informe o horário de **ENTRADA**.", Severity.Error, Color.Error);
+            isValid = false;
+        }
+        else if (Element.OcorrenciaSaida && string.IsNullOrEmpty(_itemSelected.Operador2)) // Corrigido de Operador1 para Operador2 se a ocorrência é de SAÍDA
+        {
+            _snackbarComp.Message("Não foi possível identificar o operador. Recarregue a página.", Severity.Error, Color.Error);
+            isValid = false;
+        }
+        else if (Element.OcorrenciaSaida && string.IsNullOrEmpty(_itemSelected.HoraSaida))
+        {
+            _snackbarComp.Message("Por favor, informe o horário de **SAÍDA**.", Severity.Error, Color.Error);
+            isValid = false;
+        }
+
+        // Validação de Observação (Ocorrência)
+        if (string.IsNullOrWhiteSpace(_itemSelected.Ocorrencia))
+        {
+            _snackbarComp.Message("⚠️ O campo de **Observações** é obrigatório para registrar uma ocorrência.", Severity.Error, Color.Error);
+            isValid = false;
+        }
+
+        // VALIDAÇÃO GERAL
+        if (!IsDtoValid(_itemSelected) || !isValid)
+        {
+            return;
+        }
+        MudDialog!.Close(DialogResult.Ok(_itemSelected));
+    }
+
+    // Método de validação na mesma classe onde está o Gravar()
+    private bool IsDtoValid(PortariaOcorrenciaDto dto)
+    {
+        var validationResults = new List<ValidationResult>();
+        var validationContext = new ValidationContext(dto);
+
+        bool isValid = Validator.TryValidateObject(dto, validationContext, validationResults, true);
+
+        if (!isValid)
+        {
+            // Mensagens de erro de validação do modelo ajustadas (UX)
+            foreach (var error in validationResults)
+            {
+                _snackbarComp.Message($"❌ Erro de Preenchimento: {error.ErrorMessage}", Severity.Error, Color.Error);
+            }
+            return false;
+        }
+        return true;
+    }
+
+    private Task GetTimeSistem()
+    {
+        // Se a ocorrência é de ENTRADA (Element.OcorrenciaEntrada é true)
+        if (Element.OcorrenciaEntrada)
+        {
+            _itemSelected.HoraEntrada = DateTime.Now.ToString("HH:mm");
+        }
+        // Se a ocorrência é de SAÍDA (Element.OcorrenciaSaida é true)
+        else if (Element.OcorrenciaSaida)
+        {
+            _itemSelected.HoraSaida = DateTime.Now.ToString("HH:mm");
+        }
+
+        return Task.CompletedTask;
+    }
+}

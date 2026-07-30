@@ -5,6 +5,7 @@
 @inject IJSRuntime JS
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject JwtAuthenticationService _jwtAuthenticationService
+@inject IDataSessionHelper DataSessionHelper
 @inject ILogger<NavMenu> Logger
 
 <MudThemeProvider Theme="@_theme" IsDarkMode="_isDarkMode" />
@@ -172,7 +173,7 @@
 
         await LoadAuthenticationStateAsync();
     }
-    
+
     private async Task EfetuarLogout()
     {
         try
@@ -216,13 +217,26 @@
 
     private async Task LoadAuthenticationStateAsync()
     {
+        await DataSessionHelper.ClearAsync();
+
         var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var token = await _jwtAuthenticationService.GetTokenAsync();
+
+        if (!string.IsNullOrEmpty(token))
+        {
+            await DataSessionHelper.LoadSession(token);
+            var user1 = DataSessionHelper.DataSession;
+            _fullName = user1.Name;
+            _level = user1.Level;
+            _environment = ((EnvironmentEnum?)user1.EnvironmentType).ToString();
+        }       
+
         var user = authState.User;
 
         _isAuthenticated = user.Identity?.IsAuthenticated == true;
-        _fullName = user.Claims.FirstOrDefault(x => x.Type == "Name")?.Value ?? user.Identity?.Name;
-        _level = user.Claims.FirstOrDefault(x => x.Type == "Level")?.Value;
-        _environment = FormatEnvironment(user.Claims.FirstOrDefault(x => x.Type == "Environment")?.Value);
+        //_fullName = user.Claims.FirstOrDefault(x => x.Type == "Name")?.Value ?? user.Identity?.Name;
+        //_level = user.Claims.FirstOrDefault(x => x.Type == "Level")?.Value;
+        //_environment = FormatEnvironment(user.Claims.FirstOrDefault(x => x.Type == "Environment")?.Value);
     }
 
     private async void OnAuthenticationStateChanged(Task<AuthenticationState> task)

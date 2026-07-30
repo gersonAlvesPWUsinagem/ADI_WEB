@@ -2,31 +2,63 @@
 @implements IDisposable
 @inject JwtAuthenticationService _jwtAuthenticationService
 @inject AuthenticationStateProvider AuthenticationStateProvider
+@inject IDataSessionHelper DataSessionHelper
 @inject ILogger<NavMenu> Logger
 
 <MudStack Spacing="2" Class="pa-3">
     <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
-        <MudAvatar Color="Color.Primary" Size="Size.Medium">@Initials</MudAvatar>
+         <MudAvatar Color="Color.Primary" Size="Size.Medium">@Initials</MudAvatar>
         <MudStack Spacing="0">
-            <MudText Typo="Typo.subtitle2">@FirstName</MudText>
-            <MudText Typo="Typo.caption" Color="Color.Secondary">@SessionType</MudText>
+             <MudText Typo="Typo.subtitle2">@FirstName</MudText>
+           <MudText Typo="Typo.caption" Color="Color.Secondary">@SessionType</MudText> 
         </MudStack>
     </MudStack>
 </MudStack>
 
 @* <MudDivider /> *@
-
 <MudNavMenu>
-    <MudNavLink Href="/main" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Home">Principal</MudNavLink>
-    <MudNavLink Href="/download-agent" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Dashboard">Downloads</MudNavLink>
-    <MudNavGroup Title="TI" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.AdminPanelSettings" Expanded="false">
-        <MudNavLink Href="/users">Usuários</MudNavLink>
-        <MudNavLink Href="glpi/termo-concessao">Gerador de Termos</MudNavLink>
+    <MudNavLink Href="/main" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Home">
+        HOME
+    </MudNavLink>
+
+    <MudNavLink Href="/download-agent" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Download">
+        DOWNLOADS
+    </MudNavLink>
+
+    <MudNavLink Href="/download-agent" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Phone">
+        LISTA DE RAMAIS
+    </MudNavLink>
+
+    <MudNavGroup Title="TI" Icon="@Icons.Material.Filled.Computer" Expanded="false">
+        <MudNavLink Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Build">
+            ......
+        </MudNavLink>
+
+        <MudNavLink Match="NavLinkMatch.Prefix" Href="glpi/termo-concessao" Icon="@Icons.Material.Filled.Description">
+            GERADOR DE TERMO
+        </MudNavLink>
     </MudNavGroup>
-    <MudNavLink Href="counter" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Add">Counter</MudNavLink>
-    <MudNavLink Href="weather" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.List">Weather</MudNavLink>
-@*     <MudNavLink OnClick="EfetuarLogout" Icon="@Icons.Material.Filled.Logout">Sair</MudNavLink>
- *@</MudNavMenu>
+
+    <MudNavGroup Title="RH" Icon="@Icons.Material.Filled.Groups" Expanded="false">
+        <MudNavGroup Title="Portaria" Icon="@Icons.Material.Filled.Security" Expanded="false">
+            <MudNavLink Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Login" Href="portaria/registrar-entrada-saida-colaborador">
+               APT ENTRADA\SAÍDA
+            </MudNavLink>
+        </MudNavGroup>       
+    </MudNavGroup>
+
+    <MudNavLink Href="counter" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Calculate">
+        Counter
+    </MudNavLink>
+
+    <MudNavLink Href="weather" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Cloud">
+        Weather
+    </MudNavLink>
+
+    @*  <MudNavLink OnClick="EfetuarLogout" Icon="@Icons.Material.Filled.Logout">
+        Sair
+    </MudNavLink> *@
+</MudNavMenu>
 
 @code {
     private string? _fullName;
@@ -50,21 +82,28 @@
     private async Task LoadUserAsync()
     {
         var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
-        SetUser(authState.User);
+        SetUser();
+        // SetUser(authState.User);
     }
 
     private async void OnAuthenticationStateChanged(Task<AuthenticationState> task)
     {
         var authState = await task;
-        SetUser(authState.User);
+        //SetUser(authState.User);
+        SetUser();
         await InvokeAsync(StateHasChanged);
     }
 
-    private void SetUser(System.Security.Claims.ClaimsPrincipal user)
+    private void SetUser(/*System.Security.Claims.ClaimsPrincipal user*/)
     {
-        _fullName = user.Claims.FirstOrDefault(x => x.Type == "Name")?.Value ?? user.Identity?.Name;
-        _level = user.Claims.FirstOrDefault(x => x.Type == "Level")?.Value;
-        _environment = FormatEnvironment(user.Claims.FirstOrDefault(x => x.Type == "Environment")?.Value);
+        var user = DataSessionHelper.DataSession;
+        _fullName = user.Name;
+        _level = user.Level;
+        _environment = ((EnvironmentEnum?)user.EnvironmentType ?? 0).GetDisplayName();  
+
+        // _fullName = user.Claims.FirstOrDefault(x => x.Type == "Name")?.Value ?? user.Identity?.Name;
+        // _level = user.Claims.FirstOrDefault(x => x.Type == "Level")?.Value;
+        // _environment = FormatEnvironment(user.Claims.FirstOrDefault(x => x.Type == "Environment")?.Value);
     }
 
     private static string? FormatEnvironment(string? value)

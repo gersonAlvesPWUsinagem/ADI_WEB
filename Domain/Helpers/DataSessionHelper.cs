@@ -12,7 +12,7 @@ namespace Domain.Helpers
     public class DataSessionHelper: IDataSessionHelper
     {
         // Mantemos a instância interna
-        public DataSession? DataSession { get; private set; }
+        public DataSession? DataSession { get; private set; } = new();
 
         //private readonly IServiceProvider _serviceProvider;
 
@@ -21,11 +21,11 @@ namespace Domain.Helpers
         //    _serviceProvider = serviceProvider;
         //}
 
-        public async Task<string> LoadSession(string token)
+        public async Task LoadSession(string token)
         {
             try
             {
-                if (string.IsNullOrEmpty(token)) return null!;
+                if (string.IsNullOrEmpty(token)) throw new Exception("Você precisa de um token");
 
                 DataSession = new DataSession();
                 var clams = await TokenService.ExtractClaimsAsync(token);
@@ -71,9 +71,7 @@ namespace Domain.Helpers
                 };
 
                 // Salvando no SecureStorage
-                string json = JsonSerializer.Serialize(DataSession);
-
-                return json;
+                string json = JsonSerializer.Serialize(DataSession);                
                 //await SecureStorage.Default.SetAsync("user_session", json.ToString());
             }
             catch (Exception ex)

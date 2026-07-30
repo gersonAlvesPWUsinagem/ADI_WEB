@@ -1,0 +1,105 @@
+﻿<PageTitle>@Title</PageTitle>
+
+@* ADICIONE mb-4 (Margin Bottom 4) aqui para criar um espaçamento abaixo do componente *@
+<MudGrid Class="align-center mb-9 mt-1">
+
+    @* 1. Título *@
+    <MudItem xs="12" sm="6">
+        <MudText Typo="Typo.h5" Class="mb-1">
+            @(string.IsNullOrEmpty(Title2) ? Title : Title2)
+        </MudText>
+    </MudItem>
+
+    @* 2. Espaçador *@
+    <MudSpacer />
+
+    @* 3. Botões *@
+    <MudItem>
+           <MudStack Row="true" Spacing="2" Class="d-flex justify-end">
+                @foreach (var item in ListBtnDaTela)
+                {
+                    <MudButton Variant="@item.Variant"
+                               Size="@item.Size"
+                               Color="@item.Color"
+                               StartIcon="@item.Icon"
+                               OnClick="item.OnClick"
+                               Style="@item.IsVisibleOrNotCss">@item.Title</MudButton>
+                }
+            </MudStack>
+    </MudItem>
+</MudGrid>
+
+@code {
+    [Parameter] public string Title { get; set; } = "NONE";
+    [Parameter] public string? Title2 { get; set; } 
+
+    [Parameter] public string TextBtn1 { get; set; } = "None";
+    [Parameter] public string TextBtn2 { get; set; } = "None";
+    [Parameter] public string TextBtn3 { get; set; } = "None";
+
+    [Parameter] public bool IsVisibleOrNotBtn1 { get; set; }
+    [Parameter] public bool IsVisibleOrNotBtn2 { get; set; }
+    [Parameter] public bool IsVisibleOrNotBtn3 { get; set; }
+
+    [Parameter] public string IconBtn1 { get; set; } = string.Empty;
+    [Parameter] public string IconBtn2 { get; set; } = string.Empty;
+    [Parameter] public string IconBtn3 { get; set; } = string.Empty;
+
+    [Parameter] public Color ColorBtn1 { get; set; } = Color.Default;
+    [Parameter] public Color ColorBtn2 { get; set; } = Color.Default;
+    [Parameter] public Color ColorBtn3 { get; set; } = Color.Default;
+
+    [Parameter] public EventCallback OnBtn1Click { get; set; }
+    [Parameter] public EventCallback OnBtn2Click { get; set; }
+    [Parameter] public EventCallback OnBtn3Click { get; set; }
+
+    private List<BtnLayout> ListBtnDaTela { get; } = new List<BtnLayout>();
+
+    protected override Task OnInitializedAsync()
+    {
+
+        ListBtnDaTela.Add(new BtnLayout
+        {
+            Title = TextBtn1,
+            Icon = IconBtn1,
+            Color = Color.Primary,
+            IsVisibleOrNot = IsVisibleOrNotBtn1,
+            OnClick = OnBtn1Click
+        });
+
+        ListBtnDaTela.Add(new BtnLayout
+        {
+            Title = TextBtn2,
+            Icon = IconBtn2,
+            Color = Color.Secondary,
+            IsVisibleOrNot = IsVisibleOrNotBtn2,
+            OnClick = OnBtn2Click
+        });
+
+        ListBtnDaTela.Add(new BtnLayout
+        {
+            Title = TextBtn3,
+            Icon = IconBtn3,
+            Color = Color.Secondary,
+            IsVisibleOrNot = IsVisibleOrNotBtn3,
+            OnClick = OnBtn3Click
+        });
+        return Task.CompletedTask;
+    }
+
+    public class BtnLayout
+    {
+        public string Title { get; set; } = "None";
+        public Color Color { get; set; } = Color.Default;
+        public bool IsVisibleOrNot { get; set; } = true;
+        public Size Size { get; } = Size.Small;       // Mudei para propriedade para poder ser setada, embora você use um valor padrão.
+        public Variant Variant { get; } = Variant.Filled; // Mudei para propriedade para poder ser setada
+        public string Icon { get; set; } = Icons.Material.Filled.AccessAlarm;
+        public EventCallback OnClick { get; set; }
+        // Propriedade de leitura (Calculada)
+        public string IsVisibleOrNotCss => !IsVisibleOrNot ? "display: none;" : string.Empty;
+
+        // Removemos os botões BtnGerarRelatorio e BtnEnviarEmail daqui.
+    }
+
+}
