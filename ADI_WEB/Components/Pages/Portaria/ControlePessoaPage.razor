@@ -1,0 +1,972 @@
+﻿@attribute [Authorize]
+@page "/portaria/registrar-entrada-saida-colaborador"
+@using ADI_WEB.Components.Layout
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.Extensions.Logging
+@inject IDataSessionHelper DataSessionHelper
+@inject IPortariaService _services
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject IJSRuntime JS
+@*implements IDisposable*@
+@inject AtualizacaoPortariaNotifier AtualizacaoPortariaNotifier
+
+<HeaderComponent Title="Controle de Pessoas"
+                 TextBtn1="Nova lista"
+                 IconBtn1="@Icons.Material.Filled.Approval"
+                 IsVisibleOrNotBtn1="true"
+                 ColorBtn1="@Color.Primary"
+                 OnBtn1Click="GerarListaDeApontamentAsync"
+              
+                 TextBtn3="Relatório"
+                 IconBtn3="@Icons.Material.Filled.Assessment"
+                 IsVisibleOrNotBtn3="true"
+                 ColorBtn3="Color.Tertiary"
+                 OnBtn3Click="AbrirRelatorioAsync"
+
+                 IconBtn4="@Icons.Material.Filled.FilterAltOff"
+                 IsVisibleOrNotBtn4="@_isFiltradoPorData"
+                 ColorBtn4="Color.Error"
+                 OnBtn4Click="LimparFiltroDataAsync"
+                 Processing=@(!_carregado) />
+
+
+<!-- Filtro de Meses -->
+<MudItem xs="12" Class="mb-1">
+    <div class="d-flex flex-wrap align-center gap-4">
+        <MudChipSet T="int" Size="Size.Large"
+                    SelectedValue="_mesSelecionado"
+                    SelectedValueChanged="OnMesSelecionadoChanged"
+                    CheckMark
+                    SelectionMode="SelectionMode.SingleSelection"
+                    Variant="Variant.Text" Color="Color.Info">
+            <MudChip Value="13" Disabled="@(!(Elements != null && Elements.Any()))">Todos</MudChip>
+            @foreach (var mes in MesesAbreviados)
+            {
+                <MudChip Value="@mes.Key">@mes.Value</MudChip>
+            }
+        </MudChipSet>
+    </div>
+</MudItem>
+
+<!-- Filtros de Status de Movimentação -->
+<!-- Filtros de Status de Movimentação -->
+<MudPaper Class="pa-4 mb-4" Elevation="1">
+    <div class="d-flex align-center justify-space-between flex-wrap gap-4">
+        <MudChipSet T="string" Size="Size.Medium"
+                    SelectedValue="_filtroStatusMovimentacao"
+                    SelectedValueChanged="OnFiltroStatusMovimentacaoChanged"
+                    CheckMark
+                    SelectionMode="SelectionMode.SingleSelection"
+                    Variant="Variant.Outlined" Color="Color.Primary">
+            <MudChip Value="@("TODOS")">Todos</MudChip>
+            <MudChip Value="@("SOMENTE_ENTRADA")">C/Entrada</MudChip>
+            <MudChip Value="@("SOMENTE_SAIDA")">C/Saída</MudChip>
+            <MudChip Value="@("ENTRADA_SAIDA")">Concluídos</MudChip>
+        </MudChipSet>
+
+        <div class="d-flex align-center gap-3">
+            <span class="mud-typography mud-typography-body1 font-weight-bold">
+                @GetFilteredItems().Count() visíveis
+            </span>
+            <MudAvatar Color="@(value2 is null ? Color.Error : Color.Success)">
+                @(value2 is null ? "Of" : "On")
+            </MudAvatar>
+        </div>
+    </div>
+</MudPaper>
+
+@if (!_carregado)
+{
+    <MudPaper Class="d-flex justify-center flex-grow-1 gap-4" Elevation="0">
+        <MudProgressCircular Size="Size.Large" Color="Color.Primary" Indeterminate="true" />
+    </MudPaper>
+}
+else
+{
+    <MudPaper Class="pa-4" Elevation="1">
+        <MudDataGrid T="ControlePessoaDto"
+                 @ref="_dataGrid"
+                 MultiSelection="false"
+                 Items="@GetFilteredItems()"
+                 SortMode="SortMode.Single"
+                 Filterable="false"
+                 QuickFilter="@_quickFilter"
+                 Hideable="false"
+                 RowClick="@RowClicked"
+                 RowContextMenuClick="RowRightClicked"
+                 SelectedItemsChanged="@SelectedItemsChanged"
+                 Dense="true"
+                 Striped="true"
+                 Hover="true"
+                 Bordered="@_bordered">
+
+        <ToolBarContent>
+            <MudPaper Class="d-flex justify-space-between flex-grow-1 gap-4" Elevation="0">                
+
+                <MudTextField Value="@UserName"
+                              Label="Operador"
+                              Placeholder="Nenhum operador autenticado"
+                              Variant="Variant.Outlined"
+                              Margin="Margin.Dense"
+                              ReadOnly="true"
+                              Adornment="Adornment.End"
+                              OnAdornmentClick="AlterarPorteiroAsync"
+                              AdornmentIcon="@Icons.Material.Filled.Person" />
+
+                <MudTextField Label="REF DIA"
+                              Value="@_dataTextoInput"
+                              ValueChanged="@(async (string val) => await OnDataInputChanged(val))"
+                              OnAdornmentClick="PesquisarPorDataDigitada"
+                              @onkeydown="@(async (KeyboardEventArgs e) => { if (e.Key == "Enter") await PesquisarPorDataDigitada(); })"
+                              AdornmentAriaLabel="Pesquisar por data"
+                              AdornmentIcon="@Icons.Material.Filled.Search"
+                              Adornment="Adornment.End"
+                              Variant="Variant.Outlined"
+                              Margin="Margin.Dense"
+                              Placeholder="dd/mm/aaaa" />
+
+                <MudTextField @bind-Value="_searchString"
+                              Label="Pesquisar"
+                              Placeholder="Nome, Matrícula ou C. Custo..."
+                              Variant="Variant.Outlined"
+                              Margin="Margin.Dense"
+                              Adornment="Adornment.End"
+                              Immediate="true"
+                              AdornmentIcon="@Icons.Material.Filled.Search"
+                              IconSize="Size.Medium" />
+            </MudPaper>
+        </ToolBarContent>
+
+        <Columns>
+            <TemplateColumn Title="Ação">
+                <CellTemplate>
+                    <MudStack Row="true" Spacing="1">
+                        <MudIconButton Icon="@Icons.Material.Filled.Approval"
+                                       Color="((string.IsNullOrEmpty(context.Item.HoraEntrada)) && (string.IsNullOrEmpty(context.Item.HoraSaida)) ? Color.Success :
+                                                                                (!string.IsNullOrEmpty(context.Item.HoraEntrada)) && (string.IsNullOrEmpty(context.Item.HoraSaida)) ? Color.Info : Color.Default)"
+                                   OnClick="@(() => ApontarAsync(context.Item))"
+                                   Disabled="@((!string.IsNullOrEmpty(context.Item.HoraEntrada) && !string.IsNullOrEmpty(context.Item.HoraSaida)) || !PodeMovimentarOuEditar(context.Item.DataOcorrencia))" />
+
+                    @if (PodeMovimentarOuEditar(context.Item.DataOcorrencia, context.Item.HoraEntrada, context.Item.HoraSaida))
+                        {
+                            <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                           Color="Color.Warning"
+                                           Disabled=(string.IsNullOrEmpty(context.Item.DataApEntrada))
+                                           OnClick="@(() => AlterarApontamentoAsync(context.Item))" />
+                        }
+                    </MudStack>
+                </CellTemplate>
+            </TemplateColumn>
+
+            <TemplateColumn Title="Status">
+                <CellTemplate>
+                    <MudStack Row Justify="Justify.Center">
+                        @if (!context.Item.OcorrenciaEntrada)
+                        {
+                            if (string.IsNullOrEmpty(context.Item.Ocorrencia))
+                            {
+                                <MudChip T="string" Size="Size.Small"
+                                         Color="@(!string.IsNullOrEmpty(context.Item.DataApEntrada) ? Color.Primary : Color.Default)">E</MudChip>
+                            }
+                            else
+                            {
+                                <MudIcon Size="Size.Small" Class="mt-1" Color="Color.Warning"
+                                         Icon="@Icons.Material.Filled.ReportGmailerrorred" Title="Registrado Ocorrência na Entrada" />
+                            }
+                        }
+                        else
+                        {
+                            <MudIconButton Size="Size.Small"
+                                           Icon="@Icons.Material.Filled.ReportGmailerrorred"
+                                           Color=Color.Error
+                                           OnClick="@(() => OcorrenciaAsync(context.Item))"
+                                            />
+                        }
+                        @if (!context.Item.OcorrenciaSaida)
+                        {
+
+                            if (!string.IsNullOrEmpty(context.Item.Ocorrencia) && (context.Item.DataApSaida ?? string.Empty).Length > 0)
+                            {
+                                <MudIcon Size="Size.Small"
+                                         Icon="@Icons.Material.Filled.ReportGmailerrorred" Title="Registrado Ocorrência na Entrada" />
+                            }
+                            else
+                            {
+                                <MudChip T="string" Size="Size.Small"
+                                         Color="@(!string.IsNullOrEmpty(context.Item.DataApSaida) ? Color.Primary : Color.Default)">S</MudChip>
+                            }
+                        }
+                        else
+                        {
+                            <MudIconButton Size="Size.Small"
+                                           Icon="@Icons.Material.Filled.ReportGmailerrorred"
+                                           Color=Color.Error
+                                           OnClick="@(() => OcorrenciaAsync(context.Item))"
+                                            />
+                        }
+                    </MudStack>
+                </CellTemplate>
+            </TemplateColumn>
+
+            <PropertyColumn Property="x => x.NOME" Title="NOME">
+                <MudTooltip Text="Delete" />
+            </PropertyColumn>
+
+            <PropertyColumn Property="x => x.Operador1Display" Title="OPER (ENTR)" />
+            <PropertyColumn Property="x => x.HoraEntrada" Title="HR ENTR" />
+            <PropertyColumn Property="x => x.Operador2Display" Title="OPER (SAID)" />
+            <PropertyColumn Property="x => x.HoraSaida" Title="HR SAID" />
+            <PropertyColumn Property="x => x.DataApEntrada" Title="DT AP" />
+            <PropertyColumn Property="x => x.DataOcorrencia" Title="DT RF" />
+        </Columns>
+
+        <PagerContent>
+            <div class="d-flex justify-space-between align-center px-4 py-2 w-100 flex-wrap gap-4">
+                <div class="d-flex align-center gap-2">
+                </div>
+
+                <!-- Exibe os botões de dia apenas se NÃO estiver no modo "Todos" -->
+                @if (_mesSelecionado != 13)
+                {
+                    <div class="d-flex align-center">
+                        <MudIconButton Icon="@Icons.Material.Filled.ChevronLeft" Color="Color.Primary" OnClick="IrParaDiaAnterior"/>
+                        <MudIconButton Icon="@Icons.Material.Filled.ChevronRight" Color="Color.Primary" OnClick="IrParaProximoDia"/>
+                    </div>
+                }
+            </div>
+        </PagerContent>
+        <PagerContent>
+            <MudDataGridPager T="ControlePessoaDto" PageSizeOptions="new int[] { 25, 45, 85, 100 }" />
+        </PagerContent>
+    </MudDataGrid>
+    </MudPaper>
+
+     <MudPaper Class="pa-4" Elevation="1">
+        <MudGrid Class="d-flex justify-start flex-grow-1 gap-4" Spacing="11">
+            <MudSwitch Class="ml-10" @bind-Value="_bordered" Color="Color.Warning">Exibir bordas na tabela</MudSwitch>
+        </MudGrid>
+    </MudPaper>
+}
+@code {
+    private MudDataGrid<ControlePessoaDto> _dataGrid = default!;
+    private IEnumerable<ControlePessoaDto> Elements = new List<ControlePessoaDto>();
+    private IEnumerable<ControlePessoaDto> ElementsMemory = new List<ControlePessoaDto>();
+    private IEnumerable<PorteiroOperadorDto> ListPorteiroOperador = new List<PorteiroOperadorDto>();
+    private bool _carregado = false;
+    private string? _searchString;
+    private string? UserName { get; set; }
+    private bool _bordered;
+    private Dictionary<int, string> MesesAbreviados { get; set; } = new();
+    private int _mesSelecionado;
+    private string _filtroStatusMovimentacao = "TODOS";
+
+    private PorteiroOperadorDto? value2;
+    private bool resetValueOnEmptyText = true;
+    private bool coerceText = true;
+    private bool coerceValue = true;
+    private bool selectedOnTab = true;
+
+    private string _dataTextoInput = string.Empty;
+    private bool _isFiltradoPorData = false;
+    private DateTime _dataAtiva = DateTime.Today;
+
+    private Func<ControlePessoaDto, bool> _quickFilter => x =>
+    {
+        if (string.IsNullOrWhiteSpace(_searchString))
+            return true;
+
+        if (x.NOME != null && x.NOME.Contains(_searchString, StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        if (x.SetorName != null && x.SetorName.Contains(_searchString, StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        if (x.TRADUCAO_CC != null && x.TRADUCAO_CC.Contains(_searchString, StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        if (x.MATRICULA != null && x.MATRICULA.ToString()!.Contains(_searchString, StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        if (x.DataOcorrencia != null && x.DataOcorrencia.ToString()!.Contains(_searchString, StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        return false;
+
+    };
+
+    private bool PodeMovimentarOuEditar(string? dataOcorrenciaStr, string? horaEntrada = null, string? horaSaida = null)
+    {
+        if (string.IsNullOrEmpty(dataOcorrenciaStr) || !DateTime.TryParse(dataOcorrenciaStr, out var dataOcorrencia))
+            return false;
+
+        var hoje = DateTime.Today;
+        var ontem = hoje.AddDays(-1);
+
+        // Valida se a data é hoje ou ontem
+        bool dataValida = dataOcorrencia.Date == hoje || dataOcorrencia.Date == ontem;
+
+        // Se os parâmetros foram passados na chamada, exigimos que pelo menos um tenha conteúdo real (não nulo e não vazio)
+        bool validandoMovimentacao = (horaEntrada != null || horaSaida != null);
+        if (validandoMovimentacao)
+        {
+            bool temMovimentacao = !string.IsNullOrEmpty(horaEntrada) || !string.IsNullOrEmpty(horaSaida);
+            return dataValida && temMovimentacao;
+        }
+
+        return dataValida;
+    }
+    protected override async Task OnInitializedAsync()
+    {
+        AtualizacaoPortariaNotifier.AtualizacaoSolicitada += AtualizarPaginaAsync;
+
+        Loading.Show();
+
+        try
+        {
+            _carregado = false;
+
+            await CarregarListaDeControlados();
+            await PegarListaPorteiros();
+        }
+        finally
+        {
+            _carregado = true;
+            Loading.Hide();
+
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+    private Task OnDataInputChanged(string valor)
+    {
+        _dataTextoInput = valor;
+        return Task.CompletedTask;
+    }
+    private async Task CarregarListaDeControlados(DateTime? dataEspecifica = null)
+    {
+        Loading.Show();
+        try
+        {
+            var resultado = await _services.GetColaboradorControladoPorDataAsync(dataEspecifica);
+
+            if (resultado != null && resultado.Success)
+            {
+                Elements = resultado.Value?
+                    .Where(dt => !string.IsNullOrEmpty(dt.DataOcorrencia) && DateTime.TryParse(dt.DataOcorrencia, out _))
+                    .ToList()
+                    .OrderByDescending(dt => Convert.ToDateTime(dt.DataOcorrencia))
+                    .ToList() ?? [];
+
+                if (dataEspecifica.HasValue)
+                {
+                    // Se o usuário passou uma data específica, respeitamos ela rigorosamente como padrão
+                    _dataAtiva = dataEspecifica.Value.Date;
+                }
+                else if (Elements.Any())
+                {
+                    // Se NÃO passou data específica, aí sim pegamos a primeira data da ordenação dos registros
+                    var primeiraDataOrdenacao = Elements
+                        .Select(x => Convert.ToDateTime(x.DataOcorrencia).Date)
+                        .FirstOrDefault();
+
+                    _dataAtiva = primeiraDataOrdenacao != default ? primeiraDataOrdenacao : DateTime.Today;
+                }
+                else
+                {
+                    _dataAtiva = DateTime.Today;
+                }
+
+                _dataTextoInput = _dataAtiva.ToString("dd/MM/yyyy");
+                _mesSelecionado = _dataAtiva.Month;
+            }
+            else
+            {
+                _snackbarComp.Message(resultado?.Message ?? "Nenhum registro encontrado.", Severity.Warning, Color.Warning);
+                Elements = [];
+
+                // Se falhou ou não encontrou, mantém ao menos a data pesquisada ou hoje
+                if (dataEspecifica.HasValue)
+                {
+                    _dataAtiva = dataEspecifica.Value.Date;
+                    _dataTextoInput = _dataAtiva.ToString("dd/MM/yyyy");
+                    _mesSelecionado = _dataAtiva.Month;
+                }
+            }
+
+            await ContriMudChip();
+            AtualizarFiltroMes();
+        }
+        catch (ApiException ex) { _snackbarComp.Message(ex.Message, Severity.Error, Color.Error); }
+        catch (Exception ex) { _snackbarComp.Message(ex.Message, Severity.Error, Color.Error); }
+        finally
+        {
+            Loading.Hide();
+        }
+    }
+    private void AtualizarFiltroMes()
+    {
+        if (_mesSelecionado == 13)
+        {
+            ElementsMemory = Elements.ToList();
+        }
+        else
+        {
+            ElementsMemory = Elements
+                .Where(x => !string.IsNullOrEmpty(x.DataOcorrencia) && DateTime.TryParse(x.DataOcorrencia, out var parsedDate) && parsedDate.Month == _mesSelecionado)
+                .ToList();
+        }
+    }
+    private async Task<bool> DialogConfirm(ResistrarEntradaSaidaDto dto)
+    {
+        bool isEntrada = dto.TipoAcaoPortaria == TipoAcaoPortariaEnum.Entrada_1 ||
+                         dto.TipoAcaoPortaria == TipoAcaoPortariaEnum.Entrada_2;
+
+        string tipoAcaoTexto = isEntrada ? "ENTRADA" : "SAÍDA";
+        string botaoTexto = isEntrada ? "CONFIRMAR ENTRADA" : "CONFIRMAR SAÍDA";
+        Color corBotao = isEntrada ? Color.Success : Color.Warning;
+        string origemTexto = dto.PegarDadosCatraca ? "Hora da Catraca" : "Informado pela Portaria";
+
+        string mensagemHtml = $"Confirma o registro de <strong>{tipoAcaoTexto}</strong> para:<br />" +
+                            $"<span style='font-size: 1.1em;'><strong>{dto.Nome}</strong></span><br />" +
+                            $"Matrícula: <strong>{dto.Matricula}</strong><br />" +
+                            $"Horário: <strong>{dto.HoraDaAcao}</strong> <em>({origemTexto})</em>?";
+
+        var parameters = new DialogParameters<DialogToggleAtivo>
+        {
+            { x => x.ContentText, mensagemHtml },
+            { x => x.ButtonText, botaoTexto },
+            { x => x.Color, corBotao },
+        };
+
+        var options = new DialogOptions() { CloseButton = true, MaxWidth = MaxWidth.ExtraSmall };
+
+        var dialog = await DialogService.ShowAsync<DialogToggleAtivo>("Revisão de Ponto", parameters, options);
+        var dialogResult = await dialog.Result;
+
+        if (dialogResult is not null && !dialogResult.Canceled)
+            return true;
+
+        return false;
+    }
+    private async Task GerarListaDeApontamentAsync()
+    {
+        try
+        {
+            var user = DataSessionHelper.DataSession;
+
+            if (value2 is null) throw new Exception("Você não informou seu nome no campo operador");
+
+            var result = await _services.PostGerarListaDeApontamentAsync(user);
+
+            if (result is null || !result.Success)
+            {
+                throw new Exception(result?.Message ?? "Falha na comunicação");
+            }
+
+            await CarregarListaDeControlados();
+        }
+        catch (Exception ex)
+        {
+            _snackbarComp.Message(ex.Message, Severity.Error, Color.Error);
+        }
+    }
+    private async Task AbrirRelatorioAsync()
+    {
+        Loading.Show();
+        _carregado = false;
+        StateHasChanged();
+
+        try
+        {
+            var parameters = new DialogParameters<RelatorioControlePessoaDialog>();
+            var dialog = await DialogService.ShowAsync<RelatorioControlePessoaDialog>(
+                "Relatório de Controle de Pessoas", parameters,
+                new DialogOptions { CloseButton = true, FullWidth = true, MaxWidth = MaxWidth.Small });
+
+            var result = await dialog.Result;
+
+            if (result is not null && !result.Canceled && result.Data is RelatorioControlePessoaRequestDto request)
+            {
+                List<string> matriculasFiltradas = new();
+
+                if (request.FiltrarApenasSelecionados && _dataGrid is not null)
+                {
+                    matriculasFiltradas = _dataGrid.FilteredItems
+                        .Select(x => x.MATRICULA)
+                        .Where(m => !string.IsNullOrEmpty(m))
+                        .Cast<string>()
+                        .Distinct()
+                        .ToList();
+
+                    if (!matriculasFiltradas.Any())
+                    {
+                        _snackbarComp.Message("Não há registros filtrados no grid para gerar o relatório.", Severity.Warning, Color.Warning);
+                        return;
+                    }
+                }
+
+                var resultado = await _services.GerarRelatorioControlePessoaAsync(
+                    request.Formato,
+                    request.DataInicial,
+                    request.DataFinal,
+                    matriculasFiltradas
+                );
+
+                if (!resultado.Success || resultado.Value.Conteudo is null || resultado.Value.Conteudo.Length == 0)
+                {
+                    _snackbarComp.Message(resultado.Message ?? "Não foi possível gerar o relatório.", Severity.Error, Color.Error);
+                    return;
+                }
+
+                var arquivo = resultado.Value;
+
+                var dataInicioStr = request.DataInicial.ToString("yyyyMMdd", CultureInfo.InvariantCulture);
+                var dataFimStr = request.DataFinal.ToString("yyyyMMdd", CultureInfo.InvariantCulture);
+                var nomeArquivoFormatado = $"Controle_Periodo_{dataInicioStr}_{dataFimStr}.pdf";
+
+                await JS.InvokeVoidAsync("downloadOrOpenPdf", Convert.ToBase64String(arquivo.Conteudo), arquivo.MimeType, nomeArquivoFormatado, request.Formato == "PDF");
+            }
+        }
+        catch (Exception ex)
+        {
+            _snackbarComp.Message($"Erro ao gerar relatório: {ex.Message}", Severity.Error, Color.Error);
+        }
+        finally
+        {
+            Loading.Hide();
+            _carregado = true;
+            StateHasChanged();
+        }
+    }
+    private async Task PegarListaPorteiros()
+    {
+        try
+        {
+            Loading.Show();
+            _carregado = false;
+
+            var data = await _services.GetPorteiroOperadorCompAsync();
+
+            if (!data.Success)
+            {
+                throw new Exception(string.IsNullOrEmpty(data.Message) ? "Erro ao carregar a lista de porteiros." : data.Message);
+            }
+
+            ListPorteiroOperador = data.Value ?? new List<PorteiroOperadorDto>();
+        }
+        catch (ApiException ex) { _snackbarComp.Message(ex.Message, Severity.Error, Color.Error); }
+        catch (Exception ex) { _snackbarComp.Message(ex.Message, Severity.Error, Color.Error); }
+        finally { _carregado = true; Loading.Hide(); StateHasChanged(); }
+    }
+    private async Task AlterarPorteiroAsync()
+    {
+        var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.ExtraSmall, FullWidth = true };
+        var parameters = new DialogParameters<LoginOperadorDialog>
+        {
+            { x => x.ListPorteiroOperador, ListPorteiroOperador },
+            { x => x.OperadorAtual, value2 }
+        };
+
+        var dialog = await DialogService.ShowAsync<LoginOperadorDialog>("Login do operador", parameters, options);
+        var result = await dialog.Result;
+
+        if (result is not null && !result.Canceled && result.Data is LoginOperadorDialog.OperadorLoginResultDto login)
+        {
+            var validacao = await _services.LoginPorteiroOperadorAsync(login.Operador!.PoreteiroID, login.Senha!);
+            if (!validacao.Success || validacao.Value is null)
+            {
+                _snackbarComp.Message(validacao.Message ?? "Operador ou senha inválidos.", Severity.Error, Color.Error);
+                return;
+            }
+
+            value2 = validacao.Value;
+            UserName = value2.Nome;
+            StateHasChanged();
+        }
+    }
+    private async Task ApontarAsync(ControlePessoaDto colaborador)
+    {
+        try
+        {
+            if (!PodeMovimentarOuEditar(colaborador.DataOcorrencia))
+            {
+                _snackbarComp.Message("Só é permitido realizar apontamentos para a data de hoje ou do dia anterior.", Severity.Warning, Color.Warning);
+                return;
+            }
+
+            Loading.Show();
+            _carregado = false;
+
+            TipoAcaoPortariaEnum tipoAcaoDeterminado;
+
+            if (string.IsNullOrEmpty(colaborador.HoraEntrada))
+            {
+                tipoAcaoDeterminado = TipoAcaoPortariaEnum.Entrada_1;
+            }
+            else if (string.IsNullOrEmpty(colaborador.HoraSaida))
+            {
+                tipoAcaoDeterminado = TipoAcaoPortariaEnum.Saida_1;
+            }
+            else
+            {
+                _snackbarComp.Message("Os horários de entrada e saída deste colaborador já foram preenchidos.", Severity.Warning, Color.Warning);
+                return;
+            }
+
+            var parameters = new DialogParameters<RegistrarPontoDialog>
+            {
+                { x => x.Colaborador, colaborador },
+                { x => x.OperadorAtual, UserName }
+            };
+
+            var options = new DialogOptions()
+            {
+                CloseButton = true,
+                MaxWidth = MaxWidth.Medium,
+                FullWidth = true
+            };
+
+            var dialog = await DialogService.ShowAsync<RegistrarPontoDialog>("Apontamento de Ponto - Portaria", parameters, options);
+            var result = await dialog.Result;
+
+            if (result is not null && !result.Canceled && result.Data is ResistrarEntradaSaidaDto requestDto)
+            {
+                // Mantém o tipo selecionado no modal (ou usa o determinado caso venha vazio)
+                if (requestDto.TipoAcaoPortaria == 0)
+                {
+                    requestDto.TipoAcaoPortaria = tipoAcaoDeterminado;
+                }
+
+                bool confirmado = await DialogConfirm(requestDto);
+
+                if (!confirmado)
+                    return;
+
+                var employer = DataSessionHelper.DataSession;
+
+                requestDto.Codigo_OP = value2?.PoreteiroID ?? throw new Exception("Você não informou seu nome no campo operador");
+                requestDto.Emp_Fil = (Int32)employer.Company.EmpFill;
+
+                var apiResult = await _services.PutRegistrarHorasAsync(requestDto);
+
+                if (!apiResult.Success)
+                    throw new Exception(apiResult.Message);
+
+                await CarregarListaDeControlados();
+            }
+        }
+        catch (ApiException ex) { _snackbarComp.Message(ex.Message, Severity.Error, Color.Error); }
+        catch (Exception ex) { _snackbarComp.Message(ex.Message, Severity.Error, Color.Error); }
+        finally
+        {
+            Loading.Hide();
+            _carregado = true;
+            StateHasChanged();
+        }
+    }
+    private async Task OcorrenciaAsync(ControlePessoaDto colaborador)
+    {
+        DialogOptions options = new DialogOptions()
+        {
+            MaxWidth = MaxWidth.Medium,
+            FullWidth = true,
+        };
+
+        var parameters = new DialogParameters<OcorrenciaDialog>
+        {
+            { x => x.TypeOcorrencia, colaborador.OcorrenciaEntrada && !colaborador.OcorrenciaSaida },
+            { x => x.Operador, UserName }
+        };
+
+        var dialog = await DialogService.ShowAsync<OcorrenciaDialog>("Reportar Ocorrência de Ponto", parameters, options);
+        var dialogResult = await dialog.Result;
+
+        if (dialogResult is not null && !dialogResult.Canceled)
+        {
+            var result = await _services.PatchRegistrarOcorrenciaAsync((PortariaOcorrenciaDto)dialogResult.Data!);
+
+            if (result.Value is not null)
+            {
+                colaborador.HoraEntrada = result.Value.HoraEntrada;
+                colaborador.HoraSaida = result.Value.HoraSaida;
+                colaborador.Operador1 = result.Value.Operador1;
+                colaborador.Operador2 = result.Value.Operador2;
+            }
+        }
+        StateHasChanged();
+    }
+    private void OnMesSelecionadoChanged(int mes)
+    {
+        _mesSelecionado = mes;
+        AtualizarFiltroMes();
+
+        var primeiraDataDoMes = ElementsMemory
+            .Where(x => !string.IsNullOrEmpty(x.DataOcorrencia) && DateTime.TryParse(x.DataOcorrencia, out _))
+            .Select(x => Convert.ToDateTime(x.DataOcorrencia).Date)
+            .OrderBy(d => d)
+            .FirstOrDefault();
+
+        if (primeiraDataDoMes != default)
+        {
+            _dataAtiva = primeiraDataDoMes;
+        }
+
+        StateHasChanged();
+    }
+    private void OnFiltroStatusMovimentacaoChanged(string valor)
+    {
+        _filtroStatusMovimentacao = valor;
+        StateHasChanged();
+    }
+    private Task ContriMudChip()
+    {
+        var validElements = Elements
+            .Where(x => !string.IsNullOrEmpty(x.DataOcorrencia) && DateTime.TryParse(x.DataOcorrencia, out _))
+            .Select(x =>
+            {
+                var dataObj = Convert.ToDateTime(x.DataOcorrencia);
+                return new
+                {
+                    NumeroMes = dataObj.Month,
+                    MesAbreviado = dataObj.ToString("MMM", new CultureInfo("pt-BR")).ToUpper(),
+                    DataCompleta = dataObj
+                };
+            })
+            .ToList();
+
+        if (validElements.Any())
+        {
+            MesesAbreviados = validElements
+                .DistinctBy(x => x.NumeroMes)
+                .OrderBy(x => x.DataCompleta)
+                .ToDictionary(x => x.NumeroMes, x => x.MesAbreviado);
+        }
+        else
+        {
+            MesesAbreviados = new Dictionary<int, string>();
+        }
+
+        return Task.CompletedTask;
+    }
+    private void IrParaDiaAnterior()
+    {
+        var datasDisponiveis = Elements
+            .Where(x => !string.IsNullOrEmpty(x.DataOcorrencia) && DateTime.TryParse(x.DataOcorrencia, out _))
+            .Select(x => Convert.ToDateTime(x.DataOcorrencia).Date)
+            .Distinct()
+            .OrderBy(d => d)
+            .ToList();
+
+        var index = datasDisponiveis.IndexOf(_dataAtiva.Date);
+        if (index > 0)
+        {
+            _dataAtiva = datasDisponiveis[index - 1];
+            _mesSelecionado = _dataAtiva.Month;
+            AtualizarFiltroMes();
+        }
+    }
+    private void IrParaProximoDia()
+    {
+        var datasDisponiveis = Elements
+            .Where(x => !string.IsNullOrEmpty(x.DataOcorrencia) && DateTime.TryParse(x.DataOcorrencia, out _))
+            .Select(x => Convert.ToDateTime(x.DataOcorrencia).Date)
+            .Distinct()
+            .OrderBy(d => d)
+            .ToList();
+
+        var index = datasDisponiveis.IndexOf(_dataAtiva.Date);
+        if (index >= 0 && index < datasDisponiveis.Count - 1)
+        {
+            _dataAtiva = datasDisponiveis[index + 1];
+            _mesSelecionado = _dataAtiva.Month;
+            AtualizarFiltroMes();
+        }
+    }
+    public void Dispose()
+    {
+        AtualizacaoPortariaNotifier.AtualizacaoSolicitada -= AtualizarPaginaAsync;
+    }
+    private async Task<IEnumerable<PorteiroOperadorDto>> Search2(string value, CancellationToken token)
+    {
+        await Task.Delay(5, token);
+
+        if (string.IsNullOrEmpty(value))
+            return new List<PorteiroOperadorDto>();
+
+        var result = ListPorteiroOperador.Where(x => x.Nome?.Contains(value, StringComparison.InvariantCultureIgnoreCase) ?? false);
+
+        return result;
+    }
+    private void RowClicked(DataGridRowClickEventArgs<ControlePessoaDto> args) { }
+    void RowRightClicked(DataGridRowClickEventArgs<ControlePessoaDto> args) { }
+    void SelectedItemsChanged(HashSet<ControlePessoaDto> items) { }
+    private async Task AlterarApontamentoAsync(ControlePessoaDto colaborador)
+    {
+        try
+        {
+            if (!PodeMovimentarOuEditar(colaborador.DataOcorrencia))
+            {
+                _snackbarComp.Message("Só é permitido alterar apontamentos para a data de hoje ou do dia anterior.", Severity.Warning, Color.Warning);
+                return;
+            }
+
+            Loading.Show();
+            _carregado = false;
+
+            var parameters = new DialogParameters<RegistrarPontoDialog>
+            {
+                { x => x.Colaborador, colaborador },
+                { x => x.OperadorAtual, UserName },
+                { x => x.IsEdicao, true },
+                { x => x.ListPorteiroOperador, ListPorteiroOperador },
+                { x => x.OperadorIdInicial, colaborador.Operador1 }
+            };
+
+            var options = new DialogOptions()
+            {
+                CloseButton = true,
+                MaxWidth = MaxWidth.Medium,
+                FullWidth = true
+            };
+
+            var dialog = await DialogService.ShowAsync<RegistrarPontoDialog>("Alterar Apontamento de Ponto", parameters, options);
+            var result = await dialog.Result;
+
+            if (result is not null && !result.Canceled && result.Data is ResistrarEntradaSaidaDto requestDto)
+            {
+                var employer = DataSessionHelper.DataSession;
+                requestDto.Emp_Fil = (Int32)employer.Company.EmpFill;
+
+                var apiResult = await _services.PutAlterarHorasAsync(requestDto);
+
+                if (!apiResult.Success)
+                    throw new Exception(apiResult.Message);
+
+                await CarregarListaDeControlados();
+            }
+        }
+        catch (ApiException ex) { _snackbarComp.Message(ex.Message, Severity.Error, Color.Error); }
+        catch (Exception ex) { _snackbarComp.Message(ex.Message, Severity.Error, Color.Error); }
+        finally
+        {
+            Loading.Hide();
+            _carregado = true;
+            StateHasChanged();
+        }
+    }
+    private IEnumerable<ControlePessoaDto> GetFilteredItems()
+    {
+        var query = ElementsMemory;
+
+        // Se não estiver no modo "Todos" (13), filtra rigorosamente pelo dia ativo
+        if (_mesSelecionado != 13)
+        {
+            query = query.Where(x => !string.IsNullOrEmpty(x.DataOcorrencia) &&
+                                     DateTime.TryParse(x.DataOcorrencia, out var parsedDate) &&
+                                     parsedDate.Date == _dataAtiva.Date);
+        }
+
+        // Aplica o filtro de status de movimentação se houver
+        if (_filtroStatusMovimentacao == "SOMENTE_ENTRADA")
+        {
+            query = query.Where(x => !string.IsNullOrEmpty(x.HoraEntrada) && string.IsNullOrEmpty(x.HoraSaida));
+        }
+        else if (_filtroStatusMovimentacao == "SOMENTE_SAIDA")
+        {
+            query = query.Where(x => string.IsNullOrEmpty(x.HoraEntrada) && !string.IsNullOrEmpty(x.HoraSaida));
+        }
+        else if (_filtroStatusMovimentacao == "ENTRADA_SAIDA")
+        {
+            query = query.Where(x => !string.IsNullOrEmpty(x.HoraEntrada) && !string.IsNullOrEmpty(x.HoraSaida));
+        }
+
+        return query;
+    }
+    private async Task PesquisarPorDataDigitada()
+    {
+        var culturaBr = new CultureInfo("pt-BR");
+
+        if (DateTime.TryParseExact(_dataTextoInput, new[] { "dd/MM/yyyy", "d/M/yyyy", "ddMMyyyy" }, culturaBr, System.Globalization.DateTimeStyles.None, out DateTime dataPesquisa))
+        {
+            _isFiltradoPorData = true;
+            _dataAtiva = dataPesquisa.Date;
+            _mesSelecionado = dataPesquisa.Month;
+
+            bool existeNaLista = Elements.Any(x => !string.IsNullOrEmpty(x.DataOcorrencia) &&
+                                                  DateTime.TryParse(x.DataOcorrencia, out var parsedDate) &&
+                                                  parsedDate.Date == dataPesquisa.Date);
+
+            if (existeNaLista)
+            {
+                AtualizarFiltroMes();
+            }
+            else
+            {
+                await CarregarListaDeControlados(dataPesquisa);
+            }
+
+            StateHasChanged();
+        }
+        else
+        {
+            _snackbarComp.Message("Formato de data inválido. Use DD/MM/AAAA.", Severity.Error, Color.Error);
+        }
+    }
+    private async Task LimparFiltroDataAsync()
+    {
+        _isFiltradoPorData = false;
+        _dataTextoInput = string.Empty;
+        await CarregarListaDeControlados(null);
+    }
+    private bool PodeEditar(ControlePessoaDto colaborador)
+    {
+        if (colaborador == null || string.IsNullOrEmpty(colaborador.DataOcorrencia) || !DateTime.TryParse(colaborador.DataOcorrencia, out var dataOcorrencia))
+            return false;
+
+        var hoje = DateTime.Today;
+        var ontem = hoje.AddDays(-1);
+
+        bool dataValida = dataOcorrencia.Date == hoje || dataOcorrencia.Date == ontem;
+        bool temMovimentacao = !string.IsNullOrEmpty(colaborador.HoraEntrada) || !string.IsNullOrEmpty(colaborador.HoraSaida);
+
+        return dataValida && temMovimentacao;
+    }
+    private async Task AtualizarPaginaAsync()
+    {
+        try
+        {
+            await InvokeAsync(async () =>
+            {
+                Loading.Show();
+                _carregado = false;
+
+                try
+                {
+                    await CarregarListaDeControlados(_dataAtiva);
+
+                    await PegarListaPorteiros();
+
+                    StateHasChanged();
+                }
+                finally
+                {
+                    _carregado = true;
+                    Loading.Hide();
+
+                    StateHasChanged();
+                }
+            });
+        }
+        catch (Exception ex)
+        {
+            await InvokeAsync(() =>
+            {
+                _snackbarComp.Message(
+                    $"Erro ao atualizar os apontamentos: {ex.Message}",
+                    Severity.Error,
+                    Color.Error);
+
+                StateHasChanged();
+            });
+        }
+    }
+}

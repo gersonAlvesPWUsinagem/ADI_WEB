@@ -15,6 +15,7 @@
 
 @layout LoginLayout
 <PageTitle>Login - ADI</PageTitle>
+
 <RedirectIfAuthenticated />
 
 @if (_isProcessing)
@@ -91,7 +92,7 @@
                     @if (_isProcessing)
                     {
                         <MudProgressCircular Size="Size.Small" Indeterminate="true" />
-                        <span style="margin-left: 8px;">Entrando...</span>
+                        <span style="margin-left: 8px;">Carregando...</span>
                     }
                     else
                     {

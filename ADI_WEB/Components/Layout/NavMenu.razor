@@ -2,6 +2,9 @@
 @implements IDisposable
 @inject JwtAuthenticationService _jwtAuthenticationService
 @inject AuthenticationStateProvider AuthenticationStateProvider
+@inject IDataSessionHelper DataSessionHelper
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
 @inject ILogger<NavMenu> Logger
 
 <MudStack Spacing="2" Class="pa-3">
@@ -14,19 +17,50 @@
     </MudStack>
 </MudStack>
 
-@* <MudDivider /> *@
-
 <MudNavMenu>
-    <MudNavLink Href="/main" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Home">Principal</MudNavLink>
-    <MudNavLink Href="/download-agent" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Dashboard">Downloads</MudNavLink>
-    <MudNavGroup Title="TI" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.AdminPanelSettings" Expanded="false">
-        <MudNavLink Href="/users">Usuários</MudNavLink>
-        <MudNavLink Href="glpi/termo-concessao">Gerador de Termos</MudNavLink>
+    <MudNavLink Href="/main" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Home">
+        HOME
+    </MudNavLink>
+
+    <MudNavGroup Title="RAMAIS" Icon="@Icons.Material.Filled.ContactPhone" Expanded="false">
+        <MudNavLink Href="/download-agent" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Phone">
+            LISTA DE RAMAIS
+        </MudNavLink>
+        <MudNavLink Match="NavLinkMatch.Prefix" Href="glpi/termo-concessao" Icon="@Icons.Material.Filled.Description">
+            CADASTRO DE RAMAIS
+        </MudNavLink>
     </MudNavGroup>
-    <MudNavLink Href="counter" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Add">Counter</MudNavLink>
-    <MudNavLink Href="weather" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.List">Weather</MudNavLink>
-@*     <MudNavLink OnClick="EfetuarLogout" Icon="@Icons.Material.Filled.Logout">Sair</MudNavLink>
- *@</MudNavMenu>
+
+    <MudNavGroup Title="TI" Icon="@Icons.Material.Filled.Computer" Expanded="false">
+        <MudNavLink Href="/download-agent" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Download">
+            DOWNLOADS
+        </MudNavLink>
+        <MudNavLink Match="NavLinkMatch.Prefix" Href="glpi/termo-concessao" Icon="@Icons.Material.Filled.Description">
+            GERADOR DE TERMO
+        </MudNavLink>
+    </MudNavGroup>
+
+    <MudNavGroup Title="RH" Icon="@Icons.Material.Filled.Groups" Expanded="false">
+        <MudNavGroup Title="PORTARIA" Icon="@Icons.Material.Filled.Security" Expanded="false">
+            <MudNavLink Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Login" Href="portaria/registrar-entrada-saida-colaborador">
+                APT ENTRADA\SAÍDA
+            </MudNavLink>
+            <MudNavLink Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.ManageAccounts" Href="portaria/gerenciamento-operadores">
+                OPERADORES
+            </MudNavLink>
+            <MudNavLink Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Groups" Href="portaria/gerenciamento-pessoas">
+                GERENCIAR
+            </MudNavLink>
+        </MudNavGroup>
+    </MudNavGroup>
+
+    <MudSpacer />
+    <MudDivider Class="my-2" />
+
+    <MudNavLink OnClick="EfetuarLogout" Icon="@Icons.Material.Filled.Logout" IconColor="Color.Error">
+        Sair
+    </MudNavLink>
+</MudNavMenu>
 
 @code {
     private string? _fullName;
@@ -50,21 +84,25 @@
     private async Task LoadUserAsync()
     {
         var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
-        SetUser(authState.User);
+        SetUser();
     }
 
     private async void OnAuthenticationStateChanged(Task<AuthenticationState> task)
     {
         var authState = await task;
-        SetUser(authState.User);
+        SetUser();
         await InvokeAsync(StateHasChanged);
     }
 
-    private void SetUser(System.Security.Claims.ClaimsPrincipal user)
+    private void SetUser()
     {
-        _fullName = user.Claims.FirstOrDefault(x => x.Type == "Name")?.Value ?? user.Identity?.Name;
-        _level = user.Claims.FirstOrDefault(x => x.Type == "Level")?.Value;
-        _environment = FormatEnvironment(user.Claims.FirstOrDefault(x => x.Type == "Environment")?.Value);
+        var user = DataSessionHelper.DataSession;
+        if (user != null)
+        {
+            _fullName = user.Name;
+            _level = user.Level;
+            _environment = ((EnvironmentEnum?)user.EnvironmentType ?? 0).GetDisplayName();
+        }
     }
 
     private static string? FormatEnvironment(string? value)

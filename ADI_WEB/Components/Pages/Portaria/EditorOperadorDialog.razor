@@ -1,0 +1,74 @@
+@using Domain.Dtos.Portaria
+
+<MudDialog>
+    <DialogContent>
+        <MudTextField Value="@Operador.Nome"
+                      ValueChanged="@(async (string val) => Operador.Nome = val?.ToUpperInvariant())"
+                      Label="Nome Completo"
+                      Required="true"
+                      Variant="Variant.Outlined"
+                      Error="@_temErroNome"
+                      ErrorText="@_mensagemErroNome" />
+
+        <MudTextField @bind-Value="Operador.Senha"
+                      Label="Senha"
+                      InputType="InputType.Password"
+                      Required="@(Operador.PoreteiroID == 0)"
+                      Variant="Variant.Outlined"
+                      Class="mt-3" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancelar</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Submit">Salvar</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter] public PorteiroOperadorDto Operador { get; set; } = new();
+
+    private bool _temErroNome;
+    private string _mensagemErroNome = string.Empty;
+
+    // Lista de preposições ou conectivos que não devem contar como sobrenome válido isoladamente
+    private static readonly HashSet<string> PreposicoesProibidas = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "DE", "DA", "DO", "DOS", "DAS", "E", "DEL", "DELLA", "DI", "VON", "VAN"
+    };
+
+    private void Submit()
+    {
+        // Reseta os erros antes de validar
+        _temErroNome = false;
+        _mensagemErroNome = string.Empty;
+
+        // Limpa espaços extras
+        var nomeFormatado = Operador.Nome?.Trim() ?? string.Empty;
+        Operador.Nome = nomeFormatado;
+
+        // Divide o nome por espaços
+        var partes = nomeFormatado.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+
+        if (partes.Length < 2)
+        {
+            _temErroNome = true;
+            _mensagemErroNome = "Informe o nome e o sobrenome.";
+            return;
+        }
+
+        // Pega a última palavra informada para validar se é uma preposição
+        var ultimoSobrenome = partes[^1];
+
+        if (PreposicoesProibidas.Contains(ultimoSobrenome))
+        {
+            _temErroNome = true;
+            _mensagemErroNome = $"'{ultimoSobrenome}' é uma preposição e não pode ser usada como sobrenome final.";
+            return;
+        }
+
+        // Se passou em todas as validações, fecha o diálogo com sucesso
+        MudDialog.Close(DialogResult.Ok(Operador));
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+}

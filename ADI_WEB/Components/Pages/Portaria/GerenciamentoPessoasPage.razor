@@ -1,0 +1,186 @@
+@attribute [Authorize]
+@page "/portaria/gerenciamento-pessoas"
+@using ADI_WEB.Components.Layout
+
+<PageTitle>Pessoas da Portaria</PageTitle>
+
+<HeaderComponent Title="Pessoas para Apontamento"
+                 TextBtn1="Atualizar"
+                 IconBtn1="@Icons.Material.Filled.Refresh"
+                 ColorBtn1="Color.Primary"
+                 IsVisibleOrNotBtn1="true"
+                 OnBtn1Click="CarregarAsync" />
+
+<MudGrid>
+    <MudItem xs="12" sm="4" md="3">
+        <MudPaper Elevation="2" Class="pa-4">
+            <div class="d-flex align-center justify-space-between w-100">
+                <MudText Typo="Typo.body1">Total</MudText>
+                <MudChip T="string" Color="Color.Primary" Size="Size.Small">@_pessoas.Count</MudChip>
+            </div>
+        </MudPaper>
+    </MudItem>
+    <MudItem xs="12" sm="4" md="3">
+        <MudPaper Elevation="2" Class="pa-4">
+            <div class="d-flex align-center justify-space-between w-100">
+                <MudText Typo="Typo.body1">Sem apontamento</MudText>
+                <MudChip T="string" Color="Color.Secondary" Size="Size.Small">@TotalSemApontamento</MudChip>
+            </div>
+        </MudPaper>
+    </MudItem>
+    <MudItem xs="12" sm="4" md="3">
+        <MudPaper Elevation="2" Class="pa-4">
+            <div class="d-flex align-center justify-space-between w-100">
+                <MudText Typo="Typo.body1">Com apontamento</MudText>
+                <MudChip T="string" Color="Color.Success" Size="Size.Small">@TotalComApontamento</MudChip>
+            </div>
+        </MudPaper>
+    </MudItem>
+</MudGrid>
+
+<MudPaper Class="pa-4 mt-4" Elevation="1">
+    <MudTextField @bind-Value="_filtro"
+                  Label="Pesquisar pessoa"
+                  Placeholder="Nome, matrícula ou centro de custo"
+                  Immediate="true"
+                  Variant="Variant.Outlined"
+                  Margin="Margin.Dense"
+                  Adornment="Adornment.Start"
+                  AdornmentIcon="@Icons.Material.Filled.Search"
+                  Class="mb-4" />
+
+    <MudDataGrid Items="PessoasFiltradas"
+                 Hover="true"
+                 Dense="true"
+                 Loading="_carregando"
+                 Bordered="_exibirBordas">
+        <Columns>
+            <PropertyColumn Property="x => x.NOME" Title="NOME" />
+            <PropertyColumn Property="x => x.MATRICULA" Title="MATRÍCULA" />
+            <PropertyColumn Property="x => x.DEPARTAMENTO ?? x.TRADUCAO_CC" Title="DEPARTAMENTO" />
+
+            <!-- Coluna de Controle com ordenação customizada -->
+            <PropertyColumn Property="x => x.IsControl" Title="CONTROLE" SortBy="@(_x => _x.IsControl)">
+                <CellTemplate>
+                    <MudChip T="string" Size="Size.Small" Color="@(context.Item.IsControl? Color.Success: Color.Default)">
+                        @(context.Item.IsControl ? "Incluído" : "Fora da lista")
+                    </MudChip>
+                </CellTemplate>
+            </PropertyColumn>
+
+            <TemplateColumn Title="AÇÃO">
+                <CellTemplate>
+                    <MudButton Variant="Variant.Outlined"
+                               Size="Size.Small"
+                               Color="@(context.Item.IsControl ? Color.Error : Color.Success)"
+                               StartIcon="@(context.Item.IsControl ? Icons.Material.Filled.RemoveCircle : Icons.Material.Filled.AddCircle)"
+                               Disabled="_salvando"
+                               OnClick="@(() => AlternarControleAsync(context.Item))">
+                        @(context.Item.IsControl ? "Remover" : "Incluir")
+                    </MudButton>
+                </CellTemplate>
+            </TemplateColumn>
+        </Columns>
+        <PagerContent>
+            <div class="d-flex align-center justify-space-between mt-2 px-2">
+                <MudSwitch @bind-Value="_exibirBordas" Label="Exibir bordas na tabela" Color="Color.Primary" Size="Size.Small" />
+                <MudDataGridPager T="ColaboradoresControladosDto" />
+            </div>
+        </PagerContent>
+    </MudDataGrid>
+</MudPaper>
+
+@code {
+    [Inject] private IPortariaService PortariaService { get; set; } = default!;
+
+    private List<ColaboradoresControladosDto> _pessoas = [];
+    private string? _filtro;
+    private string _filtroChip = "Todos";
+    private bool _carregando;
+    private bool _salvando;
+    private bool _exibirBordas;
+
+    private int TotalComApontamento => _pessoas.Count(x => x.IsControl);
+    private int TotalSemApontamento => _pessoas.Count(x => !x.IsControl);
+
+    private IEnumerable<ColaboradoresControladosDto> PessoasFiltradas
+    {
+        get
+        {
+            var query = _pessoas.AsEnumerable();
+
+            if (_filtroChip == "ComApontamento")
+            {
+                query = query.Where(x => x.IsControl);
+            }
+            else if (_filtroChip == "SemApontamento" && TotalComApontamento > 0)
+            {
+                query = query.Where(x => !x.IsControl);
+            }
+
+            if (!string.IsNullOrWhiteSpace(_filtro))
+            {
+                query = query.Where(x =>
+                    (x.NOME?.Contains(_filtro, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                    x.MATRICULA.ToString().Contains(_filtro, StringComparison.OrdinalIgnoreCase) ||
+                    (x.TRADUCAO_CC?.Contains(_filtro, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                    (x.DEPARTAMENTO?.Contains(_filtro, StringComparison.OrdinalIgnoreCase) ?? false));
+            }
+
+            return query;
+        }
+    }
+
+    protected override async Task OnInitializedAsync() => await CarregarAsync();
+
+    private async Task CarregarAsync()
+    {
+        Loading.Show();
+        _carregando = true;
+        try
+        {
+            var result = await PortariaService.GetColaboradoresAsync();
+            if (result.Success)
+                _pessoas = result.Value ?? [];
+            else
+                _snackbarComp.Message(result.Message ?? "Não foi possível carregar os colaboradores.", Severity.Error, Color.Error);
+        }
+        finally
+        {
+            _carregando = false;
+            Loading.Hide();
+        }
+    }
+
+    private void OnChipChanged(string value)
+    {
+        _filtroChip = string.IsNullOrEmpty(value) ? "Todos" : value;
+
+        if (_filtroChip == "SemApontamento" && TotalComApontamento == 0)
+        {
+            _filtroChip = "Todos";
+        }
+    }
+
+    private async Task AlternarControleAsync(ColaboradoresControladosDto pessoa)
+    {
+        Loading.Show();
+        _salvando = true;
+        try
+        {
+            var result = await PortariaService.AlternarControleColaboradorAsync(pessoa);
+            _snackbarComp.Message(result.Message ?? "Operação concluída.", result.Success ? Severity.Success : Severity.Error, result.Success ? Color.Success : Color.Error);
+
+            if (result.Success)
+            {
+                pessoa.IsControl = result.Value?.IsControl ?? !pessoa.IsControl;
+                pessoa.ControladoId = result.Value?.ControladoId ?? pessoa.ControladoId;
+            }
+        }
+        finally
+        {
+            _salvando = false;
+            Loading.Hide();
+        }
+    }
+}

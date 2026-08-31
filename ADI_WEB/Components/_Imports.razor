@@ -1,27 +1,43 @@
 @using System.Net.Http
 @using System.Net.Http.Json
+@using System.ComponentModel.DataAnnotations
+@using System.Globalization
 @using Microsoft.AspNetCore.Components.Forms
 @using Microsoft.AspNetCore.Components.Routing
 @using Microsoft.AspNetCore.Components.Web
 @using static Microsoft.AspNetCore.Components.Web.RenderMode
 @using Microsoft.AspNetCore.Components.Web.Virtualization
+@using Microsoft.Extensions.Logging
 @using Microsoft.JSInterop
 @using MudBlazor
 @using MudBlazor.Services
 @using ADI_WEB
 @using ADI_WEB.Components
 
+
 @using Microsoft.AspNetCore.Authorization
+
 @inject NavigationManager Navigation
 @inject ISnackbar Snackbar
+@inject IDialogService DialogService
+@inject SnackbarComp _snackbarComp
+@inject LoadingHelper Loading
+
+
 @using Shared.Enums
+@using Shared.Models
 
 @using Domain.Dtos.Login
 @using Domain.Helpers
 @using Domain.Interfaces
-@using Shared.Models
-@using ADI_WEB.Components.SharedComps
+@using Domain.Dtos.Termos
+@using Domain.Dtos.Portaria
+
+
+@using ADI_WEB.Components.Pages.Dialogs
 @using ADI_WEB.Components.Pages.Users
 @using ADI_WEB.Components.Auth
+@using ADI_WEB.Components.SharedComps
 @using ADI_WEB.Security
-@using Domain.Dtos.Termos
+
+

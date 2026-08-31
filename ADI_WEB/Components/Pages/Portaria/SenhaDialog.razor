@@ -1,0 +1,80 @@
+﻿<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">Confirmação de Senha - Operador</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudAutocomplete T="PorteiroOperadorDto" @bind-Value="_operadorSelecionado" SearchFunc="@SearchOperadores"
+                         Placeholder="Selecione o operador..."
+                         Label="Operador"
+                         Variant="Variant.Outlined"
+                         Margin="Margin.Dense"
+                         ResetValueOnEmptyText="@resetValueOnEmptyText"
+                         CoerceText="@coerceText" CoerceValue="@coerceValue" SelectValueOnTab="@selectedOnTab"
+                         ToStringFunc="@(e => e?.Nome)"
+                         AdornmentIcon="@Icons.Material.Filled.Search"
+                         AdornmentColor="Color.Primary" />
+
+        <MudTextField @bind-Value="_senha"
+                      Label="Senha do Operador"
+                      InputType="InputType.Password"
+                      Variant="Variant.Outlined"
+                      Margin="Margin.Dense"
+                      FullWidth="true"
+                      Class="mt-3" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancelar</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Submit">Confirmar</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance? MudDialog { get; set; }
+
+    [Parameter] public IEnumerable<PorteiroOperadorDto> ListPorteiroOperador { get; set; } = new List<PorteiroOperadorDto>();
+
+    private PorteiroOperadorDto? _operadorSelecionado;
+    private string? _senha;
+
+    private bool coerceText = true;
+    private bool resetValueOnEmptyText = true;
+    private bool coerceValue = true;
+    private bool selectedOnTab = true;
+
+    private async Task<IEnumerable<PorteiroOperadorDto>> SearchOperadores(string value, CancellationToken token)
+    {
+        await Task.Delay(5, token);
+
+        if (string.IsNullOrEmpty(value))
+            return ListPorteiroOperador; // Opcional: retorna todos se vazio, ou lista vazia se preferir
+
+        return ListPorteiroOperador.Where(x => x.Nome?.Contains(value, StringComparison.InvariantCultureIgnoreCase) ?? false);
+    }
+
+    private void Submit()
+    {
+        if (_operadorSelecionado is null)
+        {
+            // Validação simples caso queira garantir que escolheu um operador
+            return;
+        }
+
+        // Retorna um objeto contendo os dados informados para a página principal
+        MudDialog.Close(DialogResult.Ok(new OperadorLoginResultDto
+        {
+            Operador = _operadorSelecionado,
+            Senha = _senha
+        }));
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+}
+
+@code {
+    // DTO auxiliar para retorno do Dialog (pode colocar em um arquivo separado de DTOs)
+    public class OperadorLoginResultDto
+    {
+        public PorteiroOperadorDto? Operador { get; set; }
+        public string? Senha { get; set; }
+    }
+}

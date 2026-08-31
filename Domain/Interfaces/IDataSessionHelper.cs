@@ -10,7 +10,7 @@ namespace Domain.Interfaces
     public interface IDataSessionHelper
     {
         public DataSession DataSession { get; }
-        Task<string> LoadSession(string token);
+        Task LoadSession(string token);
         Task<bool> RestoreSessionAsync(string json);
         Task ClearAsync();
     }

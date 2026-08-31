@@ -1,0 +1,280 @@
+﻿@using Domain.Dtos.Portaria
+@inject IDataSessionHelper DataSessionHelper
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">
+            <MudIcon Icon="@Icons.Material.Filled.Fingerprint" Class="mr-2 mb-n1" Color="Color.Primary" />
+            Apontamento de Ponto - <strong>@Colaborador.NOME</strong>
+        </MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudForm @ref="_form">
+            <MudGrid Spacing="3">
+
+                <!-- Campo de Autocomplete para Alterar o Operador (Exclusivo para Edição) -->
+                @if (IsEdicao)
+                {
+                    <MudItem xs="12">
+                        <MudAutocomplete T="PorteiroOperadorDto"
+                                         @bind-Value="_operadorSelecionado"
+                                         SearchFunc="SearchOperadoresAsync"
+                                         Placeholder="Pesquisar operador..."
+                                         Label="Alterar Operador Responsável"
+                                         Variant="Variant.Outlined"
+                                         Margin="Margin.Dense"
+                                         ResetValueOnEmptyText="true"
+                                         CoerceText="true"
+                                         CoerceValue="true"
+                                         SelectValueOnTab="true"
+                                         ToStringFunc="@(e => e?.Nome)"
+                                         AdornmentIcon="@Icons.Material.Filled.Search"
+                                         AdornmentColor="Color.Primary" />
+                    </MudItem>
+                }
+
+                <!-- Informações do Colaborador -->
+                <MudItem xs="12">
+                    <MudPaper Elevation="0" Class="pa-3 bg-light rounded-lg border">
+                        <MudGrid>
+                            <MudItem xs="12" sm="4">
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">Matrícula</MudText>
+                                <MudText Typo="Typo.body2"><strong>@Colaborador.MATRICULA</strong></MudText>
+                            </MudItem>
+                            <MudItem xs="12" sm="8">
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">Setor / Centro de Custo</MudText>
+                                <MudText Typo="Typo.body2"><strong>@(Colaborador.SetorName ?? Colaborador.TRADUCAO_CC ?? "Não informado")</strong></MudText>
+                            </MudItem>
+                        </MudGrid>
+                    </MudPaper>
+                </MudItem>
+
+                <!-- Tipo de Movimento (Livre para escolha) -->
+                <MudItem xs="12">
+                    <MudText Typo="Typo.subtitle1" Class="mb-2">Portaria responsável: (@OperadorAtual)</MudText>
+                    <MudText Typo="Typo.subtitle2" Class="mb-2">Tipo de Movimento (Ação da Portaria)</MudText>
+                    <MudItem xs="12">
+                        <MudToggleGroup T="TipoAcaoPortariaEnum"
+                                        Value="_dto.TipoAcaoPortaria"
+                                        ValueChanged="OnTipoAcaoChanged"
+                                        Color="Color.Primary"                         
+                                        Class="w-100">
+                            <MudToggleItem Value="TipoAcaoPortariaEnum.Entrada_1">Entrada 1</MudToggleItem>
+                            <MudToggleItem Value="TipoAcaoPortariaEnum.Saida_1">Saída 1</MudToggleItem>
+                        </MudToggleGroup>
+                    </MudItem>
+                </MudItem>
+
+                <!-- Origem dos Dados (Controla o comportamento do campo de horário) -->
+                <MudItem xs="12">
+                    <MudText Typo="Typo.subtitle2" Class="mb-1">Origem dos Dados</MudText>
+                    <MudRadioGroup Value="_dto.PegarDadosCatraca" ValueChanged="OnOrigemDadosChanged" T="bool">
+                        <MudRadio Value="false" Color="Color.Primary">Manter Apontamento Manual (Portaria)</MudRadio>
+                        <MudRadio Value="true" Color="Color.Tertiary">Buscar Dados da Catraca (API)</MudRadio>
+                    </MudRadioGroup>
+                </MudItem>
+
+                <!-- Horário e Data -->
+                <MudItem xs="12" sm="6">
+                    <MudTextField @bind-Value="_dto.HoraDaAcao"
+                                  Label="Horário do Apontamento"
+                                  Variant="Variant.Outlined"
+                                  Adornment="Adornment.Start"
+                                  AdornmentIcon="@Icons.Material.Filled.AccessTime"
+                                  Disabled="_dto.PegarDadosCatraca"
+                                  Required="(!_dto.PegarDadosCatraca)"
+                                  Placeholder="@(_dto.PegarDadosCatraca ? "Automático (Catraca)" : "HH:mm")" />
+                </MudItem>
+
+                <MudItem xs="12" sm="6">
+                    <MudTextField @bind-Value="_dto.DataAcao"
+                                  Label="Data de Referência"
+                                  Variant="Variant.Outlined"
+                                  Adornment="Adornment.Start"
+                                  AdornmentIcon="@Icons.Material.Filled.CalendarToday"
+                                  ReadOnly="true" />
+                </MudItem>
+
+                <!-- Área de Ocorrência -->
+                <MudItem xs="12">
+                    <MudTextField @bind-Value="_ocorrenciaTexto"
+                                  Label="Área de Ocorrência / Observações"
+                                  Variant="Variant.Outlined"
+                                  Lines="2"
+                                  Adornment="Adornment.Start"
+                                  AdornmentIcon="@Icons.Material.Filled.Comment"
+                                  Placeholder="Descreva se houver alguma divergência ou justificativa..." />
+                </MudItem>
+
+            </MudGrid>
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Text" Color="Color.Default" OnClick="Cancel">Cancelar</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Submit" StartIcon="@Icons.Material.Filled.Save">Salvar Apontamento</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter]
+    public ControlePessoaDto Colaborador { get; set; } = default!;
+
+    [Parameter]
+    public string? OperadorAtual { get; set; }
+
+    [Parameter]
+    public bool IsEdicao { get; set; } = false;
+
+    [Parameter]
+    public IEnumerable<PorteiroOperadorDto> ListPorteiroOperador { get; set; } = new List<PorteiroOperadorDto>();
+
+    [Parameter]
+    public int? OperadorIdInicial { get; set; } // Mantido para compatibilidade, caso venha de fora
+
+    private MudForm _form = default!;
+    private string? _ocorrenciaTexto;
+    private string? _searchString;
+
+    private ResistrarEntradaSaidaDto _dto = new();
+
+    // Variáveis e parâmetros de suporte ao Autocomplete
+    private PorteiroOperadorDto? _operadorSelecionado;
+    private bool _resetValueOnEmptyText = true;
+    private bool _coerceText = true;
+    private bool _coerceValue = true;
+    private bool _selectedOnTab = true;
+
+    protected override void OnInitialized()
+    {
+        var agora = DateTime.Now;
+        var user = DataSessionHelper.DataSession;
+
+        _dto.ID = Colaborador.ID;
+        _dto.Pessoa_Cod = Colaborador.PessoaId;
+        _dto.DataAcao = !string.IsNullOrEmpty(Colaborador.DataOcorrencia) ? Colaborador.DataOcorrencia : agora.ToString("dd/MM/yyyy");
+
+        // Lógica corrigida: Se tem entrada mas não tem saída, o padrão é Saída 1
+        if (!string.IsNullOrEmpty(Colaborador.HoraEntrada) && string.IsNullOrEmpty(Colaborador.HoraSaida))
+        {
+            _dto.TipoAcaoPortaria = TipoAcaoPortariaEnum.Saida_1;
+            _dto.HoraDaAcao = agora.ToString("HH:mm");
+        }
+        else if (string.IsNullOrEmpty(Colaborador.HoraEntrada))
+        {
+            _dto.TipoAcaoPortaria = TipoAcaoPortariaEnum.Entrada_1;
+            _dto.HoraDaAcao = agora.ToString("HH:mm");
+        }
+        else
+        {
+            _dto.TipoAcaoPortaria = TipoAcaoPortariaEnum.Saida_1;
+            _dto.HoraDaAcao = !string.IsNullOrEmpty(Colaborador.HoraSaida) ? Colaborador.HoraSaida : agora.ToString("HH:mm");
+        }
+
+        // Define o operador correto com base na ação inicial (Entrada ou Saída)
+        AtualizarOperadorParaAcaoAtual();
+
+        _dto.DataOcorrencia = agora;
+        _dto.PegarDadosCatraca = false;
+        _dto.Matricula = Colaborador.MATRICULA;
+        _dto.Nome = Colaborador.NOME;
+        _dto.TRADUCAO_CC = Colaborador.TRADUCAO_CC;
+        _dto.SetorName = Colaborador.SetorName;
+        _dto.Emp_Fil = (Int32)DataSessionHelper.DataSession.Company.EmpFill;
+    }
+
+    private void AtualizarOperadorParaAcaoAtual()
+    {
+        int? operadorIdAlvo = null;
+
+        if (_dto.TipoAcaoPortaria == TipoAcaoPortariaEnum.Entrada_1)
+        {
+            // Se já tiver Operador1 gravado, usa ele. Senão, tenta o OperadorIdInicial ou o usuário logado
+            operadorIdAlvo = Colaborador.Operador1 ?? OperadorIdInicial;
+        }
+        else if (_dto.TipoAcaoPortaria == TipoAcaoPortariaEnum.Saida_1)
+        {
+            // Se já tiver Operador2 gravado, usa ele. Senão, tenta o OperadorIdInicial ou o usuário logado
+            operadorIdAlvo = Colaborador.Operador2 ?? OperadorIdInicial;
+        }
+
+        if (operadorIdAlvo.HasValue && ListPorteiroOperador.Any())
+        {
+            _operadorSelecionado = ListPorteiroOperador.FirstOrDefault(x => x.PoreteiroID == operadorIdAlvo.Value);
+        }
+
+        // Se não houver operador vinculado para este apontamento específico, mantém o operador logado atual
+        if (_operadorSelecionado == null)
+        {
+            _operadorSelecionado = ListPorteiroOperador.FirstOrDefault(x => x.PoreteiroID == DataSessionHelper.DataSession.Matricula);
+        }
+
+        if (_operadorSelecionado != null)
+        {
+            _dto.Codigo_OP = _operadorSelecionado.PoreteiroID;
+        }
+    }
+
+    private void OnOrigemDadosChanged(bool pegarCatraca)
+    {
+        _dto.PegarDadosCatraca = pegarCatraca;
+
+        if (pegarCatraca)
+        {
+            _dto.HoraDaAcao = null;
+        }
+        else
+        {
+            _dto.HoraDaAcao = DateTime.Now.ToString("HH:mm");
+        }
+    }
+
+    private void Submit()
+    {
+        if (_operadorSelecionado != null)
+        {
+            _dto.Codigo_OP = _operadorSelecionado.PoreteiroID;
+        }
+
+        MudDialog.Close(DialogResult.Ok(_dto));
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private void OnTipoAcaoChanged(TipoAcaoPortariaEnum novoTipo)
+    {
+        _dto.TipoAcaoPortaria = novoTipo;
+
+        // Atualiza o operador responsável com base no histórico da Entrada ou Saída específica
+        AtualizarOperadorParaAcaoAtual();
+
+        // Se estiver no modo manual, atualiza o campo de horário com o valor correspondente do colaborador
+        if (!_dto.PegarDadosCatraca)
+        {
+            if (novoTipo == TipoAcaoPortariaEnum.Entrada_1)
+            {
+                _dto.HoraDaAcao = !string.IsNullOrEmpty(Colaborador.HoraEntrada)
+                    ? Colaborador.HoraEntrada
+                    : DateTime.Now.ToString("HH:mm");
+            }
+            else if (novoTipo == TipoAcaoPortariaEnum.Saida_1)
+            {
+                _dto.HoraDaAcao = !string.IsNullOrEmpty(Colaborador.HoraSaida)
+                    ? Colaborador.HoraSaida
+                    : DateTime.Now.ToString("HH:mm");
+            }
+        }
+    }
+
+    private async Task<IEnumerable<PorteiroOperadorDto>> SearchOperadoresAsync(string value, CancellationToken token)
+    {
+        await Task.Delay(5, token);
+
+        if (string.IsNullOrEmpty(value))
+            return ListPorteiroOperador;
+
+        return ListPorteiroOperador.Where(x => x.Nome?.Contains(value, StringComparison.InvariantCultureIgnoreCase) ?? false);
+    }
+}
