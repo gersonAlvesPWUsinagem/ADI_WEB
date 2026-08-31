@@ -1,8 +1,16 @@
 ﻿@page "/glpi/termo-concessao"
+
 @attribute [Authorize]
 
-@inject ISnackbar Snackbar
+@using ADI_WEB.Components.Layout
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.Extensions.Logging
+@inject IDataSessionHelper DataSessionHelper
+@inject AuthenticationStateProvider AuthenticationStateProvider
 @inject IJSRuntime JS
+
+@* inject ISnackbar Snackbar
+inject IJSRuntime JS *@
 @inject IGeradorTermoService GeradorTermoService
 
 <h3>Gerador de Termos</h3>
@@ -12,8 +20,15 @@
         <MudIcon Icon="@ObterIconeTitulo()" Size="Size.Large" Class="mr-2" />
         @ObterTituloDinamico()
     </MudText>
-
-    <MudTabs ActivePanelIndexChanged="OnTabChanged" Elevation="3" Rounded="true" ApplyEffectsToContainer="true" Color="Color.Primary" Dense="true">
+    @if (!_carregando)
+    {
+        <MudPaper Class="d-flex justify-center flex-grow-1 gap-4" Elevation="0">
+            <MudProgressCircular Size="Size.Large" Color="Color.Primary" Indeterminate="true" />
+        </MudPaper>
+    }
+    else
+    {
+        <MudTabs ActivePanelIndexChanged="OnTabChanged" Elevation="3" Rounded="true" ApplyEffectsToContainer="true" Color="Color.Primary">
 
         @* TAB 0: NOTEBOOK *@
         <MudTabPanel Text="Notebook" Icon="@Icons.Material.Filled.Laptop">
@@ -349,6 +364,7 @@
         </MudTabPanel>
 
     </MudTabs>
+    }
 </MudContainer>
 
 @code {
@@ -356,6 +372,7 @@
     private bool _isDevolucao = false;
     private int _tabIndex = 0;
     private string _tipoDocumento = "CPF";
+    private bool _carregado = false;
 
     // Prefixo selecionado pelo usuário (padrão: NT)
     private string _prefixoPatrimonio = "NT";
@@ -366,6 +383,36 @@
     private TermoEmprestimoTelefoneDto dtoTelefone = new();
     private TermoEmprestimoChipDto dtoChip = new();
     private TermoEntregaAcessosDto dtoAcessos = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        Loading.Show();
+        var liberar = false;
+        try
+        {
+            _carregando = liberar;
+            var data = await this.GeradorTermoService.IndexAsync();
+
+            if (!data.Success)
+            {
+                Snackbar.Add(data?.Message ?? "", Severity.Error);
+                liberar = false;
+                return;
+            }
+            liberar = true;
+        }catch(Exception ex)
+        {
+            liberar = false;
+            Snackbar.Add(ex.Message, Severity.Error);
+            return;
+        }
+        finally
+        {
+            _carregando = liberar;
+            Loading.Hide();
+            StateHasChanged();
+        }
+    }
 
     private void OnTabChanged(int index)
     {

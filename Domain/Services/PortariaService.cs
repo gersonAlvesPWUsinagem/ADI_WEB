@@ -13,19 +13,85 @@ namespace Domain.Services
         {
         }
 
-        public async Task<ApiDataService<IEnumerable<ControlePessoaDto>>> GetColaboradorControladoAsync()
+        public async Task<ApiDataService<List<ControlePessoaDto>>> GetColaboradorControladoAsync()
         {
-            var result = await GetAsync<IEnumerable<ControlePessoaDto>>("portaria/get-colaborador-controlado");
+            var result = await GetAsync<List<ControlePessoaDto>>("portaria/get-colaborador-controlado");
             return result;
         }
-        public async Task<ApiDataService<ControlePessoa>> PatchRegistrarHorasAsync(ApontarHrEntradaSaidaDto data)
+        public async Task<ApiDataService<List<ControlePessoaDto>>> GetColaboradorControladoPorDataAsync(DateTime? dataReferencia = null)
         {
-            var result = await PatchAsync<ControlePessoa>("Portaria/RegistrarHoras", data);
+            string url = "portaria/get-colaborador-controlado-por-data";
+            if (dataReferencia.HasValue)
+            {
+                // Envia a data no formato ISO padrão (yyyy-MM-dd) para evitar problemas de parsing na API
+                url += $"?data={dataReferencia.Value:yyyy-MM-dd}";
+            }
+
+            // Altere aqui para deserializar diretamente para a List, e não para ApiDataService<List>
+            var result = await GetAsync<List<ControlePessoaDto>>(url);
+
             return result;
         }
-        public async Task<ApiDataService<string>> PostGerarListaDeApontamentAsync(string geradoPor)
+        public Task<ApiDataService<List<ColaboradoresControladosDto>>> GetColaboradoresAsync() =>
+            GetAsync<List<ColaboradoresControladosDto>>("portaria/get-colaboradores");
+
+        public Task<ApiDataService<ColaboradoresControladosDto>> AlternarControleColaboradorAsync(ColaboradoresControladosDto colaborador) =>
+            PatchAsync<ColaboradoresControladosDto>("portaria/patch-controle-colaborador", new
+            {
+                Id = colaborador.ControladoId,
+                PessoaId = 0,
+                EmpFil = colaborador.EMPFIL,
+                Matricula = colaborador.MATRICULA,
+                DataCadastro = DateTime.Now
+            });
+        public async Task<ApiDataService<List<PorteiroOperadorDto>>> GetPorteiroOperadorAsync()
         {
-            var result = await PostAsync<string>(geradoPor!, "Portaria");
+            var result = await GetAsync<List<PorteiroOperadorDto>>("portaria/get-porteiro-operador");
+            return result;
+        }
+        public async Task<ApiDataService<List<PorteiroOperadorDto>>> GetPorteiroOperadorCompAsync()
+        {
+            var result = await GetAsync<List<PorteiroOperadorDto>>("portaria/get-porteiro-operador-componente");
+            return result;
+        }
+        public Task<ApiDataService<PorteiroOperadorDto>> LoginPorteiroOperadorAsync(int operadorId, string senha) =>
+            PostAsync<PorteiroOperadorDto>("portaria/login-porteiro-operador", new { OperadorId = operadorId, Senha = senha });
+
+        public Task<ApiDataService<PorteiroOperadorDto>> AdicionarPorteiroOperadorAsync(PorteiroOperadorDto dto) =>
+            PostAsync<PorteiroOperadorDto>("portaria/post-porteiro-operador", dto);
+
+        public Task<ApiDataService<bool>> AtualizarPorteiroOperadorAsync(PorteiroOperadorDto dto) =>
+            PutAsync<bool>($"portaria/put-porteiro-operador/{dto.PoreteiroID}", dto);
+
+        public Task<ApiDataService<bool>> DeletarPorteiroOperadorAsync(int id) =>
+            DeleteAsync<bool>($"portaria/delete-porteiro-operador/{id}");
+        public async Task<ApiDataService<ControlePessoa>> PutRegistrarHorasAsync(ResistrarEntradaSaidaDto data)
+        {
+            ApiDataService<ControlePessoa> result = new();
+
+            result = await PutAsync<ControlePessoa>("portaria/put-registrar-entrada-saida", data);
+
+            return result;
+        }
+        public async Task<ApiDataService<ControlePessoa>> PutAlterarHorasAsync(ResistrarEntradaSaidaDto data)
+        {
+            ApiDataService<ControlePessoa> result = new();
+
+            result = await PutAsync<ControlePessoa>("portaria/put-alterar-entrada-saida", data);
+
+            return result;
+        }
+        public async Task<ApiDataService<bool>> PostGerarListaDeApontamentAsync(DataSession data)
+        {
+            ApiDataService<bool> result = new();
+
+            result = await PostAsync<bool>("portaria/post-gerar-lista-apontados", data);
+            return result;
+        }
+        public async Task<ApiDataService<(byte[] Conteudo, string MimeType, string NomeArquivo, bool IsInline)>> GerarRelatorioControlePessoaAsync(string formato, DateTime dataInicial, DateTime dataFinal, List<string> matriculas)
+        {
+            var result= await PostForFileAsync("portaria/exportar-relatorio-controle-pessoa", new { Formato = formato, DataInicial = dataInicial, DataFinal = dataFinal, Matriculas= matriculas }, $"Relatorio_Controle_Pessoa.{formato.ToLowerInvariant()}");
+
             return result;
         }
         public async Task<ApiDataService<ControlePessoa>> PatchRegistrarOcorrenciaAsync(PortariaOcorrenciaDto data)
@@ -38,186 +104,5 @@ namespace Domain.Services
             var result = await GetAsync<IEnumerable<ColaboradoresControladosDto>>("/portaria");
             return result;
         }
-
-        
-
-        //public async Task<ApiDataService<ColaboradoresControladosDto>> PatchAtivarControleColaboradorAsync(IncluirRemoverColaboradoresControladoDTO data)
-        //{
-        //    try
-        //    {
-        //        var result = await _requestResponse.PatchAsync<IncluirRemoverColaboradoresControladoDTO, ApiDataService<ColaboradoresControladosDto>>("/portaria", data);
-        //        return result;
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        return new ApiDataService<ColaboradoresControladosDto>
-        //        {
-        //            IsError = true,
-        //            MessageError = ex.Message,
-        //        };
-        //    }
-        //}
-
-        //public async Task<ApiDataService<PortariaRegistro>> PostPortariaRegistroColaboradorAsync(PortariaRegistroColaboradorDto portariaRegistroColaboradorDto)
-        //{
-        //    try
-        //    {
-        //        var data = new PortariaRegistro
-        //        {
-        //            COLABORADOR_CONDUTOR = portariaRegistroColaboradorDto.ColaboradorCondutor!.ToUpper(),
-        //            MATRICULA = portariaRegistroColaboradorDto.Matricula!.ToUpper(),
-        //            DEPARTAMENTO_EMPRESA = portariaRegistroColaboradorDto.DepartamentoEmpresa!.ToUpper(),
-        //            DOCUMENTO = portariaRegistroColaboradorDto.Documento!.ToUpper(),
-        //            TIPO = TipoRegistroEnum.COLABORADOR,
-        //        };
-        //        var result = await _requestResponse.PostAsync<PortariaRegistro, ApiDataService<PortariaRegistro>>(data!, "/PortariaRegistro/PostCreate");
-        //        if (result == null || result.IsError)
-        //            return result!;
-
-        //        return result;
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        return new ApiDataService<PortariaRegistro>
-        //        {
-        //            IsError = true,
-        //            MessageError = ex.Message
-        //        };
-        //    }
-        //}
-        //public async Task<ApiDataService<string>> PostGerarListaDeApontamentAsync(string geradoPor)
-        //{
-        //    try
-        //    {
-
-        //        var result = await _requestResponse.PostAsync<string, ApiDataService<string>>(geradoPor!, "/portaria");
-        //        if (result == null || result.IsError)
-        //            return result!;
-
-        //        return result;
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        return new ApiDataService<string>
-        //        {
-        //            IsError = true,
-        //            MessageError = ex.Message
-        //        };
-        //    }
-        //}
-
-        //public async Task<ApiDataService<PortariaRegistro>> PutPortariaRegistroColaboradorAsync(PortariaRegistroColaboradorDto portariaRegistroColaboradorDto)
-        //{
-        //    try
-        //    {
-        //        var data = new PortariaRegistro
-        //        {
-        //            REGISTROID = portariaRegistroColaboradorDto.RegistroID,
-        //            COLABORADOR_CONDUTOR = portariaRegistroColaboradorDto.ColaboradorCondutor!.ToUpper(),
-        //            MATRICULA = portariaRegistroColaboradorDto.Matricula!.ToUpper(),
-        //            DEPARTAMENTO_EMPRESA = portariaRegistroColaboradorDto.DepartamentoEmpresa!.ToUpper(),
-        //            DOCUMENTO = portariaRegistroColaboradorDto.Documento!.ToUpper(),
-        //            TIPO = TipoRegistroEnum.COLABORADOR,
-        //        };
-        //        var result = await _requestResponse.PutAsync<PortariaRegistro, ApiDataService<PortariaRegistro>>(data, "/PortariaRegistro/PutUpdate");
-        //        return result;
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        return new ApiDataService<PortariaRegistro>
-        //        {
-        //            IsError = true,
-        //            MessageError = ex.Message
-        //        };
-        //    }
-        //}
-
-        //public async Task<ApiDataService<IEnumerable<PortariaRegistro>>> GetAtivosAsync()
-        //{
-        //    try
-        //    {
-        //        var result = await _requestResponse.GetAsync<ApiDataService<IEnumerable<PortariaRegistro>>>("/PortariaRegistro/GetAtivos");
-        //        if (result == null || result.IsError)
-        //            return new ApiDataService<IEnumerable<PortariaRegistro>>
-        //            {
-        //                IsError = true,
-        //                MessageError = result?.MessageError ?? "Erro desconhecido"
-        //            };
-
-        //        return new ApiDataService<IEnumerable<PortariaRegistro>>
-        //        {
-        //            Data = result.Data,
-        //            IsError = result.IsError,
-        //            MessageError = result.MessageError
-        //        };
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        return new ApiDataService<IEnumerable<PortariaRegistro>>
-        //        {
-        //            IsError = true,
-        //            MessageError = ex.Message
-        //        };
-        //    }
-        //}
-
-        //public async Task<ApiDataService<IEnumerable<TodosColaboradoresControladosDto>>> GetTodosColaboradoresControladosAsync()
-        //{
-        //    try
-        //    {
-        //        var result = await _requestResponse.GetAsync<ApiDataService<IEnumerable<TodosColaboradoresControladosDto>>>("/portaria/GetTodosColaboradoresControlados");
-
-        //        return result;
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        return new ApiDataService<IEnumerable<TodosColaboradoresControladosDto>>
-        //        {
-        //            IsError = true,
-        //            MessageError = ex.Message
-        //        };
-        //    }
-        //}
-        //public async Task<ApiDataService<IEnumerable<ColaboradoresControladosRelDto>>> GetColaboradoresControladosRelAsync(ColaboradoresControladosRelGridDto data)
-        //{
-        //    try
-        //    {
-        //        var result =  await _requestResponse
-        //            .PostAsync<ColaboradoresControladosRelGridDto, ApiDataService<IEnumerable<ColaboradoresControladosRelDto>>>
-        //            (data!,"/portaria/GetColaboradoresControladosRel");
-
-        //        return result;
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        return new ApiDataService<IEnumerable<ColaboradoresControladosRelDto>>
-        //        {
-        //            IsError = true,
-        //            MessageError = ex.Message
-        //        };
-        //    }
-        //}
-        //public async Task<ApiDataService<bool>> PatchPortariaRegistroColaboradorAsync(int id)
-        //{
-        //    try
-        //    {
-        //        var result = await _requestResponse.PatchAsync<bool, ApiDataService<bool>>($"/PortariaRegistro/ToggleAtivo/{id}", false);
-        //        if (result == null || result.IsError)
-        //            return new ApiDataService<bool>
-        //            {
-        //                IsError = true,
-        //                MessageError = result?.MessageError ?? "Erro desconhecido"
-        //            };
-        //        return result;
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        return new ApiDataService<bool>
-        //        {
-        //            IsError = true,
-        //            MessageError = ex.Message
-        //        };
-        //    }
-        //}
     }
 }

@@ -14,6 +14,13 @@
 <MudSnackbarProvider />
 
 <MudLayout>
+    @if (Loading.IsLoading)
+    {
+        <MudProgressLinear Color="Color.Secondary"
+                           Indeterminate="true"
+                           Size="Size.Small"
+                           Style="position: absolute; top: 0; left: 0; right: 0; z-index: 2000; height: 4px;" />
+    }
     @if (ShowAppBar)
     {
         <MudAppBar Elevation="1" Dense=true>
@@ -112,7 +119,10 @@
             }
             else
             {
-                <MudIconButton Icon="@Icons.Material.Filled.Login" Color="Color.Inherit" OnClick="@(() => Navigation.NavigateTo("/user/login"))" />
+                <MudIconButton  Icon="@Icons.Material.Filled.Login" Color="Color.Inherit" OnClick="@(() => Navigation.NavigateTo("/user/login"))" >
+                   
+                </MudIconButton>
+                <MudText Typo="Typo.caption" Class="ml-1">Login</MudText>
             }
 
            
@@ -171,7 +181,15 @@
         Navigation.LocationChanged += OnLocationChanged;
         AuthenticationStateProvider.AuthenticationStateChanged += OnAuthenticationStateChanged;
 
+        // Mantenha APENAS esta linha registrada:
+        Loading.OnChange += OnLoadingChanged;
+
         await LoadAuthenticationStateAsync();
+    }
+
+    private async void OnLoadingChanged()
+    {
+        await InvokeAsync(StateHasChanged);
     }
 
     private async Task EfetuarLogout()
@@ -272,6 +290,7 @@
     {
         Navigation.LocationChanged -= OnLocationChanged;
         AuthenticationStateProvider.AuthenticationStateChanged -= OnAuthenticationStateChanged;
+        Loading.OnChange -= OnLoadingChanged;
     }
 
     private readonly PaletteLight _lightPalette = new()

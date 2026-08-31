@@ -1,9 +1,10 @@
 ﻿<MudDialog>
     <DialogContent>
-        <MudText>@ContentText</MudText>
+        <!-- Alterado de @ContentText para renderizar marcações HTML corretamente -->
+        <MudText>@((MarkupString)ContentText)</MudText>
     </DialogContent>
     <DialogActions>
-        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton OnClick="Cancel">Cancelar</MudButton>
         <MudButton Color="@Color" Variant="Variant.Filled" OnClick="Submit">@ButtonText</MudButton>
     </DialogActions>
 </MudDialog>
@@ -16,7 +17,6 @@
     [Parameter] public string ButtonText { get; set; } = string.Empty;
 
     [Parameter] public Color Color { get; set; }
-    [Parameter] public Icons Icon { get; set; } = default!;
 
     private void Submit() => MudDialog.Close(DialogResult.Ok(true));
 

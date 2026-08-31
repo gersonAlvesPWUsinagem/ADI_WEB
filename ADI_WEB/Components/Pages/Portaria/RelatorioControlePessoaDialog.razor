@@ -1,0 +1,90 @@
+@using Domain.Dtos.Portaria
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <!-- Área dinâmica que exibe os dias e alerta se passar de 30 -->
+        @if (TotalDias > 30)
+        {
+            <MudText Typo="Typo.body2" Color="Color.Error" Class="mb-3">
+                <b>Atenção:</b> O período selecionado é de <b>@TotalDias dias</b>. Períodos superiores a 30 dias podem deixar o relatório muito extenso ou demorar para carregar.
+            </MudText>
+        }
+        else
+        {
+            <MudText Typo="Typo.body2" Color="Color.Success" Class="mb-3">
+                Período selecionado: <b style="font-size:16px">@TotalDias dias</b> (de Domingo a Sábado).
+            </MudText>
+        }
+
+        <MudDatePicker @bind-Date="_dataInicial"
+                       Label="Data inicial (Domingo)"
+                       DateFormat="dd/MM/yyyy"
+                       Editable="true"
+                       Variant="Variant.Outlined" />
+
+        <MudDatePicker @bind-Date="_dataFinal"
+                       Label="Data final (Sábado)"
+                       DateFormat="dd/MM/yyyy"
+                       Editable="true"
+                       Variant="Variant.Outlined"
+                       Class="mt-3" />
+
+        <MudSelect T="string" @bind-Value="_formato" Label="Formato" Variant="Variant.Outlined" Class="mt-3">
+            <MudSelectItem Value="@("PDF")">PDF</MudSelectItem>
+            <MudSelectItem Value="@("EXCEL")">Excel</MudSelectItem>
+        </MudSelect>
+
+        <!-- Flag para trazer somente as opções filtradas -->
+        <MudCheckBox @bind-Value="_filtrarApenasSelecionados"
+                     Label="Trazer somente as opções filtradas"
+                     Color="Color.Primary"
+                     Class="mt-3" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancelar</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Submit">Gerar relatório</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    private DateTime? _dataInicial = DateTime.Today.AddDays(-(int)DateTime.Today.DayOfWeek);
+    private DateTime? _dataFinal = DateTime.Today.AddDays(6 - (int)DateTime.Today.DayOfWeek);
+    private string _formato = "PDF";
+    private bool _filtrarApenasSelecionados = false; // Flag para a opção de filtro
+
+    // Propriedade calculada para retornar a quantidade de dias dinamicamente
+    private int TotalDias
+    {
+        get
+        {
+            if (!_dataInicial.HasValue || !_dataFinal.HasValue) return 0;
+            var dias = (_dataFinal.Value.Date - _dataInicial.Value.Date).Days + 1;
+            return dias > 0 ? dias : 0;
+        }
+    }
+
+    private void Submit()
+    {
+        if (!_dataInicial.HasValue || !_dataFinal.HasValue)
+        {
+            Snackbar.Add("Selecione ambas as datas.", Severity.Warning);
+            return;
+        }
+
+        var inicio = _dataInicial.Value.Date;
+        var fim = _dataFinal.Value.Date;
+
+        MudDialog.Close(DialogResult.Ok(new RelatorioControlePessoaRequestDto
+        {
+            Formato = _formato,
+            DataInicial = inicio,
+            DataFinal = fim,
+            FiltrarApenasSelecionados = _filtrarApenasSelecionados // Certifique-se de ter essa propriedade no seu DTO
+        }));
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+}

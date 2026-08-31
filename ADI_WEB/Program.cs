@@ -47,6 +47,11 @@ builder.Services.AddScoped<IGeradorTermoService, GeradorTermoService>();
 builder.Services.AddScoped<IPortariaService, PortariaService>();
 
 builder.Services.AddScoped<SnackbarComp>();
+builder.Services.AddScoped<LoadingHelper>();
+
+builder.Services.AddSingleton<AtualizacaoPortariaNotifier>();
+
+builder.Services.AddHostedService<GerarApontamentosDiariosHostedService>();
 #endregion
 
 #region [ Autenticação e Autorização (JWT via Cookie) ]

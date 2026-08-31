@@ -1,0 +1,130 @@
+@attribute [Authorize]
+@page "/portaria/gerenciamento-operadores"
+@using ADI_WEB.Components.Layout
+
+<PageTitle>Gerenciamento de Operadores</PageTitle>
+
+<HeaderComponent Title="Gerenciamento de Operadores"
+                 TextBtn1="Novo operador"
+                 IconBtn1="@Icons.Material.Filled.PersonAdd"
+                 ColorBtn1="Color.Primary"
+                 IsVisibleOrNotBtn1="true"
+                 OnBtn1Click="NovoOperador" />
+
+<MudPaper Class="pa-4" Elevation="1">
+    <MudTable Items="_operadores" Hover="true" Dense="true" Loading="_carregando">
+        <HeaderContent>
+            <MudTh>Nome</MudTh>
+            <MudTh>Código</MudTh>
+            <MudTh>Ações</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd DataLabel="Nome">@context.Nome</MudTd>
+            <MudTd DataLabel="Código">@context.Codigo</MudTd>
+            <MudTd DataLabel="Ações">
+                <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Warning" OnClick="@(() => Editar(context))" />
+                <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" OnClick="@(() => Excluir(context))" />
+            </MudTd>
+        </RowTemplate>
+        <NoRecordsContent><MudText>Nenhum operador cadastrado.</MudText></NoRecordsContent>
+    </MudTable>
+</MudPaper>
+
+@code {
+    [Inject] private IPortariaService PortariaService { get; set; } = default!;
+
+    private List<PorteiroOperadorDto> _operadores = [];
+    private bool _carregando;
+
+    protected override async Task OnInitializedAsync() => await CarregarAsync();
+
+    private async Task CarregarAsync()
+    {
+        _carregando = true;
+        StateHasChanged();
+
+        try
+        {
+            var result = await PortariaService.GetPorteiroOperadorAsync();
+            if (result.Success)
+                _operadores = result.Value ?? [];
+            else
+                Snackbar.Add(result.Message ?? "Não foi possível carregar os operadores.", Severity.Error);
+        }
+        finally
+        {
+            _carregando = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task NovoOperador()
+    {
+        await AbrirEditor(new PorteiroOperadorDto { Codigo = Guid.NewGuid() });
+    }
+
+    private async Task Editar(PorteiroOperadorDto operador) => await AbrirEditor(new PorteiroOperadorDto
+    {
+        PoreteiroID = operador.PoreteiroID,
+        Codigo = operador.Codigo,
+        Nome = operador.Nome
+    });
+
+    private async Task AbrirEditor(PorteiroOperadorDto operador)
+    {
+        Loading.Show();
+        try
+        {
+            var parameters = new DialogParameters<EditorOperadorDialog> { { x => x.Operador, operador } };
+            var dialog = await DialogService.ShowAsync<EditorOperadorDialog>("Operador", parameters, new DialogOptions { FullWidth = true, MaxWidth = MaxWidth.Small });
+            var result = await dialog.Result;
+
+            if (result is null || result.Canceled || result.Data is not PorteiroOperadorDto dto)
+                return;
+
+            bool sucesso;
+            string? mensagem;
+
+            if (dto.PoreteiroID == 0)
+            {
+                var response = await PortariaService.AdicionarPorteiroOperadorAsync(dto);
+                sucesso = response.Success;
+                mensagem = response.Message;
+            }
+            else
+            {
+                var response = await PortariaService.AtualizarPorteiroOperadorAsync(dto);
+                sucesso = response.Success;
+                mensagem = response.Message;
+            }
+
+            Snackbar.Add(mensagem ?? "Operação concluída.", sucesso ? Severity.Success : Severity.Error); // Corrigido duplicidade de Severity se houver, mantendo o padrão
+
+            if (sucesso)
+                await CarregarAsync();
+        }
+        finally
+        {
+            Loading.Hide();
+        }
+    }
+
+    private async Task Excluir(PorteiroOperadorDto operador)
+    {
+        bool confirmado = await DialogService.ShowMessageBoxAsync("Excluir operador", $"Excluir {operador.Nome}?", yesText: "Excluir", cancelText: "Cancelar") ?? false;
+        if (!confirmado) return;
+
+        Loading.Show();
+        try
+        {
+            var result = await PortariaService.DeletarPorteiroOperadorAsync(operador.PoreteiroID);
+            Snackbar.Add(result.Message ?? "Operação concluída.", result.Success ? Severity.Success : Severity.Error);
+            if (result.Success)
+                await CarregarAsync();
+        }
+        finally
+        {
+            Loading.Hide();
+        }
+    }
+}

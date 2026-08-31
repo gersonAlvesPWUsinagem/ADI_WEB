@@ -18,8 +18,10 @@ namespace Domain.Dtos.Portaria
         public string? SetorName { get; set; }
         public string? HoraEntrada { get; set; }
         public string? HoraSaida { get; set; }
-        public string? Operador1 { get; set; }
-        public string? Operador2 { get; set; }
+        public string? NomeOperador1 { get; set; }
+        public int? Operador1 { get; set; }
+        public string? NomeOperador2 { get; set; }
+        public int? Operador2 { get; set; }
         public string? DataOcorrencia { get; set; }
         public string? DataApEntrada { get; set; }
         public string? DataApSaida { get; set; }
@@ -27,12 +29,13 @@ namespace Domain.Dtos.Portaria
         public string? DataScSaida { get; set; }
         public string? Ocorrencia { get; set; }
 
-        public string? Operador1Display => Operador1?.Split(' ')[0];
-        public string? Operador2Display => Operador2?.Split(' ')[0];
+        public string? Operador1Display => NomeOperador1?.Split(' ')[0];
+        public string? Operador2Display => NomeOperador2?.Split(' ')[0];
 
         [NotMapped]
         public bool OcorrenciaEntrada { get; set; }
         [NotMapped]
         public bool OcorrenciaSaida { get; set; }
     }
+
 }

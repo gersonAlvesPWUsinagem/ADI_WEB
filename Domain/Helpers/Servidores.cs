@@ -28,7 +28,7 @@ public static class Servidores
     // Obtém a URL base definida no seu dicionário de Servidores
      //private const string ChaveWindows = "IP CASA 2";
      //private const string ChaveWindows = "REDE VIZINHO";
-   private const string ChaveWindows = "SERVER MEU PW NEW NIP";
+  private const string ChaveWindows = "SERVER MEU PW NEW NIP";
 #else
         //private const string ChaveWindows = "IP CASA 2";
         private const string ChaveWindows = "PRODUÇÃO 2";

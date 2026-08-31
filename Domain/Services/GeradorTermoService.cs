@@ -1,4 +1,5 @@
-﻿using Domain.Dtos.Termos;
+﻿using Domain.Dtos.Portaria;
+using Domain.Dtos.Termos;
 using Domain.Helpers;
 using Domain.Interfaces;
 
@@ -44,6 +45,14 @@ namespace Domain.Services
         public async Task<ApiDataService<(byte[] Conteudo, string MimeType, string NomeArquivo, bool IsInline)>> GerarTermoDevolucaoTelefoneAsync(TermoEmprestimoTelefoneDto dto)
         {
             return await PostForFileAsync("Termos/termo-devolucao-telefone", dto, "termo-devolucao-celular.pdf");
+        }
+
+        public async Task<ApiDataService<bool>> IndexAsync()
+        {
+            //Termos
+            var result = await GetAsync<bool>("Termos");
+
+            return result;
         }
     }
 }

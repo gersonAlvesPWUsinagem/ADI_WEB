@@ -126,11 +126,15 @@
             _itemSelected.HoraEntrada = Element.HoraEntrada;
             _itemSelected.HoraSaida = Element.HoraSaida;
             _itemSelected.Ocorrencia = Element.Ocorrencia;
-            _itemSelected.Operador1 = Element.Operador1;
-            _itemSelected.Operador2 = Element.Operador2;
             _itemSelected.DataApEntrada = Element.DataApEntrada;
             _itemSelected.DataApSaida = Element.DataApSaida;
             _itemSelected.Nome = Element.NOME;
+
+            // Se já tem entrada, o foco principal muda para a saída ou validação de movimento
+            if (!string.IsNullOrEmpty(Element.HoraEntrada) && string.IsNullOrEmpty(Element.HoraSaida))
+            {
+                TypeOcorrencia = false; // Indica que a ação atual é de Saída
+            }
         }
 
         await base.OnInitializedAsync();
@@ -171,25 +175,26 @@
         _itemSelected.Id = Element.ID;
 
         // A lógica de setar o operador deve ser baseada em qual ocorrência está ativa no ELEMENT
-        _itemSelected.Operador1 = Element.OcorrenciaEntrada ? Operador : null;
-        _itemSelected.Operador2 = Element.OcorrenciaSaida ? Operador : null;
+        // _itemSelected.Operador1 = Element.OcorrenciaEntrada ? Operador : null;
+        // _itemSelected.Operador2 = Element.OcorrenciaSaida ? Operador : null;
 
         // Validações ajustadas (Mensagens UX)
-        if (Element.OcorrenciaEntrada && string.IsNullOrEmpty(_itemSelected.Operador1))
-        {
-            _snackbarComp.Message("Não foi possível identificar o operador. Recarregue a página.", Severity.Error, Color.Error);
-            isValid = false;
-        }
-        else if (Element.OcorrenciaEntrada && string.IsNullOrEmpty(_itemSelected.HoraEntrada))
+        // if (Element.OcorrenciaEntrada && string.IsNullOrEmpty(_itemSelected.Operador1))
+        // {
+        //     _snackbarComp.Message("Não foi possível identificar o operador. Recarregue a página.", Severity.Error, Color.Error);
+        //     isValid = false;
+        // }
+        // else 
+        if (Element.OcorrenciaEntrada && string.IsNullOrEmpty(_itemSelected.HoraEntrada))
         {
             _snackbarComp.Message("Por favor, informe o horário de **ENTRADA**.", Severity.Error, Color.Error);
             isValid = false;
         }
-        else if (Element.OcorrenciaSaida && string.IsNullOrEmpty(_itemSelected.Operador2)) // Corrigido de Operador1 para Operador2 se a ocorrência é de SAÍDA
-        {
-            _snackbarComp.Message("Não foi possível identificar o operador. Recarregue a página.", Severity.Error, Color.Error);
-            isValid = false;
-        }
+        // else if (Element.OcorrenciaSaida && string.IsNullOrEmpty(_itemSelected.Operador2)) // Corrigido de Operador1 para Operador2 se a ocorrência é de SAÍDA
+        // {
+        //     _snackbarComp.Message("Não foi possível identificar o operador. Recarregue a página.", Severity.Error, Color.Error);
+        //     isValid = false;
+        // }
         else if (Element.OcorrenciaSaida && string.IsNullOrEmpty(_itemSelected.HoraSaida))
         {
             _snackbarComp.Message("Por favor, informe o horário de **SAÍDA**.", Severity.Error, Color.Error);

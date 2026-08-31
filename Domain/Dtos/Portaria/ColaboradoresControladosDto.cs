@@ -8,8 +8,8 @@ namespace Domain.Dtos.Portaria
 {
     public class ColaboradoresControladosDto
     {
-        public int EMPFIL { get; set; }
-        public int MATRICULA { get; set; }
+        public long EMPFIL { get; set; }
+        public long MATRICULA { get; set; }
         public string? TRADUCAO_CC { get; set; }
         public string? NOME { get; set; }
         public string? DEPARTAMENTO { get; set; }
