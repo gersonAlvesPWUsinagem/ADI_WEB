@@ -1,4 +1,6 @@
 ﻿@attribute [Authorize]
+
+
 @page "/portaria/registrar-entrada-saida-colaborador"
 @using ADI_WEB.Components.Layout
 @using Microsoft.AspNetCore.Components.Authorization
@@ -10,24 +12,44 @@
 @*implements IDisposable*@
 @inject AtualizacaoPortariaNotifier AtualizacaoPortariaNotifier
 
-<HeaderComponent Title="Controle de Pessoas"
-                 TextBtn1="Nova lista"
-                 IconBtn1="@Icons.Material.Filled.Approval"
-                 IsVisibleOrNotBtn1="true"
+<AuthorizedDialog/>
+
+<HeaderComponent Title="Controle de Pessoas" Modulo="ModuloEnum.Comercial" Permission="189"
+                 TextBtn1="Atualizar"
+                 IconBtn1="@Icons.Material.Filled.Refresh"
                  ColorBtn1="@Color.Primary"
-                 OnBtn1Click="GerarListaDeApontamentAsync"
-              
+                 LevelBtn1="1"
+                 OnBtn1Click="AtualizarPaginaAsync"
+                 TextBtn2="Nova lista"
+                 IconBtn2="@Icons.Material.Filled.Approval"
+                 ColorBtn2="@Color.Success"
+                 LevelBtn2="3"
+                 OnBtn2Click="GerarListaDeApontamentAsync"
                  TextBtn3="Relatório"
                  IconBtn3="@Icons.Material.Filled.Assessment"
-                 IsVisibleOrNotBtn3="true"
+                 LevelBtn3="4"
                  ColorBtn3="Color.Tertiary"
                  OnBtn3Click="AbrirRelatorioAsync"
-
+                 TextBtn4="Limpar Filtro"
                  IconBtn4="@Icons.Material.Filled.FilterAltOff"
                  IsVisibleOrNotBtn4="@_isFiltradoPorData"
                  ColorBtn4="Color.Error"
+                 MudFab4="true"
+                 LevelBtn4="1"
                  OnBtn4Click="LimparFiltroDataAsync"
                  Processing=@(!_carregado) />
+
+<MudMessageBox @bind-Visible="_exibirAvisoSenhaProvisoria"
+               Title="Senha provisória"
+               Message="@_mensagemAvisoSenhaProvisoria">
+    <YesButton>
+        <MudButton Color="Color.Warning"
+                   Variant="Variant.Filled"
+                   OnClick="@(() => _exibirAvisoSenhaProvisoria = false)">
+            Entendi
+        </MudButton>
+    </YesButton>
+</MudMessageBox>
 
 
 <!-- Filtro de Meses -->
@@ -42,13 +64,12 @@
             <MudChip Value="13" Disabled="@(!(Elements != null && Elements.Any()))">Todos</MudChip>
             @foreach (var mes in MesesAbreviados)
             {
-                <MudChip Value="@mes.Key">@mes.Value</MudChip>
+                <MudChip Value="@mes.Key" Color="@(MesExisteNaBase(mes.Key) ? Color.Primary : Color.Default)">@mes.Value</MudChip>
             }
         </MudChipSet>
     </div>
 </MudItem>
 
-<!-- Filtros de Status de Movimentação -->
 <!-- Filtros de Status de Movimentação -->
 <MudPaper Class="pa-4 mb-4" Elevation="1">
     <div class="d-flex align-center justify-space-between flex-wrap gap-4">
@@ -75,7 +96,7 @@
     </div>
 </MudPaper>
 
-@if (!_carregado)
+@if (!_carregado && _somenteAtualizarGrid== false)
 {
     <MudPaper Class="d-flex justify-center flex-grow-1 gap-4" Elevation="0">
         <MudProgressCircular Size="Size.Large" Color="Color.Primary" Indeterminate="true" />
@@ -85,163 +106,162 @@ else
 {
     <MudPaper Class="pa-4" Elevation="1">
         <MudDataGrid T="ControlePessoaDto"
-                 @ref="_dataGrid"
-                 MultiSelection="false"
-                 Items="@GetFilteredItems()"
-                 SortMode="SortMode.Single"
-                 Filterable="false"
-                 QuickFilter="@_quickFilter"
-                 Hideable="false"
-                 RowClick="@RowClicked"
-                 RowContextMenuClick="RowRightClicked"
-                 SelectedItemsChanged="@SelectedItemsChanged"
-                 Dense="true"
-                 Striped="true"
-                 Hover="true"
-                 Bordered="@_bordered">
+                     @ref="_dataGrid"
+                     MultiSelection="false"
+                     Items="@GetFilteredItems()"
+                     SortMode="SortMode.Single"
+                     Filterable="false"
+                     QuickFilter="@_quickFilter"
+                     Hideable="false"
+                     RowClick="@RowClicked"
+                     RowContextMenuClick="RowRightClicked"
+                     SelectedItemsChanged="@SelectedItemsChanged"
+                     Dense="true"
+                     Striped="true"
+                     Hover="true"
+                     Bordered="@_bordered"
+                     Loading=@(!_carregado)>
 
-        <ToolBarContent>
-            <MudPaper Class="d-flex justify-space-between flex-grow-1 gap-4" Elevation="0">                
+            <ToolBarContent>
+                <MudPaper Class="d-flex justify-space-between flex-grow-1 gap-4" Elevation="0">
 
-                <MudTextField Value="@UserName"
-                              Label="Operador"
-                              Placeholder="Nenhum operador autenticado"
-                              Variant="Variant.Outlined"
-                              Margin="Margin.Dense"
-                              ReadOnly="true"
-                              Adornment="Adornment.End"
-                              OnAdornmentClick="AlterarPorteiroAsync"
-                              AdornmentIcon="@Icons.Material.Filled.Person" />
+                    <MudTextField Value="@UserName"
+                                  Label="Operador"
+                                  Placeholder="Nenhum operador autenticado"
+                                  Variant="Variant.Outlined"
+                                  Margin="Margin.Dense"
+                                  ReadOnly="true"
+                                  Adornment="Adornment.End"
+                                  OnAdornmentClick="AlterarPorteiroAsync"
+                                  AdornmentIcon="@Icons.Material.Filled.Person" />
 
-                <MudTextField Label="REF DIA"
-                              Value="@_dataTextoInput"
-                              ValueChanged="@(async (string val) => await OnDataInputChanged(val))"
-                              OnAdornmentClick="PesquisarPorDataDigitada"
-                              @onkeydown="@(async (KeyboardEventArgs e) => { if (e.Key == "Enter") await PesquisarPorDataDigitada(); })"
-                              AdornmentAriaLabel="Pesquisar por data"
-                              AdornmentIcon="@Icons.Material.Filled.Search"
-                              Adornment="Adornment.End"
-                              Variant="Variant.Outlined"
-                              Margin="Margin.Dense"
-                              Placeholder="dd/mm/aaaa" />
+                    <MudTextField Label="REF DIA"
+                                  Value="@_dataTextoInput"
+                                  ValueChanged="@(async (string val) => await OnDataInputChanged(val))"
+                                  OnAdornmentClick="PesquisarPorDataDigitada"
+                                  @onkeydown="@(async (KeyboardEventArgs e) => { if (e.Key == "Enter") await PesquisarPorDataDigitada(); })"
+                                  AdornmentAriaLabel="Pesquisar por data"
+                                  AdornmentIcon="@Icons.Material.Filled.Search"
+                                  Adornment="Adornment.End"
+                                  Variant="Variant.Outlined"
+                                  Margin="Margin.Dense"
+                                  Placeholder="dd/mm/aaaa" />
 
-                <MudTextField @bind-Value="_searchString"
-                              Label="Pesquisar"
-                              Placeholder="Nome, Matrícula ou C. Custo..."
-                              Variant="Variant.Outlined"
-                              Margin="Margin.Dense"
-                              Adornment="Adornment.End"
-                              Immediate="true"
-                              AdornmentIcon="@Icons.Material.Filled.Search"
-                              IconSize="Size.Medium" />
-            </MudPaper>
-        </ToolBarContent>
+                    <MudTextField @bind-Value="_searchString"
+                                  Label="Pesquisar"
+                                  Placeholder="Nome, Matrícula ou C. Custo..."
+                                  Variant="Variant.Outlined"
+                                  Margin="Margin.Dense"
+                                  Adornment="Adornment.End"
+                                  Immediate="true"
+                                  AdornmentIcon="@Icons.Material.Filled.Search"
+                                  IconSize="Size.Medium" />
+                </MudPaper>
+            </ToolBarContent>
 
-        <Columns>
-            <TemplateColumn Title="Ação">
-                <CellTemplate>
-                    <MudStack Row="true" Spacing="1">
-                        <MudIconButton Icon="@Icons.Material.Filled.Approval"
-                                       Color="((string.IsNullOrEmpty(context.Item.HoraEntrada)) && (string.IsNullOrEmpty(context.Item.HoraSaida)) ? Color.Success :
-                                                                                (!string.IsNullOrEmpty(context.Item.HoraEntrada)) && (string.IsNullOrEmpty(context.Item.HoraSaida)) ? Color.Info : Color.Default)"
-                                   OnClick="@(() => ApontarAsync(context.Item))"
-                                   Disabled="@((!string.IsNullOrEmpty(context.Item.HoraEntrada) && !string.IsNullOrEmpty(context.Item.HoraSaida)) || !PodeMovimentarOuEditar(context.Item.DataOcorrencia))" />
+            <Columns>
+                <TemplateColumn Title="Ação">
+                    <CellTemplate>
+                        <MudStack Row="true" Spacing="1">
+                            <MudIconButton Icon="@Icons.Material.Filled.Approval"
+                                           Color="((string.IsNullOrEmpty(context.Item.HoraEntrada)) && (string.IsNullOrEmpty(context.Item.HoraSaida)) ? Color.Success :
+                                                                                                                                                                      (!string.IsNullOrEmpty(context.Item.HoraEntrada)) && (string.IsNullOrEmpty(context.Item.HoraSaida)) ? Color.Info : Color.Default)"
+                                       OnClick="@(() => ApontarAsync(context.Item))"
+                                       Disabled="@((!string.IsNullOrEmpty(context.Item.HoraEntrada) && !string.IsNullOrEmpty(context.Item.HoraSaida)) || !PodeMovimentarOuEditar(context.Item.DataOcorrencia))" />
 
-                    @if (PodeMovimentarOuEditar(context.Item.DataOcorrencia, context.Item.HoraEntrada, context.Item.HoraSaida))
-                        {
-                            <MudIconButton Icon="@Icons.Material.Filled.Edit"
-                                           Color="Color.Warning"
-                                           Disabled=(string.IsNullOrEmpty(context.Item.DataApEntrada))
-                                           OnClick="@(() => AlterarApontamentoAsync(context.Item))" />
-                        }
-                    </MudStack>
-                </CellTemplate>
-            </TemplateColumn>
-
-            <TemplateColumn Title="Status">
-                <CellTemplate>
-                    <MudStack Row Justify="Justify.Center">
-                        @if (!context.Item.OcorrenciaEntrada)
-                        {
-                            if (string.IsNullOrEmpty(context.Item.Ocorrencia))
+                        @if (PodeMovimentarOuEditar(context.Item.DataOcorrencia, context.Item.HoraEntrada, context.Item.HoraSaida))
                             {
-                                <MudChip T="string" Size="Size.Small"
-                                         Color="@(!string.IsNullOrEmpty(context.Item.DataApEntrada) ? Color.Primary : Color.Default)">E</MudChip>
+                                <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                               Color="Color.Warning"
+                                               Disabled=(string.IsNullOrEmpty(context.Item.DataApEntrada))
+                                               OnClick="@(() => AlterarApontamentoAsync(context.Item))" />
+                            }
+                        </MudStack>
+                    </CellTemplate>
+                </TemplateColumn>
+
+                <TemplateColumn Title="Status">
+                    <CellTemplate>
+                        <MudStack Row Justify="Justify.Center">
+                            @if (!context.Item.OcorrenciaEntrada)
+                            {
+                                if (string.IsNullOrEmpty(context.Item.Ocorrencia))
+                                {
+                                    <MudChip T="string" Size="Size.Small"
+                                             Color="@(!string.IsNullOrEmpty(context.Item.DataApEntrada) ? Color.Primary : Color.Default)">E</MudChip>
+                                }
+                                else
+                                {
+                                    <MudIcon Size="Size.Small" Class="mt-1" Color="Color.Warning"
+                                             Icon="@Icons.Material.Filled.ReportGmailerrorred" Title="Registrado Ocorrência na Entrada" />
+                                }
                             }
                             else
                             {
-                                <MudIcon Size="Size.Small" Class="mt-1" Color="Color.Warning"
-                                         Icon="@Icons.Material.Filled.ReportGmailerrorred" Title="Registrado Ocorrência na Entrada" />
+                                <MudIconButton Size="Size.Small"
+                                               Icon="@Icons.Material.Filled.ReportGmailerrorred"
+                                               Color=Color.Error
+                                               OnClick="@(() => OcorrenciaAsync(context.Item))" />
                             }
-                        }
-                        else
-                        {
-                            <MudIconButton Size="Size.Small"
-                                           Icon="@Icons.Material.Filled.ReportGmailerrorred"
-                                           Color=Color.Error
-                                           OnClick="@(() => OcorrenciaAsync(context.Item))"
-                                            />
-                        }
-                        @if (!context.Item.OcorrenciaSaida)
-                        {
-
-                            if (!string.IsNullOrEmpty(context.Item.Ocorrencia) && (context.Item.DataApSaida ?? string.Empty).Length > 0)
+                            @if (!context.Item.OcorrenciaSaida)
                             {
-                                <MudIcon Size="Size.Small"
-                                         Icon="@Icons.Material.Filled.ReportGmailerrorred" Title="Registrado Ocorrência na Entrada" />
+
+                                if (!string.IsNullOrEmpty(context.Item.Ocorrencia) && (context.Item.DataApSaida ?? string.Empty).Length > 0)
+                                {
+                                    <MudIcon Size="Size.Small"
+                                             Icon="@Icons.Material.Filled.ReportGmailerrorred" Title="Registrado Ocorrência na Entrada" />
+                                }
+                                else
+                                {
+                                    <MudChip T="string" Size="Size.Small"
+                                             Color="@(!string.IsNullOrEmpty(context.Item.DataApSaida) ? Color.Primary : Color.Default)">S</MudChip>
+                                }
                             }
                             else
                             {
-                                <MudChip T="string" Size="Size.Small"
-                                         Color="@(!string.IsNullOrEmpty(context.Item.DataApSaida) ? Color.Primary : Color.Default)">S</MudChip>
+                                <MudIconButton Size="Size.Small"
+                                               Icon="@Icons.Material.Filled.ReportGmailerrorred"
+                                               Color=Color.Error
+                                               OnClick="@(() => OcorrenciaAsync(context.Item))" />
                             }
-                        }
-                        else
-                        {
-                            <MudIconButton Size="Size.Small"
-                                           Icon="@Icons.Material.Filled.ReportGmailerrorred"
-                                           Color=Color.Error
-                                           OnClick="@(() => OcorrenciaAsync(context.Item))"
-                                            />
-                        }
-                    </MudStack>
-                </CellTemplate>
-            </TemplateColumn>
+                        </MudStack>
+                    </CellTemplate>
+                </TemplateColumn>
 
-            <PropertyColumn Property="x => x.NOME" Title="NOME">
-                <MudTooltip Text="Delete" />
-            </PropertyColumn>
+                <PropertyColumn Property="x => x.NOME" Title="NOME">
+                    <MudTooltip Text="Delete" />
+                </PropertyColumn>
 
-            <PropertyColumn Property="x => x.Operador1Display" Title="OPER (ENTR)" />
-            <PropertyColumn Property="x => x.HoraEntrada" Title="HR ENTR" />
-            <PropertyColumn Property="x => x.Operador2Display" Title="OPER (SAID)" />
-            <PropertyColumn Property="x => x.HoraSaida" Title="HR SAID" />
-            <PropertyColumn Property="x => x.DataApEntrada" Title="DT AP" />
-            <PropertyColumn Property="x => x.DataOcorrencia" Title="DT RF" />
-        </Columns>
+                <PropertyColumn Property="x => x.Operador1Display" Title="OPER (ENTR)" />
+                <PropertyColumn Property="x => x.HoraEntrada" Title="HR ENTR" />
+                <PropertyColumn Property="x => x.Operador2Display" Title="OPER (SAID)" />
+                <PropertyColumn Property="x => x.HoraSaida" Title="HR SAID" />
+                <PropertyColumn Property="x => x.DataApEntrada" Title="DT AP" />
+                <PropertyColumn Property="x => x.DataOcorrencia" Title="DT RF" />
+            </Columns>
 
-        <PagerContent>
-            <div class="d-flex justify-space-between align-center px-4 py-2 w-100 flex-wrap gap-4">
-                <div class="d-flex align-center gap-2">
-                </div>
-
-                <!-- Exibe os botões de dia apenas se NÃO estiver no modo "Todos" -->
-                @if (_mesSelecionado != 13)
-                {
-                    <div class="d-flex align-center">
-                        <MudIconButton Icon="@Icons.Material.Filled.ChevronLeft" Color="Color.Primary" OnClick="IrParaDiaAnterior"/>
-                        <MudIconButton Icon="@Icons.Material.Filled.ChevronRight" Color="Color.Primary" OnClick="IrParaProximoDia"/>
+            <PagerContent>
+                <div class="d-flex justify-space-between align-center px-4 py-2 w-100 flex-wrap gap-4">
+                    <div class="d-flex align-center gap-2">
                     </div>
-                }
-            </div>
-        </PagerContent>
-        <PagerContent>
-            <MudDataGridPager T="ControlePessoaDto" PageSizeOptions="new int[] { 25, 45, 85, 100 }" />
-        </PagerContent>
-    </MudDataGrid>
+
+                    <!-- Exibe os botões de dia apenas se NÃO estiver no modo "Todos" -->
+                    @if (_mesSelecionado != 13)
+                    {
+                        <div class="d-flex align-center">
+                            <MudIconButton Icon="@Icons.Material.Filled.ChevronLeft" Color="Color.Primary" OnClick="IrParaDiaAnterior" />
+                            <MudIconButton Icon="@Icons.Material.Filled.ChevronRight" Color="Color.Primary" OnClick="IrParaProximoDia" />
+                        </div>
+                    }
+                </div>
+            </PagerContent>
+            <PagerContent>
+                <MudDataGridPager T="ControlePessoaDto" PageSizeOptions="new int[] { 25, 45, 85, 100 }" />
+            </PagerContent>
+        </MudDataGrid>
     </MudPaper>
 
-     <MudPaper Class="pa-4" Elevation="1">
+    <MudPaper Class="pa-4" Elevation="1">
         <MudGrid Class="d-flex justify-start flex-grow-1 gap-4" Spacing="11">
             <MudSwitch Class="ml-10" @bind-Value="_bordered" Color="Color.Warning">Exibir bordas na tabela</MudSwitch>
         </MudGrid>
@@ -253,10 +273,14 @@ else
     private IEnumerable<ControlePessoaDto> ElementsMemory = new List<ControlePessoaDto>();
     private IEnumerable<PorteiroOperadorDto> ListPorteiroOperador = new List<PorteiroOperadorDto>();
     private bool _carregado = false;
+    private bool _somenteAtualizarGrid = false;
+    private bool _exibirAvisoSenhaProvisoria;
+    private string _mensagemAvisoSenhaProvisoria = string.Empty;
     private string? _searchString;
     private string? UserName { get; set; }
     private bool _bordered;
     private Dictionary<int, string> MesesAbreviados { get; set; } = new();
+    private HashSet<int> _mesesDisponiveis = [];
     private int _mesSelecionado;
     private string _filtroStatusMovimentacao = "TODOS";
 
@@ -392,6 +416,7 @@ else
                 }
             }
 
+            await CarregarMesesDisponiveisAsync();
             await ContriMudChip();
             AtualizarFiltroMes();
         }
@@ -569,8 +594,14 @@ else
         var dialog = await DialogService.ShowAsync<LoginOperadorDialog>("Login do operador", parameters, options);
         var result = await dialog.Result;
 
-        if (result is not null && !result.Canceled && result.Data is LoginOperadorDialog.OperadorLoginResultDto login)
+        if (result is not null && !result.Canceled && result.Data is OperadorLoginResultDto login)
         {
+            if (login.SolicitaAlteracaoSenha)
+            {
+                await AbrirAlteracaoSenhaAsync(login.Operador!, login.Senha);
+                return;
+            }
+
             var validacao = await _services.LoginPorteiroOperadorAsync(login.Operador!.PoreteiroID, login.Senha!);
             if (!validacao.Success || validacao.Value is null)
             {
@@ -578,10 +609,52 @@ else
                 return;
             }
 
+            if (validacao.Value.ExigeAlteracaoSenha)
+            {
+                await AbrirAlteracaoSenhaAsync(validacao.Value, login.Senha);
+                return;
+            }
+
+            if (validacao.Value.DataLimiteAlteracaoSenha.HasValue && !validacao.Value.SenhaProvisoriaExpirada)
+            {
+                _mensagemAvisoSenhaProvisoria = validacao.Message ??
+                    $"Sua senha provisória deve ser alterada até {validacao.Value.DataLimiteAlteracaoSenha.Value:dd/MM/yyyy}.";
+                _exibirAvisoSenhaProvisoria = true;
+            }
+
             value2 = validacao.Value;
             UserName = value2.Nome;
             StateHasChanged();
         }
+    }
+    private async Task AbrirAlteracaoSenhaAsync(PorteiroOperadorDto operador, string? senhaAtual = null)
+    {
+        var parameters = new DialogParameters<AlterarSenhaOperadorDialog>
+        {
+            { x => x.Operador, operador },
+            { x => x.SenhaAtualInicial, senhaAtual },
+            { x => x.DataLimite, operador.DataLimiteAlteracaoSenha },
+            { x => x.SenhaExpirada, operador.SenhaProvisoriaExpirada }
+        };
+        var options = new DialogOptions { CloseButton = !operador.SenhaProvisoriaExpirada, MaxWidth = MaxWidth.ExtraSmall, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<AlterarSenhaOperadorDialog>("Alterar senha", parameters, options);
+        var resultadoDialog = await dialog.Result;
+
+        if (resultadoDialog is null || resultadoDialog.Canceled || resultadoDialog.Data is not AlterarSenhaPorteiroOperadorDto requisicao)
+            return;
+
+        var resultado = await _services.AlterarSenhaPorteiroOperadorAsync(requisicao);
+
+        if (!resultado.Success || resultado.Value is null)
+        {
+            _snackbarComp.Message(resultado.Message ?? "Não foi possível alterar a senha.", Severity.Error, Color.Error);
+            return;
+        }
+
+        value2 = resultado.Value;
+        UserName = value2.Nome;
+        _snackbarComp.Message("Senha alterada com sucesso.", Severity.Success, Color.Success);
+        StateHasChanged();
     }
     private async Task ApontarAsync(ControlePessoaDto colaborador)
     {
@@ -694,9 +767,30 @@ else
         }
         StateHasChanged();
     }
-    private void OnMesSelecionadoChanged(int mes)
+    private async Task OnMesSelecionadoChanged(int mes)
     {
         _mesSelecionado = mes;
+
+        // Ativa o botão de limpar filtro se não for "Todos" (13)
+        _isFiltradoPorData = (mes != 13);
+
+        if (mes != 13)
+        {
+            var resultado = await _services.GetColaboradorControladoPorMesAsync(DateTime.Today.Year, mes);
+            if (resultado.Success)
+            {
+                Elements = resultado.Value?
+                    .Where(x => !string.IsNullOrEmpty(x.DataOcorrencia) && DateTime.TryParse(x.DataOcorrencia, out _))
+                    .OrderByDescending(x => Convert.ToDateTime(x.DataOcorrencia))
+                    .ToList() ?? [];
+            }
+        }
+        else
+        {
+            // Se voltar para "Todos", você pode querer carregar a lista padrão completa novamente:
+            await CarregarListaDeControlados();
+        }
+
         AtualizarFiltroMes();
 
         var primeiraDataDoMes = ElementsMemory
@@ -717,33 +811,22 @@ else
         _filtroStatusMovimentacao = valor;
         StateHasChanged();
     }
+    private async Task CarregarMesesDisponiveisAsync()
+    {
+        var resultado = await _services.GetMesesColaboradorControladoAsync(DateTime.Today.Year);
+        _mesesDisponiveis = resultado.Success
+            ? (resultado.Value ?? []).ToHashSet()
+            : Elements
+                .Where(x => DateTime.TryParse(x.DataOcorrencia, out var data) && data.Year == DateTime.Today.Year)
+                .Select(x => Convert.ToDateTime(x.DataOcorrencia).Month)
+                .ToHashSet();
+    }
+    private bool MesExisteNaBase(int mes) => _mesesDisponiveis.Contains(mes);
     private Task ContriMudChip()
     {
-        var validElements = Elements
-            .Where(x => !string.IsNullOrEmpty(x.DataOcorrencia) && DateTime.TryParse(x.DataOcorrencia, out _))
-            .Select(x =>
-            {
-                var dataObj = Convert.ToDateTime(x.DataOcorrencia);
-                return new
-                {
-                    NumeroMes = dataObj.Month,
-                    MesAbreviado = dataObj.ToString("MMM", new CultureInfo("pt-BR")).ToUpper(),
-                    DataCompleta = dataObj
-                };
-            })
-            .ToList();
-
-        if (validElements.Any())
-        {
-            MesesAbreviados = validElements
-                .DistinctBy(x => x.NumeroMes)
-                .OrderBy(x => x.DataCompleta)
-                .ToDictionary(x => x.NumeroMes, x => x.MesAbreviado);
-        }
-        else
-        {
-            MesesAbreviados = new Dictionary<int, string>();
-        }
+        var cultura = new CultureInfo("pt-BR");
+        MesesAbreviados = Enumerable.Range(1, DateTime.Today.Month)
+            .ToDictionary(mes => mes, mes => cultura.DateTimeFormat.GetAbbreviatedMonthName(mes).ToUpper());
 
         return Task.CompletedTask;
     }
@@ -936,9 +1019,9 @@ else
         {
             await InvokeAsync(async () =>
             {
-                Loading.Show();
+                //Loading.Show();
                 _carregado = false;
-
+                _somenteAtualizarGrid = true;
                 try
                 {
                     await CarregarListaDeControlados(_dataAtiva);
@@ -950,8 +1033,8 @@ else
                 finally
                 {
                     _carregado = true;
-                    Loading.Hide();
-
+                    // Loading.Hide();
+                    _somenteAtualizarGrid = false;
                     StateHasChanged();
                 }
             });
@@ -968,5 +1051,9 @@ else
                 StateHasChanged();
             });
         }
+    }
+    private async Task CarregarAsync()
+    {
+        await CarregarListaDeControlados();
     }
 }

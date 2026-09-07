@@ -1,4 +1,5 @@
 @page "/user/login"
+@attribute [AllowAnonymous]
 
 @using ADI_WEB.Components.Layout
 @using Microsoft.AspNetCore.Components.Authorization
@@ -33,7 +34,7 @@
 @* TRAVADO: Garante que nada passe de 100vh e oculta qualquer tentativa de scroll *@
 <MudLayout Style="height: 70vh; max-height: 100vh; width: 100%; display: flex; flex-direction: column; position: relative; overflow: hidden !important;">
 
-    @* ALINHAMENTO AJUSTADO: Justify.Center com uma margem negativa sutil para compensar as validações *@
+    @* ALINHAMENTO AJUSTADO: Justify.Center com uma margem negativa sutil para compensar as validaï¿½ï¿½es *@
     <MudStack Justify="Justify.Center" AlignItems="AlignItems.Center" Class="flex-grow-1" Style="width: 100%; margin-top: -60px;">
         <MudContainer MaxWidth="MaxWidth.Small" Style="max-width: 330px; padding: 0;">
             <EditForm Model="@_loginModel" OnValidSubmit="OnValidSubmit">
@@ -46,7 +47,7 @@
                     <MudAvatar Style="height: 90px; width: 100px; background-color: #ffffff;  border-radius: 12px; padding: 10px; box-shadow: 0px 4px 12px rgba(0,0,0,0.15);"
                                Variant="Variant.Filled">
 
-                        @* A imagem ocupa todo o espaço interno de forma proporcional *@
+                        @* A imagem ocupa todo o espaï¿½o interno de forma proporcional *@
                         <MudImage Src="../imagens/pwusinagem_transparente.png"
                                   Alt="Logo PW Usinagem"
                                   Style="width: 100%; height: 100%; object-fit: contain;" />
@@ -58,7 +59,7 @@
                 </MudStack> *@
 
                 <MudTextField T="string"
-                              Label="Usuário"
+                              Label="UsuÃ¡rio"
                               Margin="Margin.Dense"
                               Variant="Variant.Outlined"
                               Class="mb-2"
@@ -103,10 +104,10 @@
         </MudContainer>
     </MudStack>
 
-    @* FIXADO ABSOLUTO: O rodapé fica preso embaixo de forma independente, sem ser empurrado por validações *@
+    @* FIXADO ABSOLUTO: O rodapï¿½ fica preso embaixo de forma independente, sem ser empurrado por validaï¿½ï¿½es *@
     <div style="position: absolute; bottom: 16px; left: 0; right: 0; text-align: center; pointer-events: none;">
         <MudText Typo="Typo.body2" Color="Color.Secondary">
-            © 2025 ADI v @_loginModel.Version
+            ï¿½ 2025 ADI v @_loginModel.Version
         </MudText>
     </div>
 
@@ -126,7 +127,7 @@
     private bool _isDarkMode = false;
     private MudTheme? _theme = null;
 
-    // Chave idêntica à utilizada no componente de diálogo para ler o mesmo registro
+    // Chave idï¿½ntica ï¿½ utilizada no componente de diï¿½logo para ler o mesmo registro
     private const string LocalStorageKey = "adi_session_directives";
 
     [Inject]
@@ -152,7 +153,7 @@
             LayoutProperties = new LayoutProperties()
         };
 
-        // Obtém a versão definida no .csproj em tempo de execução
+        // Obtï¿½m a versï¿½o definida no .csproj em tempo de execuï¿½ï¿½o
         var assembly = Assembly.GetExecutingAssembly();
         var versao = assembly.GetName().Version;
 
@@ -167,14 +168,14 @@
     {
         if (firstRender)
         {
-            // 1. Mantém o seu carregamento padrão do modo escuro
+            // 1. Mantï¿½m o seu carregamento padrï¿½o do modo escuro
             var localSettings = await JS.InvokeAsync<string>("localStorage.getItem", "adi_dark_mode");
             if (!string.IsNullOrEmpty(localSettings))
             {
                 _isDarkMode = bool.Parse(localSettings);
             }
 
-            // 2. BUSCA AS DIRETIVAS DA SESSÃO ARMAZENADAS NO NAVEGADOR
+            // 2. BUSCA AS DIRETIVAS DA SESSï¿½O ARMAZENADAS NO NAVEGADOR
             try
             {
                 var jsonSaved = await JS.InvokeAsync<string?>("localStorage.getItem", LocalStorageKey);
@@ -192,7 +193,7 @@
                 Logger.LogWarning(ex, "Erro ao recuperar diretivas de sessao na Login.");
             }
 
-            // Atualiza o estado da tela uma única vez após ler as configurações locais
+            // Atualiza o estado da tela uma ï¿½nica vez apï¿½s ler as configuraï¿½ï¿½es locais
             StateHasChanged();
         }
     }
@@ -237,7 +238,7 @@
                 Version= _loginModel.Version
             };
 
-            var resultado = await _loginService.FazerLogin(user);
+            var resultado = await _loginService.FazerLoginAsync(user);
 
             if (resultado != null && resultado.Success)
             {
@@ -253,17 +254,17 @@
                 }
                 else
                 {
-                    Snackbar.Add("A API autenticou, mas não retornou um token válido.", Severity.Warning);
+                    Snackbar.Add("A API autenticou, mas nï¿½o retornou um token vï¿½lido.", Severity.Warning);
                 }
             }
             else
             {
-                Snackbar.Add(resultado?.Message ?? "Usuário ou senha inválidos.", Severity.Error);
+                Snackbar.Add(resultado?.Message ?? "Usuï¿½rio ou senha invï¿½lidos.", Severity.Error);
             }
         }
         catch (Exception ex)
         {
-            Snackbar.Add("Não foi possível processar o login no momento.", Severity.Error);
+            Snackbar.Add("Nï¿½o foi possï¿½vel processar o login no momento.", Severity.Error);
             Logger.LogError(ex, "Erro critico na pagina de login.");
         }
         finally

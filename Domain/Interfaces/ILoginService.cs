@@ -1,17 +1,12 @@
 ﻿using Domain.Dtos.Login;
+using Domain.Dtos.Permission;
 using Domain.Helpers;
-using Domain.Services;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Net.Http.Json;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Domain.Interfaces
 {
     public interface ILoginService
     {
-        Task<ApiDataService<string>> FazerLogin(UserDto user);
+        Task<ApiDataService<string>> FazerLoginAsync(UserDto user);
+        Task<ApiDataService<List<PermissionUserDto>>> ValidarPermissaoAsync(Shared.Enums.ModuloEnum modulo, int permission);
     }
 }

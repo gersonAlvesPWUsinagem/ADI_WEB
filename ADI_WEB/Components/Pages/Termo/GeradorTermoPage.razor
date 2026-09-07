@@ -20,13 +20,13 @@ inject IJSRuntime JS *@
         <MudIcon Icon="@ObterIconeTitulo()" Size="Size.Large" Class="mr-2" />
         @ObterTituloDinamico()
     </MudText>
-    @if (!_carregando)
+    @if (_carregando)
     {
         <MudPaper Class="d-flex justify-center flex-grow-1 gap-4" Elevation="0">
             <MudProgressCircular Size="Size.Large" Color="Color.Primary" Indeterminate="true" />
         </MudPaper>
     }
-    else
+    else if (_carregado)
     {
         <MudTabs ActivePanelIndexChanged="OnTabChanged" Elevation="3" Rounded="true" ApplyEffectsToContainer="true" Color="Color.Primary">
 
@@ -387,28 +387,27 @@ inject IJSRuntime JS *@
     protected override async Task OnInitializedAsync()
     {
         Loading.Show();
-        var liberar = false;
+        _carregando = true;
+
         try
         {
-            _carregando = liberar;
             var data = await this.GeradorTermoService.IndexAsync();
 
-            if (!data.Success)
+            if (data == null || !data.Success)
             {
-                Snackbar.Add(data?.Message ?? "", Severity.Error);
-                liberar = false;
+                Snackbar.Add(data?.Message ?? "Erro ao carregar dados iniciais.", Severity.Error);
                 return;
             }
-            liberar = true;
-        }catch(Exception ex)
+
+            _carregado = true;
+        }
+        catch (Exception ex)
         {
-            liberar = false;
-            Snackbar.Add(ex.Message, Severity.Error);
-            return;
+            Snackbar.Add($"Erro inesperado: {ex.Message}", Severity.Error);
         }
         finally
         {
-            _carregando = liberar;
+            _carregando = false;
             Loading.Hide();
             StateHasChanged();
         }
@@ -456,6 +455,8 @@ inject IJSRuntime JS *@
     private async Task ExecutarRequisicaoAsync(Func<Task<ApiDataService<(byte[] Conteudo, string MimeType, string NomeArquivo, bool IsInline)>>> acaoService)
     {
         _carregando = true;
+        Loading.Show();
+
         try
         {
             var response = await acaoService();
@@ -486,6 +487,8 @@ inject IJSRuntime JS *@
         finally
         {
             _carregando = false;
+            Loading.Hide();
+            StateHasChanged();
         }
     }
 
@@ -646,7 +649,7 @@ inject IJSRuntime JS *@
                 Documento = dtoChip.Documento ?? string.Empty,
                 NumeroTelefone = dtoChip.NumeroTelefone ?? string.Empty,
                 DataCadastro = dtoChip.DataCadastro,
-                IsForPdfGeneration = dtoChip.IsForPdfGeneration // <-- Adicione se o DTO de Devolução suportar
+                IsForPdfGeneration = dtoChip.IsForPdfGeneration
             };
 
             await ExecutarRequisicaoAsync(() => GeradorTermoService.GerarTermoDevolucaoChipAsync(dtoDevolucao));
@@ -702,7 +705,6 @@ inject IJSRuntime JS *@
             "RG" => _rgMask,
             _ => _cpfMask
         };
-    }
-
+    }   
     #endregion
 }

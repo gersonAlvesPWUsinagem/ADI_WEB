@@ -12,5 +12,9 @@ namespace Domain.Dtos.Portaria
         public Guid Codigo { get; set; }
         public string? Nome { get; set; }
         public string? Senha { get; set; }
+        public bool ExigeAlteracaoSenha { get; set; }
+        public bool SenhaProvisoriaExpirada { get; set; }
+        public DateTime? DataLimiteAlteracaoSenha { get; set; }
+
     }
 }

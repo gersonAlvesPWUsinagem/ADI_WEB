@@ -1,0 +1,34 @@
+<MudAutocomplete T="ColaboradoresControladosDto"
+                 Value="Value" ValueChanged="ValueChanged"
+                 SearchFunc="PesquisarAsync"
+                 ToStringFunc="Formatar"
+                 Label="Colaborador" Placeholder="Digite ao menos 2 caracteres"
+                 Variant="Variant.Outlined" Margin="Margin.Dense"
+                 MinCharacters="2" DebounceInterval="300"
+                 ResetValueOnEmptyText="true" CoerceText="false" CoerceValue="false"
+                 Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.PersonSearch"
+                 NoItemsTemplate="@NoItems" />
+
+@code {
+    [Inject] private IPortariaService PortariaService { get; set; } = default!;
+    [Parameter] public ColaboradoresControladosDto? Value { get; set; }
+    [Parameter] public EventCallback<ColaboradoresControladosDto?> ValueChanged { get; set; }
+    private List<ColaboradoresControladosDto>? _colaboradores;
+    private RenderFragment NoItems => builder => builder.AddContent(0, "Nenhum colaborador encontrado");
+
+    private async Task<IEnumerable<ColaboradoresControladosDto>> PesquisarAsync(string texto, CancellationToken token)
+    {
+        if (string.IsNullOrWhiteSpace(texto) || texto.Trim().Length < 2) return [];
+        if (_colaboradores is null)
+        {
+            var resultado = await PortariaService.GetColaboradoresAsync();
+            _colaboradores = resultado.Success ? resultado.Value ?? [] : [];
+        }
+        token.ThrowIfCancellationRequested();
+        return _colaboradores.Where(x =>
+            (x.NOME?.Contains(texto, StringComparison.OrdinalIgnoreCase) ?? false) ||
+            x.MATRICULA.ToString().Contains(texto, StringComparison.OrdinalIgnoreCase) ||
+            (x.DEPARTAMENTO?.Contains(texto, StringComparison.OrdinalIgnoreCase) ?? false)).Take(20);
+    }
+    private static string Formatar(ColaboradoresControladosDto? x) => x is null ? string.Empty : $"{x.NOME} - {x.MATRICULA}";
+}

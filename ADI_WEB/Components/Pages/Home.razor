@@ -1,62 +1,397 @@
 @page "/"
 @page "/home"
+@attribute [AllowAnonymous]
 
-<PageTitle>Home</PageTitle>
-<RedirectIfAuthenticated />
+@inject NavigationManager Navigation
+@inject JwtAuthenticationService JwtAuthenticationService
+@inject IJSRuntime JSRuntime
 
-@*<MudText Typo="Typo.h3" GutterBottom="true">Hello, world!</MudText>
-<MudText Class="mb-8">Welcome to your new app, powered by MudBlazor and the .NET 9 Template!</MudText>
+<PageTitle>Home | ADI WEB</PageTitle>
 
-<MudAlert Severity="Severity.Normal" ContentAlignment="HorizontalAlignment.Start">
-    You can find documentation and examples on our website here:
-    <MudLink Href="https://mudblazor.com" Target="_blank" Typo="Typo.body2" Color="Color.Primary">
-        <b>www.mudblazor.com</b>
-    </MudLink>
-</MudAlert>
+<style>
+    .adi-home {
+        width: 100%;
+        display: block;
+        background-color: var(--mud-palette-background);
+        color: var(--mud-palette-text-primary);
+    }
 
-<br />
-<MudText Typo="Typo.h5" GutterBottom="true">Interactivity in this Template</MudText>
-<br />
-<MudText Typo="Typo.body2">
-    When you opt for the "Global" Interactivity Location, <br />
-    the render modes are defined in App.razor and consequently apply to all child components.<br />
-    In this case, providers are globally set in the MainLayout.<br />
-    <br />
-    On the other hand, if you choose the "Per page/component" Interactivity Location,<br />
-    it is necessary to include the <br />
-    <br />
-    &lt;MudPopoverProvider /&gt; <br />
-    &lt;MudDialogProvider /&gt; <br />
-    &lt;MudSnackbarProvider /&gt; <br />
-    <br />
-    components on every interactive page.<br />
-    <br />
-    If a render mode is not specified for a page, it defaults to Server-Side Rendering (SSR),<br />
-    similar to this page. While MudBlazor allows pages to be rendered in SSR,<br />
-    please note that interactive features, such as buttons and dropdown menus, will not be functional.
-</MudText>
+    /* ================================
+                            HERO COM A IMAGEM DE FUNDO E SOMBRA
+                            ================================ */
+    .adi-home__hero {
+        position: relative;
+        min-height: 600px;
+        display: flex;
+        align-items: center;
+        background-image: url('https://static.wixstatic.com/media/3d5dc1_b179dca237ab47f791199ffab362bedf~mv2.jpg/v1/crop/x_0,y_0,w_1198,h_559/fill/w_1198,h_559,al_c,q_85,enc_avif,quality_auto/pw-usinagem.jpg');
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+        background-attachment: fixed;
+        overflow: hidden;
+    }
 
-<br />
-<MudText Typo="Typo.h5" GutterBottom="true">What's New in Blazor with the Release of .NET 9</MudText>
-<br />
+    .adi-home__hero-overlay {
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(135deg, rgba(15, 15, 23, 0.88) 0%, rgba(26, 26, 39, 0.78) 100%);
+    }
 
-<MudText Typo="Typo.h6" GutterBottom="true">Prerendering</MudText>
-<MudText Typo="Typo.body2" GutterBottom="true">
-    If you're exploring the features of .NET 9 Blazor,<br /> you might be pleasantly surprised to learn that each page is prerendered on the server,<br /> regardless of the selected render mode.<br /><br />
-    This means that you'll need to inject all necessary services on the server,<br /> even when opting for the wasm (WebAssembly) render mode.<br /><br />
-    This prerendering functionality is crucial to ensuring that WebAssembly mode feels fast and responsive,<br /> especially when it comes to initial page load times.<br /><br />
-    For more information on how to detect prerendering and leverage the RenderContext, you can refer to the following link:
-    <MudLink Href="https://github.com/dotnet/aspnetcore/issues/51468#issuecomment-1783568121" Target="_blank" Typo="Typo.body2" Color="Color.Primary">
-        More details
-    </MudLink>
-</MudText>
+    .adi-home__hero-content {
+        position: relative;
+        z-index: 1;
+        padding-top: 60px;
+        padding-bottom: 60px;
+    }
 
-<br />
-<MudText Typo="Typo.h6" GutterBottom="true">InteractiveAuto</MudText>
-<MudText Typo="Typo.body2">
-    A discussion on how to achieve this can be found here:
-    <MudLink Href="https://github.com/dotnet/aspnetcore/issues/51468#issue-1950424116" Target="_blank" Typo="Typo.body2" Color="Color.Primary">
-        More details
-    </MudLink>
-</MudText>
- *@
+    .adi-home__eyebrow {
+        letter-spacing: 0.2em;
+        font-weight: 700;
+        color: var(--mud-palette-primary);
+    }
+
+    .adi-home__title {
+        max-width: 850px;
+        font-weight: 800;
+        line-height: 1.15;
+        color: #ffffff;
+    }
+
+    .adi-home__subtitle {
+        max-width: 720px;
+        color: rgba(255, 255, 255, 0.85);
+        font-weight: 400;
+    }
+
+    .adi-home__actions {
+        margin-top: 16px;
+    }
+
+    /* ================================
+                            SEÇÕES
+                            ================================ */
+    .adi-home__section {
+        padding-top: 80px;
+        padding-bottom: 80px;
+        background-color: var(--mud-palette-background);
+    }
+
+    /* ================================
+                            CARDS
+                            ================================ */
+    .adi-home__feature {
+        height: 100%;
+        padding: 32px;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        background-color: var(--mud-palette-surface);
+        border: 1px solid var(--mud-palette-divider);
+        border-radius: 16px;
+        transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+    }
+
+        .adi-home__feature:hover {
+            transform: translateY(-4px);
+            border-color: var(--mud-palette-primary);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.12);
+        }
+
+    /* ================================
+                            PARALLAX
+                            ================================ */
+    .adi-home__parallax {
+        position: relative;
+        min-height: 480px;
+        display: flex;
+        align-items: center;
+        background-size: cover;
+        background-position: center;
+        background-attachment: fixed;
+        overflow: hidden;
+    }
+
+    .adi-home__parallax--pw {
+        background-image: url('https://static.wixstatic.com/media/3d5dc1_b179dca237ab47f791199ffab362bedf~mv2.jpg/v1/crop/x_0,y_0,w_1198,h_559/fill/w_1198,h_559,al_c,q_85,enc_avif,quality_auto/pw-usinagem.jpg');
+    }
+
+    .adi-home__parallax-overlay {
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(135deg, rgba(15, 15, 23, 0.92) 0%, rgba(26, 26, 39, 0.80) 100%);
+    }
+
+    .adi-home__parallax-content {
+        position: relative;
+        z-index: 1;
+        padding-top: 60px;
+        padding-bottom: 60px;
+        color: #ffffff;
+    }
+
+    .adi-home__parallax-text {
+        max-width: 680px;
+        color: rgba(255, 255, 255, 0.85);
+    }
+
+    /* ================================
+                            RESPONSIVO
+                            ================================ */
+    @@media (max-width: 960px) {
+        .adi-home__hero,
+        .adi-home__parallax {
+            background-attachment: scroll;
+            min-height: 450px;
+        }
+
+        .adi-home__title {
+            font-size: 2.3rem !important;
+        }
+
+        .adi-home__section {
+            padding-top: 60px;
+            padding-bottom: 60px;
+        }
+    }
+
+    @@media (max-width: 600px) {
+        .adi-home__hero-content,
+        .adi-home__parallax-content {
+            padding-top: 40px;
+            padding-bottom: 40px;
+        }
+
+        .adi-home__title {
+            font-size: 1.8rem !important;
+        }
+
+        .adi-home__subtitle {
+            font-size: 0.95rem;
+        }
+
+        .adi-home__actions {
+            flex-direction: column;
+            align-items: stretch;
+        }
+    }
+</style>
+
+@if (_isChecking)
+{
+    <FavoritosSkeleton Quantidade="20" />
+}
+else
+{
+    <div class="adi-home">
+
+        <section class="adi-home__hero">
+            <div class="adi-home__hero-overlay"></div>
+            <MudContainer MaxWidth="MaxWidth.Large" Class="adi-home__hero-content">
+                <MudStack Spacing="4">
+                    <MudText Typo="Typo.overline" Class="adi-home__eyebrow">
+                        ADI WEB
+                    </MudText>
+                    <MudText Typo="Typo.h2" Class="adi-home__title">
+                        Tecnologia que conecta pessoas, processos e resultados.
+                    </MudText>
+                    <MudText Typo="Typo.h6" Class="adi-home__subtitle">
+                        Uma plataforma corporativa desenvolvida para centralizar informações, sistemas e ferramentas da PWUSINAGEM.
+                    </MudText>
+                    <MudStack Row="true" Spacing="3" Class="adi-home__actions">
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Primary"
+                                   Size="Size.Large"
+                                   OnClick="@(() => ScrollToSection("sobre-adi"))"
+                                   StartIcon="@Icons.Material.Filled.Info">
+                            Conheça a ADI
+                        </MudButton>
+                        <MudButton Variant="Variant.Outlined"
+                                   Color="Color.Inherit"
+                                   Size="Size.Large"
+                                   OnClick="@(() => ScrollToSection("sobre-pw"))"
+                                   Style="border-color: rgba(255,255,255,0.4); color: #fff;">
+                            PWUSINAGEM
+                        </MudButton>
+                    </MudStack>
+                </MudStack>
+            </MudContainer>
+        </section>
+
+        <!-- SOBRE A ADI -->
+        <section id="sobre-adi" class="adi-home__section" style="background-color: #1a1a27; position: relative; padding: 60px 0; scroll-margin-top: 80px;">
+            <MudContainer MaxWidth="MaxWidth.Large">
+                <MudGrid Spacing="6" Justify="Justify.SpaceBetween">
+                    <MudItem xs="12" md="6" Class="d-flex align-center">
+                        <MudStack Spacing="3">
+                            <MudText Typo="Typo.overline" Style="color: #92929f; font-weight: 800; letter-spacing: 0.15em;">
+                                SOBRE A ADI
+                            </MudText>
+                            <MudText Typo="Typo.h4" Style="font-weight: 700; color: #ffffff;">
+                                Uma plataforma criada para facilitar o dia a dia da empresa.
+                            </MudText>
+                            <MudText Typo="Typo.body1" Style="color: rgba(255, 255, 255, 0.75); line-height: 1.6;">
+                                A ADI WEB reúne diferentes soluções corporativas em um único ambiente, proporcionando maior integração entre os setores e facilitando o acesso às informações.
+                            </MudText>
+                            <MudText Typo="Typo.body1" Style="color: rgba(255, 255, 255, 0.75); line-height: 1.6;">
+                                A plataforma foi desenvolvida pensando na realidade da PWUSINAGEM, permitindo que novos recursos sejam incorporados conforme as necessidades da empresa.
+                            </MudText>
+                            <div>
+                                <MudButton Variant="Variant.Text"
+                                           Color="Color.Primary"
+                                           Size="Size.Medium"
+                                           Href="/sobre-o-sistema"
+                                           StartIcon="@Icons.Material.Filled.AddCircleOutline"
+                                           Style="padding-left: 0; font-weight: 600; text-transform: none;">
+                                    Mais informação
+                                </MudButton>
+                            </div>
+                        </MudStack>
+                    </MudItem>
+                    <MudItem xs="12" md="6">
+                        <MudGrid Spacing="3">
+                            <!-- Card 1: Integração -->
+                            <MudItem xs="12" sm="6">
+                                <MudPaper Class="adi-home__feature" Elevation="0" Style="background-color: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; padding: 24px;">
+                                    <MudIcon Icon="@Icons.Material.Filled.Hub" Style="color: #7e6fff;" Size="Size.Large" />
+                                    <MudText Typo="Typo.h6" Style="font-weight: 600; color: #ffffff; margin-top: 8px;">Integração</MudText>
+                                    <MudText Typo="Typo.body2" Style="color: rgba(255, 255, 255, 0.70);">
+                                        Sistemas e processos conectados em um único ambiente.
+                                    </MudText>
+                                </MudPaper>
+                            </MudItem>
+                            <!-- Card 2: Produtividade -->
+                            <MudItem xs="12" sm="6">
+                                <MudPaper Class="adi-home__feature" Elevation="0" Style="background-color: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; padding: 24px;">
+                                    <MudIcon Icon="@Icons.Material.Filled.Speed" Style="color: #7e6fff;" Size="Size.Large" />
+                                    <MudText Typo="Typo.h6" Style="font-weight: 600; color: #ffffff; margin-top: 8px;">Produtividade</MudText>
+                                    <MudText Typo="Typo.body2" Style="color: rgba(255, 255, 255, 0.70);">
+                                        Ferramentas desenvolvidas para agilizar os processos.
+                                    </MudText>
+                                </MudPaper>
+                            </MudItem>
+                            <!-- Card 3: Segurança -->
+                            <MudItem xs="12" sm="6">
+                                <MudPaper Class="adi-home__feature" Elevation="0" Style="background-color: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; padding: 24px;">
+                                    <MudIcon Icon="@Icons.Material.Filled.Security" Style="color: #7e6fff;" Size="Size.Large" />
+                                    <MudText Typo="Typo.h6" Style="font-weight: 600; color: #ffffff; margin-top: 8px;">Segurança</MudText>
+                                    <MudText Typo="Typo.body2" Style="color: rgba(255, 255, 255, 0.70);">
+                                        Controle de acesso e proteção das informações.
+                                    </MudText>
+                                </MudPaper>
+                            </MudItem>
+                            <!-- Card 4: Evolução -->
+                            <MudItem xs="12" sm="6">
+                                <MudPaper Class="adi-home__feature" Elevation="0" Style="background-color: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; padding: 24px;">
+                                    <MudIcon Icon="@Icons.Material.Filled.Extension" Style="color: #7e6fff;" Size="Size.Large" />
+                                    <MudText Typo="Typo.h6" Style="font-weight: 600; color: #ffffff; margin-top: 8px;">Evolução</MudText>
+                                    <MudText Typo="Typo.body2" Style="color: rgba(255, 255, 255, 0.70);">
+                                        Uma plataforma preparada para novas soluções.
+                                    </MudText>
+                                </MudPaper>
+                            </MudItem>
+                        </MudGrid>
+                    </MudItem>
+                </MudGrid>
+            </MudContainer>
+        </section>
+
+        <!-- PARALLAX PWUSINAGEM -->
+        <section id="sobre-pw" class="adi-home__parallax adi-home__parallax--pw" style="scroll-margin-top: 80px;">
+            <div class="adi-home__parallax-overlay"></div>
+            <MudContainer MaxWidth="MaxWidth.Large" Class="adi-home__parallax-content">
+                <MudStack Spacing="3">
+                    <MudText Typo="Typo.overline" Style="color: var(--mud-palette-primary); font-weight: 700;">
+                        PWUSINAGEM
+                    </MudText>
+                    <MudText Typo="Typo.h3" Style="font-weight: 700; color: #ffffff;">
+                        Sede PW Usinagem em Arujá - SP
+                    </MudText>
+                    <MudText Typo="Typo.body1" Class="adi-home__parallax-text" Style="color: rgba(255, 255, 255, 0.9); line-height: 1.6;">
+                        A PW Usinagem iniciou suas atividades em 1988 em uma fábrica de 120m². Dez anos depois já dispunha de um parque fabril de 800m² com 63 colaboradores.
+                    </MudText>
+                    <MudText Typo="Typo.body1" Class="adi-home__parallax-text" Style="color: rgba(255, 255, 255, 0.9); line-height: 1.6;">
+                        Em 2003 a PW transferiu-se para uma área própria, de 7.500m², na cidade de Arujá/SP com o parque fabril de 3.300m². Em 2018 estamos em uma área de 15.500m², com área construída de 9.850m².
+                    </MudText>
+                    <MudText Typo="Typo.body1" Class="adi-home__parallax-text" Style="color: rgba(255, 255, 255, 0.9); line-height: 1.6;">
+                        Atualmente a PW Usinagem conta com um time de aproximadamente 300 colaboradores altamente capacitados e treinados para atender e produzir peças seguindo os padrões internacionais de qualidade.
+                    </MudText>
+                    <div>
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Primary"
+                                   Size="Size.Large"
+                                   Href="https://www.pwusinagem.com.br/quem-somos"
+                                   Target="_blank"
+                                   EndIcon="@Icons.Material.Filled.ArrowForward">
+                            Conheça a PWUSINAGEM
+                        </MudButton>
+                    </div>
+                </MudStack>
+            </MudContainer>
+        </section>
+
+        <!-- CONTATO / SUPORTE / AJUDA-ME -->
+        <section id="suporte-ajuda" class="adi-home__section" style="background-color:#1e1e2d; position: relative; padding: 60px 0; scroll-margin-top: 80px;">
+            <MudContainer MaxWidth="MaxWidth.Large">
+                <MudGrid Spacing="6" Justify="Justify.SpaceBetween">
+                    <MudItem xs="12" md="6" Class="d-flex align-center">
+                        <MudStack Spacing="3">
+                            <MudText Typo="Typo.overline" Style="color: #b39ddb; font-weight: 800; letter-spacing: 0.15em;">
+                                SUPORTE
+                            </MudText>
+                            <MudText Typo="Typo.h4" Style="font-weight: 700; color: #ffffff;">
+                                Precisa de ajuda?
+                            </MudText>
+                            <MudText Typo="Typo.body1" Style="color: rgba(255, 255, 255, 0.85); max-width: 600px; line-height: 1.6;">
+                                Entre em contato com a equipe responsável ou acesse o assistente de suporte para tirar suas dúvidas rapidamente.
+                            </MudText>
+                            <MudButton Variant="Variant.Filled"
+                                       Color="Color.Primary"
+                                       Size="Size.Large"
+                                       Href="/assistente-suporte"
+                                       StartIcon="@Icons.Material.Filled.SupportAgent">
+                                Acessar suporte
+                            </MudButton>
+                        </MudStack>
+                    </MudItem>
+                </MudGrid>
+            </MudContainer>
+        </section>
+
+        <!-- BOTÃO VOLTAR AO TOPO (Nativo MudBlazor) -->
+        <MudScrollToTop TopOffset="300">
+            <MudFab Color="Color.Primary"
+                    Icon="@Icons.Material.Filled.KeyboardArrowUp"
+                    Size="Size.Medium"
+                    Elevation="4"
+                    Class="mb-4 mr-4" />
+        </MudScrollToTop>
+
+    </div>
+}
+
+@code {
+    private bool _isChecking = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            if (await JwtAuthenticationService.IsAuthenticatedAsync())
+            {
+                Navigation.NavigateTo("/main", replace: true);
+                return;
+            }
+        }
+        catch
+        {
+        }
+
+        _isChecking = false;
+    }
+
+    private async Task ScrollToSection(string elementId)
+    {
+        await JSRuntime.InvokeVoidAsync("eval", $"document.getElementById('{elementId}')?.scrollIntoView({{ behavior: 'smooth' }});");
+    }
+}

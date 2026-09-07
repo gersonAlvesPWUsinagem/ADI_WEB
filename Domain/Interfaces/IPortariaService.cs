@@ -24,9 +24,12 @@ namespace Domain.Interfaces
         Task<ApiDataService<ControlePessoa>> PutAlterarHorasAsync(ResistrarEntradaSaidaDto data);
         Task<ApiDataService<bool>> PostGerarListaDeApontamentAsync(DataSession data);
         //Task<ApiDataService<(byte[] Conteudo, string MimeType, string NomeArquivo, bool IsInline)>> GerarRelatorioControlePessoaAsync(string formato, DateTime dataInicial, DateTime dataFinal);
-        Task<ApiDataService<(byte[] Conteudo, string MimeType, string NomeArquivo, bool IsInline)>> 
+        Task<ApiDataService<(byte[] Conteudo, string MimeType, string NomeArquivo, bool IsInline)>>
             GerarRelatorioControlePessoaAsync(string formato, DateTime dataInicial, DateTime dataFinal, List<string> matriculas);
         Task<ApiDataService<List<ControlePessoaDto>>> GetColaboradorControladoPorDataAsync(DateTime? dataReferencia = null);
+        Task<ApiDataService<List<ControlePessoaDto>>> GetColaboradorControladoPorMesAsync(int ano, int mes);
+        Task<ApiDataService<List<int>>> GetMesesColaboradorControladoAsync(int ano);
         Task<ApiDataService<List<PorteiroOperadorDto>>> GetPorteiroOperadorCompAsync();
+        Task<ApiDataService<PorteiroOperadorDto>> AlterarSenhaPorteiroOperadorAsync(AlterarSenhaPorteiroOperadorDto dto);
     }
 }

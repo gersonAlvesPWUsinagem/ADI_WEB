@@ -1,4 +1,58 @@
-﻿@page "/main"
+@page "/main"
 @attribute [Authorize]
 
-<h3>Main</h3>
+<PageTitle>Principal</PageTitle>
+@if (_carregando)
+{
+    <FavoritosSkeleton Quantidade="20" />
+}
+else
+{
+    <MudText Typo="Typo.h4" GutterBottom="true">Principal</MudText>
+    <MudText Typo="Typo.body1" Color="Color.Secondary" Class="mb-5">Suas páginas favoritas</MudText>
+    @if (_favoritos.Count == 0)
+    {
+        <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">Você ainda não possui páginas favoritas. Abra uma página pelo menu e clique na estrela.</MudAlert>
+    }
+    else
+    {
+        <MudGrid>
+            @foreach (var favorito in _favoritos)
+            {
+                <MudItem xs="12" sm="6" md="4" lg="3">
+                    <MudCard Elevation="2" Style="height: 120px; cursor: pointer" @onclick="@(() => Navigation.NavigateTo(favorito.Rota))">
+                        <MudCardContent>
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                                <MudAvatar Color="Color.Primary"><MudIcon Icon="@(favorito.Icone ?? Icons.Material.Filled.Star)" /></MudAvatar>
+                                <MudText Typo="Typo.subtitle1">@favorito.Nome</MudText>
+                            </MudStack>
+                        </MudCardContent>
+                    </MudCard>
+                </MudItem>
+            }
+        </MudGrid>
+    }
+}
+
+@code {
+    [Inject] private FavoritoPaginaState FavoritosState { get; set; } = default!;
+    private IReadOnlyList<FavoritoPaginaDto> _favoritos = [];
+    private bool _carregando;
+    protected override async Task OnInitializedAsync()
+    {
+        // Ao chegar pela Home, o estado já está carregado e nenhum skeleton/busca adicional é necessário.
+        if (FavoritosState.Carregado)
+        {
+            _favoritos = FavoritosState.Favoritos;
+            return;
+        }
+        _carregando = true;
+        try
+        {
+            await FavoritosState.GarantirCarregadoAsync();
+            _favoritos = FavoritosState.Favoritos;
+        }
+        catch (Exception ex) { _snackbarComp.Message($"Erro ao carregar favoritos: {ex.Message}", Severity.Error, Color.Error); }
+        finally { _carregando = false; }
+    }
+}

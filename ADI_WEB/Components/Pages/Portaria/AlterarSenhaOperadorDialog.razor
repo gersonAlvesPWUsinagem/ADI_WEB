@@ -1,0 +1,122 @@
+@using Domain.Dtos.Portaria
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">Alterar minha senha</MudText>
+    </TitleContent>
+    <DialogContent>
+        @if (SenhaExpirada)
+        {
+            <MudAlert Severity="Severity.Warning" Class="mb-3">
+                Sua senha provisória expirou. A alteração é obrigatória para continuar.
+            </MudAlert>
+        }
+        else if (DataLimite.HasValue)
+        {
+            <MudAlert Severity="Severity.Info" Class="mb-3">
+                A senha provisória deve ser alterada até @DataLimite.Value.ToLocalTime().ToString("dd/MM/yyyy").
+            </MudAlert>
+        }
+
+        <MudText Typo="Typo.body2" Class="mb-3">Operador: @Operador.Nome</MudText>
+        <MudTextField @bind-Value="_senhaAtual" Label="Senha atual" InputType="InputType.Password"
+                      Variant="Variant.Outlined" FullWidth="true" />
+        <MudTextField @bind-Value="_novaSenha" Label="Nova senha" InputType="InputType.Password"
+                      Variant="Variant.Outlined" FullWidth="true" Class="mt-3"
+                      HelperText="Use no mínimo 6 caracteres. Evite sequências como 123, abc ou qwerty." />
+        <MudTextField @bind-Value="_confirmacao" Label="Confirmar nova senha" InputType="InputType.Password"
+                      Variant="Variant.Outlined" FullWidth="true" Class="mt-3"
+                      Error="@(!string.IsNullOrEmpty(_confirmacao) && _novaSenha != _confirmacao)"
+                      ErrorText="As senhas não conferem." />
+        @if (!string.IsNullOrWhiteSpace(_erro))
+        {
+            <MudAlert Severity="Severity.Error" Class="mt-3">@_erro</MudAlert>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancelar</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Submit">Alterar senha</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter, EditorRequired] public PorteiroOperadorDto Operador { get; set; } = new();
+    [Parameter] public string? SenhaAtualInicial { get; set; }
+    [Parameter] public DateTime? DataLimite { get; set; }
+    [Parameter] public bool SenhaExpirada { get; set; }
+
+    private string _senhaAtual = string.Empty;
+    private string _novaSenha = string.Empty;
+    private string _confirmacao = string.Empty;
+    private string? _erro;
+
+    protected override void OnInitialized() => _senhaAtual = SenhaAtualInicial ?? string.Empty;
+
+    private void Submit()
+    {
+        _erro = null;
+        if (string.IsNullOrWhiteSpace(_senhaAtual) || string.IsNullOrWhiteSpace(_novaSenha) || string.IsNullOrWhiteSpace(_confirmacao))
+        {
+            _erro = "Preencha todos os campos.";
+            return;
+        }
+
+        if (_novaSenha.Length < 6 || _novaSenha is "123" or "123456")
+        {
+            _erro = "A nova senha deve ter pelo menos 6 caracteres e não pode ser provisória.";
+            return;
+        }
+
+        if (_novaSenha == _senhaAtual)
+        {
+            _erro = "A nova senha deve ser diferente da senha atual.";
+            return;
+        }
+
+        if (PossuiSequenciaPrevisivel(_novaSenha))
+        {
+            _erro = "A nova senha não pode conter sequências previsíveis, como 123, 321, abc, cba ou qwerty.";
+            return;
+        }
+
+        if (_novaSenha != _confirmacao)
+        {
+            _erro = "A confirmação da nova senha não confere.";
+            return;
+        }
+
+        MudDialog.Close(DialogResult.Ok(new AlterarSenhaPorteiroOperadorDto
+        {
+            OperadorId = Operador.PoreteiroID,
+            SenhaAtual = _senhaAtual,
+            NovaSenha = _novaSenha,
+            ConfirmacaoNovaSenha = _confirmacao
+        }));
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private static bool PossuiSequenciaPrevisivel(string senha)
+    {
+        var normalizada = senha.ToLowerInvariant();
+        if (new[] { "qwerty", "asdf", "zxcv", "password" }.Any(normalizada.Contains))
+            return true;
+
+        for (var indice = 0; indice <= normalizada.Length - 3; indice++)
+        {
+            var primeiro = normalizada[indice];
+            var segundo = normalizada[indice + 1];
+            var terceiro = normalizada[indice + 2];
+
+            if (!char.IsLetterOrDigit(primeiro) || !char.IsLetterOrDigit(segundo) || !char.IsLetterOrDigit(terceiro))
+                continue;
+
+            if ((segundo == primeiro + 1 && terceiro == segundo + 1) ||
+                (segundo == primeiro - 1 && terceiro == segundo - 1))
+                return true;
+        }
+
+        return false;
+    }
+}

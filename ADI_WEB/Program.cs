@@ -1,4 +1,4 @@
-using ADI_WEB.Components;
+Ôªøusing ADI_WEB.Components;
 using ADI_WEB.Components.SharedComps;
 using ADI_WEB.Security;
 using Domain.Helpers;
@@ -8,11 +8,11 @@ using MudBlazor.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-#region [ ConfiguraÁıes de Framework e Interface (Blazor & MudBlazor) ]
+#region [ Configura√ß√µes de Framework e Interface (Blazor & MudBlazor) ]
 // Injeta componentes do MudBlazor UI
 builder.Services.AddMudServices();
 
-// Permite acessar o contexto HTTP (Cookies, Headers, Claims) em classes de serviÁo
+// Permite acessar o contexto HTTP (Cookies, Headers, Claims) em classes de servi√ßo
 builder.Services.AddHttpContextAccessor();
 
 // Configura o Blazor Server com componentes interativos
@@ -20,31 +20,39 @@ builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 #endregion
 
-#region [ ConfiguraÁ„o do HttpClient Base da AplicaÁ„o ]
-// Registra uma inst‚ncia global do HttpClient configurada com a URL Base da API.
-// Qualquer serviÁo injetado via DI usar· essa mesma base sem precisar reconfigurar.
+#region [ Configura√ß√£o do HttpClient Base da Aplica√ß√£o ]
+// Registra uma inst√¢ncia global do HttpClient configurada com a URL Base da API.
+// Qualquer servi√ßo injetado via DI usar√° essa mesma base sem precisar reconfigurar.
 builder.Services.AddScoped(sp =>
 {
-    var handler = new HttpClientHandler
+    var primaryHandler = new HttpClientHandler
     {
-        // Ignora a validaÁ„o do certificado SSL (˙til para desenvolvimento local e redes internas)
+        // Ignora a valida√ß√£o do certificado SSL (√∫til para desenvolvimento local e redes internas)
         ServerCertificateCustomValidationCallback = (message, cert, chain, errors) => true
     };
 
-    return new HttpClient(handler)
+    var authenticationFailureHandler = sp.GetRequiredService<ApiAuthenticationFailureHandler>();
+    authenticationFailureHandler.InnerHandler = primaryHandler;
+
+    return new HttpClient(authenticationFailureHandler)
     {
         BaseAddress = new Uri(Servidores.GetBaseUrl())
     };
 });
 #endregion
 
-#region [ InjeÁ„o de DependÍncia - ServiÁos de NegÛcio (Domain Services) ]
-// Registre aqui todos os serviÁos da aplicaÁ„o (Interface -> ImplementaÁ„o Concreta)
+#region [ Inje√ß√£o de Depend√™ncia - Servi√ßos de Neg√≥cio (Domain Services) ]
+// Registre aqui todos os servi√ßos da aplica√ß√£o (Interface -> Implementa√ß√£o Concreta)
 builder.Services.AddScoped<IDataSessionHelper, DataSessionHelper>();
 builder.Services.AddScoped<ILoginService, LoginService>();
 builder.Services.AddScoped<IAgenteLocalService, AgenteLocalService>();
 builder.Services.AddScoped<IGeradorTermoService, GeradorTermoService>();
 builder.Services.AddScoped<IPortariaService, PortariaService>();
+builder.Services.AddScoped<IRamalService, RamalService>();
+builder.Services.AddScoped<IFavoritoPaginaService, FavoritoPaginaService>();
+builder.Services.AddScoped<FavoritoPaginaState>();
+builder.Services.AddScoped<SessionExpirationState>();
+builder.Services.AddScoped<ApiAuthenticationFailureHandler>();
 
 builder.Services.AddScoped<SnackbarComp>();
 builder.Services.AddScoped<LoadingHelper>();
@@ -54,7 +62,7 @@ builder.Services.AddSingleton<AtualizacaoPortariaNotifier>();
 builder.Services.AddHostedService<GerarApontamentosDiariosHostedService>();
 #endregion
 
-#region [ AutenticaÁ„o e AutorizaÁ„o (JWT via Cookie) ]
+#region [ Autentica√ß√£o e Autoriza√ß√£o (JWT via Cookie) ]
 builder.Services.AddJwtCookieAuthentication(options =>
 {
     options.CookieName = "AuthTokenADI";
@@ -69,7 +77,7 @@ builder.Services.AddAuthorization();
 builder.Services.AddCascadingAuthenticationState();
 #endregion
 
-// --- CONSTRU«√O DO CONTAINER DA APLICA«√O ---
+// --- CONSTRU√á√ÉO DO CONTAINER DA APLICA√á√ÉO ---
 var app = builder.Build();
 
 #region [ Pipeline de Tratamento de Erros e Redirecionamentos ]
@@ -82,18 +90,18 @@ if (!app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 #endregion
 
-#region [ Middlewares de Arquivos Est·ticos e SeguranÁa ]
+#region [ Middlewares de Arquivos Est√°ticos e Seguran√ßa ]
 app.UseStaticFiles();
 app.UseRouting();
 
-// … crucial que a AutenticaÁ„o venha ANTES da AutorizaÁ„o no pipeline
+// √â crucial que a Autentica√ß√£o venha ANTES da Autoriza√ß√£o no pipeline
 app.UseAuthentication();
 app.UseAuthorization();
 
 app.UseAntiforgery();
 #endregion
 
-#region [ Mapeamento de Rotas e ExecuÁ„o da AplicaÁ„o ]
+#region [ Mapeamento de Rotas e Execu√ß√£o da Aplica√ß√£o ]
 app.MapStaticAssets();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();

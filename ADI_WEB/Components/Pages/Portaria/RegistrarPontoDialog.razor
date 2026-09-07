@@ -75,14 +75,17 @@
                 </MudItem>
 
                 <!-- Horário e Data -->
+                <!-- Horário e Data -->
                 <MudItem xs="12" sm="6">
-                    <MudTextField @bind-Value="_dto.HoraDaAcao"
+                    <MudTextField Value="_dto.HoraDaAcao"
+                                  ValueChanged="@(async (string val) => await FormatarHoraAsync(val))"
                                   Label="Horário do Apontamento"
                                   Variant="Variant.Outlined"
                                   Adornment="Adornment.Start"
                                   AdornmentIcon="@Icons.Material.Filled.AccessTime"
                                   Disabled="_dto.PegarDadosCatraca"
                                   Required="(!_dto.PegarDadosCatraca)"
+                                  MaxLength="5"
                                   Placeholder="@(_dto.PegarDadosCatraca ? "Automático (Catraca)" : "HH:mm")" />
                 </MudItem>
 
@@ -184,7 +187,6 @@
         _dto.SetorName = Colaborador.SetorName;
         _dto.Emp_Fil = (Int32)DataSessionHelper.DataSession.Company.EmpFill;
     }
-
     private void AtualizarOperadorParaAcaoAtual()
     {
         int? operadorIdAlvo = null;
@@ -216,7 +218,6 @@
             _dto.Codigo_OP = _operadorSelecionado.PoreteiroID;
         }
     }
-
     private void OnOrigemDadosChanged(bool pegarCatraca)
     {
         _dto.PegarDadosCatraca = pegarCatraca;
@@ -230,7 +231,6 @@
             _dto.HoraDaAcao = DateTime.Now.ToString("HH:mm");
         }
     }
-
     private void Submit()
     {
         if (_operadorSelecionado != null)
@@ -240,9 +240,7 @@
 
         MudDialog.Close(DialogResult.Ok(_dto));
     }
-
     private void Cancel() => MudDialog.Cancel();
-
     private void OnTipoAcaoChanged(TipoAcaoPortariaEnum novoTipo)
     {
         _dto.TipoAcaoPortaria = novoTipo;
@@ -267,7 +265,6 @@
             }
         }
     }
-
     private async Task<IEnumerable<PorteiroOperadorDto>> SearchOperadoresAsync(string value, CancellationToken token)
     {
         await Task.Delay(5, token);
@@ -276,5 +273,34 @@
             return ListPorteiroOperador;
 
         return ListPorteiroOperador.Where(x => x.Nome?.Contains(value, StringComparison.InvariantCultureIgnoreCase) ?? false);
+    }
+    private Task FormatarHoraAsync(string? valor)
+    {
+        if (string.IsNullOrWhiteSpace(valor))
+        {
+            _dto.HoraDaAcao = string.Empty;
+            return Task.CompletedTask;
+        }
+
+        // Remove tudo o que não for número
+        var apenasNumeros = new string(valor.Where(char.IsDigit).ToArray());
+
+        // Limita a no máximo 4 dígitos (HHmm)
+        if (apenasNumeros.Length > 4)
+        {
+            apenasNumeros = apenasNumeros.Substring(0, 4);
+        }
+
+        // Aplica a formatação de hora (HH:mm)
+        if (apenasNumeros.Length > 2)
+        {
+            _dto.HoraDaAcao = $"{apenasNumeros.Substring(0, 2)}:{apenasNumeros.Substring(2)}";
+        }
+        else
+        {
+            _dto.HoraDaAcao = apenasNumeros;
+        }
+
+        return Task.CompletedTask;
     }
 }

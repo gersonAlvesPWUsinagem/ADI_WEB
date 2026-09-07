@@ -1,16 +1,11 @@
 ﻿using Domain.Dtos.Login;
+using Domain.Dtos.Permission;
 using Domain.Helpers;
 using Domain.Interfaces;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Net.Http.Json;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Domain.Services
 {
-    public class LoginService : BaseHttpService, ILoginService 
+    public class LoginService : BaseHttpService, ILoginService
     {
 
 
@@ -20,10 +15,19 @@ namespace Domain.Services
         {
         }
 
-        public async Task<ApiDataService<string>> FazerLogin(UserDto user)
+        public async Task<ApiDataService<string>> FazerLoginAsync(UserDto user)
         {
             var result = await PostAsync<string>("Auth", user);
-            return result;           
+            return result;
+        }
+
+        public async Task<ApiDataService<List<PermissionUserDto>>> ValidarPermissaoAsync(Shared.Enums.ModuloEnum modulo, int permission)
+        {
+            string url = $"Auth/get-permission-user?modulo={modulo}&permission={permission}";
+
+            var result = await GetAsync<List<PermissionUserDto>>(url);
+
+            return result;
         }
     }
 }

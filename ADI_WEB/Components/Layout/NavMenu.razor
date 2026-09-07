@@ -6,8 +6,10 @@
 @inject NavigationManager Navigation
 @inject ISnackbar Snackbar
 @inject ILogger<NavMenu> Logger
+@inject IFavoritoPaginaService FavoritoService
+@inject FavoritoPaginaState FavoritosState
 
-<MudStack Spacing="2" Class="pa-3">
+<MudStack Spacing="2" Class="pa-3 mt-12">
     <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
         <MudAvatar Color="Color.Primary" Size="Size.Medium">@Initials</MudAvatar>
         <MudStack Spacing="0">
@@ -17,55 +19,83 @@
     </MudStack>
 </MudStack>
 
+@if (PaginaAtual is not null)
+{
+    <MudButton FullWidth="true" Variant="Variant.Text" Color="@(_favoritoAtual ? Color.Warning : Color.Default)"
+               StartIcon="@(_favoritoAtual ? Icons.Material.Filled.Star : Icons.Material.Outlined.StarOutline)"
+               OnClick="AlternarFavoritoAsync" Disabled="_salvandoFavorito" Class="mb-2">
+        @(_favoritoAtual ? "Remover favorito" : "Adicionar favorito")
+    </MudButton>
+}
+
 <MudNavMenu>
-    <MudNavLink Href="/main" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Home">
-        HOME
-    </MudNavLink>
-
-    <MudNavGroup Title="RAMAIS" Icon="@Icons.Material.Filled.ContactPhone" Expanded="false">
-        <MudNavLink Href="/download-agent" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Phone">
-            LISTA DE RAMAIS
-        </MudNavLink>
-        <MudNavLink Match="NavLinkMatch.Prefix" Href="glpi/termo-concessao" Icon="@Icons.Material.Filled.Description">
-            CADASTRO DE RAMAIS
-        </MudNavLink>
-    </MudNavGroup>
-
-    <MudNavGroup Title="TI" Icon="@Icons.Material.Filled.Computer" Expanded="false">
-        <MudNavLink Href="/download-agent" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Download">
-            DOWNLOADS
-        </MudNavLink>
-        <MudNavLink Match="NavLinkMatch.Prefix" Href="glpi/termo-concessao" Icon="@Icons.Material.Filled.Description">
-            GERADOR DE TERMO
-        </MudNavLink>
-    </MudNavGroup>
-
-    <MudNavGroup Title="RH" Icon="@Icons.Material.Filled.Groups" Expanded="false">
-        <MudNavGroup Title="PORTARIA" Icon="@Icons.Material.Filled.Security" Expanded="false">
-            <MudNavLink Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Login" Href="portaria/registrar-entrada-saida-colaborador">
-                APT ENTRADA\SAÍDA
-            </MudNavLink>
-            <MudNavLink Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.ManageAccounts" Href="portaria/gerenciamento-operadores">
-                OPERADORES
-            </MudNavLink>
-            <MudNavLink Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Groups" Href="portaria/gerenciamento-pessoas">
-                GERENCIAR
-            </MudNavLink>
-        </MudNavGroup>
-    </MudNavGroup>
-
-    <MudSpacer />
-    <MudDivider Class="my-2" />
-
-    <MudNavLink OnClick="EfetuarLogout" Icon="@Icons.Material.Filled.Logout" IconColor="Color.Error">
-        Sair
-    </MudNavLink>
+    <NavMenuTree Menu="@Paginas" />
 </MudNavMenu>
 
 @code {
     private string? _fullName;
     private string? _level;
     private string? _environment;
+    private bool _favoritoAtual;
+    private bool _salvandoFavorito;
+    private string _rotaAtual = string.Empty;
+
+    // O menu acompanha visualmente esta estrutura. Para incluir uma página,
+    // adicione-a no dicionário do grupo em que ela deve aparecer.
+    private static readonly Dictionary<string, NavMenuItem> Paginas = new()
+    {
+        ["INÍCIO"] = NavMenuItem.Pagina(Icons.Material.Filled.Home, "/main"),
+
+        ["RAMAIS"] = NavMenuItem.Grupo(Icons.Material.Filled.ContactPhone, new Dictionary<string, NavMenuItem>
+        {
+            ["LISTA DE RAMAIS"] = NavMenuItem.Pagina(Icons.Material.Filled.Phone, "/ramais"),
+            ["CADASTRO DE RAMAIS"] = NavMenuItem.Pagina(Icons.Material.Filled.EditNote, "/ramais/gerenciamento")
+        }),
+
+        ["TI"] = NavMenuItem.Grupo(Icons.Material.Filled.Computer, new Dictionary<string, NavMenuItem>
+        {
+            ["DOWNLOADS"] = NavMenuItem.Pagina(Icons.Material.Filled.Download, "/download-agent"),
+            ["GERADOR DE TERMO"] = NavMenuItem.Pagina(Icons.Material.Filled.Description, "/glpi/termo-concessao")
+        }),
+
+        ["RH"] = NavMenuItem.Grupo(Icons.Material.Filled.Groups, new Dictionary<string, NavMenuItem>
+        {
+            ["PORTARIA"] = NavMenuItem.Grupo(Icons.Material.Filled.Security, new Dictionary<string, NavMenuItem>
+            {
+                ["APT. COLABORADORES"] = NavMenuItem.Pagina(Icons.Material.Filled.Login, "/portaria/registrar-entrada-saida-colaborador"),
+                ["CTR. VEÍCULOS"] = NavMenuItem.Pagina(Icons.Material.Filled.DirectionsCar, "/portaria/contro-leveiculo"),
+                ["CTR. CRACHÁS"] = NavMenuItem.Pagina(Icons.Material.Filled.Badge, "/portaria/controle-cracha"),
+                ["CTR. CHAVES"] = NavMenuItem.Pagina(Icons.Material.Filled.VpnKey, "/portaria/controle-chave"),
+                ["CTR. OPERADORES"] = NavMenuItem.Pagina(Icons.Material.Filled.ManageAccounts, "/portaria/gerenciamento-operadores"),
+                ["PESSOAS"] = NavMenuItem.Pagina(Icons.Material.Filled.Groups, "/portaria/gerenciamento-pessoas")
+            })
+        })
+    };
+
+    private sealed record PaginaMenuAtual(string Nome, string Icone);
+
+    private PaginaMenuAtual? PaginaAtual => EncontrarPagina(Paginas, _rotaAtual);
+
+    private static PaginaMenuAtual? EncontrarPagina(IReadOnlyDictionary<string, NavMenuItem> menu, string rotaAtual)
+    {
+        foreach (var entrada in menu)
+        {
+            var nome = entrada.Key;
+            var item = entrada.Value;
+
+            if (item.EhGrupo)
+            {
+                var paginaFilha = EncontrarPagina(item.Filhos!, rotaAtual);
+                if (paginaFilha is not null) return paginaFilha;
+            }
+            else if (string.Equals(item.Rota?.Trim('/'), rotaAtual, StringComparison.OrdinalIgnoreCase))
+            {
+                return new PaginaMenuAtual(nome, item.Icone);
+            }
+        }
+
+        return null;
+    }
 
     private string FirstName => string.IsNullOrWhiteSpace(_fullName)
         ? "Usuário"
@@ -78,18 +108,83 @@
     protected override async Task OnInitializedAsync()
     {
         AuthenticationStateProvider.AuthenticationStateChanged += OnAuthenticationStateChanged;
+        Navigation.LocationChanged += OnLocationChanged;
+        AtualizarRotaAtual();
         await LoadUserAsync();
+        await CarregarEstadoFavoritoAsync();
+    }
+
+    private void AtualizarRotaAtual() => _rotaAtual = Navigation.ToBaseRelativePath(Navigation.Uri).Trim('/');
+
+    private async Task CarregarEstadoFavoritoAsync()
+    {
+        _favoritoAtual = false;
+        if (PaginaAtual is null) return;
+
+        try
+        {
+            await FavoritosState.GarantirCarregadoAsync();
+            _favoritoAtual = FavoritosState.Contem(_rotaAtual);
+        }
+        catch
+        {
+            _favoritoAtual = false;
+        }
+    }
+
+    private async Task AlternarFavoritoAsync()
+    {
+        var pagina = PaginaAtual;
+        if (pagina is null) return;
+
+        _salvandoFavorito = true;
+        try
+        {
+            var favorito = new FavoritoPaginaDto
+            {
+                Rota = "/" + _rotaAtual,
+                Nome = pagina.Nome,
+                Icone = pagina.Icone
+            };
+            var resultado = await FavoritoService.AlternarAsync(favorito);
+
+            if (resultado.Success)
+            {
+                FavoritosState.Alternar(resultado.Value ?? favorito);
+                _favoritoAtual = !_favoritoAtual;
+                Snackbar.Add(resultado.Message ?? "Favoritos atualizados.", Severity.Success);
+            }
+            else
+            {
+                Snackbar.Add(resultado.Message ?? "Não foi possível atualizar os favoritos.", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Erro ao atualizar favorito: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _salvandoFavorito = false;
+        }
+    }
+
+    private async void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        AtualizarRotaAtual();
+        await CarregarEstadoFavoritoAsync();
+        await InvokeAsync(StateHasChanged);
     }
 
     private async Task LoadUserAsync()
     {
-        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        await AuthenticationStateProvider.GetAuthenticationStateAsync();
         SetUser();
     }
 
     private async void OnAuthenticationStateChanged(Task<AuthenticationState> task)
     {
-        var authState = await task;
+        await task;
         SetUser();
         await InvokeAsync(StateHasChanged);
     }
@@ -105,17 +200,11 @@
         }
     }
 
-    private static string? FormatEnvironment(string? value)
-    {
-        return EnvironmentClaimFormatter.Format(value);
-    }
-
     private async Task EfetuarLogout()
     {
         try
         {
             await _jwtAuthenticationService.LogoutAsync();
-
             Snackbar.Add("Sessão encerrada com sucesso.", Severity.Info);
             Navigation.NavigateTo("/user/login", forceLoad: true);
         }
@@ -129,5 +218,6 @@
     public void Dispose()
     {
         AuthenticationStateProvider.AuthenticationStateChanged -= OnAuthenticationStateChanged;
+        Navigation.LocationChanged -= OnLocationChanged;
     }
 }

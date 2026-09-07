@@ -4,9 +4,10 @@
 
 <PageTitle>Gerenciamento de Operadores</PageTitle>
 
-<HeaderComponent Title="Gerenciamento de Operadores"
+<HeaderComponent Title="Gerenciamento de Operadores" Modulo=ModuloEnum.Comercial Permission=112
                  TextBtn1="Novo operador"
                  IconBtn1="@Icons.Material.Filled.PersonAdd"
+                 LevelBtn1="3"
                  ColorBtn1="Color.Primary"
                  IsVisibleOrNotBtn1="true"
                  OnBtn1Click="NovoOperador" />
@@ -63,12 +64,15 @@
         await AbrirEditor(new PorteiroOperadorDto { Codigo = Guid.NewGuid() });
     }
 
-    private async Task Editar(PorteiroOperadorDto operador) => await AbrirEditor(new PorteiroOperadorDto
+    private async Task Editar(PorteiroOperadorDto operador)
     {
-        PoreteiroID = operador.PoreteiroID,
-        Codigo = operador.Codigo,
-        Nome = operador.Nome
-    });
+        await AbrirEditor(new PorteiroOperadorDto
+        {
+            PoreteiroID = operador.PoreteiroID,
+            Codigo = operador.Codigo,
+            Nome = operador.Nome
+        });
+    }
 
     private async Task AbrirEditor(PorteiroOperadorDto operador)
     {

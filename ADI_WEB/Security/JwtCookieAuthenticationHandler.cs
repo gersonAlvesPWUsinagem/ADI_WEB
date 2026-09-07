@@ -46,6 +46,7 @@ public sealed class JwtCookieAuthenticationHandler : AuthenticationHandler<JwtAu
         catch (SecurityTokenExpiredException ex)
         {
             Logger.LogWarning(ex, "JWT expirado");
+            Context.Items["Adi.TokenExpirado"] = true;
             return Task.FromResult(AuthenticateResult.Fail("JWT expirado"));
         }
         catch (SecurityTokenInvalidSignatureException ex)
@@ -70,7 +71,8 @@ public sealed class JwtCookieAuthenticationHandler : AuthenticationHandler<JwtAu
     {
         var returnUrl = Request.PathBase + Request.Path + Request.QueryString;
         var loginPath = Options.LoginPath.HasValue ? Options.LoginPath.Value : JwtAuthenticationDefaults.LoginPath;
-        var redirectUri = $"{loginPath}?returnUrl={Uri.EscapeDataString(returnUrl)}";
+        var expirado = Context.Items.TryGetValue("Adi.TokenExpirado", out var tokenExpirado) && tokenExpirado is true;
+        var redirectUri = $"{loginPath}?returnUrl={Uri.EscapeDataString(returnUrl)}" + (expirado ? "&expired=1" : string.Empty);
 
         Logger.LogInformation("Usuario nao autenticado. Redirecionando para {LoginPath}", loginPath);
         Response.Redirect(redirectUri);

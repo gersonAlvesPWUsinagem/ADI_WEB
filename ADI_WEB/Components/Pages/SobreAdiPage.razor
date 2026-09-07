@@ -1,0 +1,220 @@
+﻿@page "/sobre-o-sistema"
+@using MudBlazor
+
+<PageTitle>Sobre o ERP ADI</PageTitle>
+
+<div class="erp-about-page">
+    <MudContainer MaxWidth="MaxWidth.Large" Class="py-8">
+        <MudPaper Elevation="0" Class="hero-panel pa-6 pa-md-10 mb-8">
+            <div class="hero-glow hero-glow-one"></div>
+            <div class="hero-glow hero-glow-two"></div>
+
+            <MudGrid Spacing="4" AlignItems="AlignItems.Center" Class="position-relative">
+                <MudItem xs="12" md="8">
+                    <MudChip T="string" Variant="Variant.Filled" Size="Size.Small" 
+                            Icon="@Icons.Material.Filled.AutoAwesome" IconColor="Color.Warning" Class="mr-4">
+                        Plataforma integrada de gestão
+                    </MudChip>
+            
+                    <MudText Typo="Typo.h2" Class="hero-title mb-4">
+                        ERP ADI
+                    </MudText>
+                    <MudText Typo="Typo.h5" Class="hero-subtitle mb-4">
+                        Uma visão única para conectar operação, pessoas e decisões.
+                    </MudText>
+                    <MudText Typo="Typo.body1" Class="hero-copy mb-6">
+                        O ERP ADI organiza os principais processos da empresa em um ecossistema de gestão integrado,
+                        apoiando desde o cadastro e a operação diária até o acompanhamento financeiro, produtivo e da qualidade.
+                    </MudText>
+                    <MudStack Row="true" Spacing="2" Class="flex-wrap">
+                        <MudButton Href="#visao-geral" Variant="Variant.Filled" Color="Color.Warning" EndIcon="@Icons.Material.Filled.ArrowDownward">
+                            Conhecer o sistema
+                        </MudButton>
+                        <MudButton Href="#modulos" Variant="Variant.Outlined" Color="Color.Inherit" StartIcon="@Icons.Material.Filled.Dashboard">
+                            Ver módulos
+                        </MudButton>
+                    </MudStack>
+                </MudItem>
+                <MudItem xs="12" md="4">
+                    <div class="hero-orbit" aria-hidden="true">
+                        <div class="orbit-ring orbit-ring-large"></div>
+                        <div class="orbit-ring orbit-ring-small"></div>
+                        <MudPaper Elevation="8" Class="hero-core pa-5">
+                            <MudIcon Icon="@Icons.Material.Filled.Hub" Size="Size.Large" Color="Color.Warning" />
+                            <MudText Typo="Typo.h6" Class="mt-3">Tudo conectado</MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">Dados que atravessam a operação</MudText>
+                        </MudPaper>
+                    </div>
+                </MudItem>
+            </MudGrid>
+        </MudPaper>
+
+        <MudGrid Spacing="3" Class="mb-10">
+            <MudItem xs="12" sm="4">
+                <MudPaper Elevation="0" Class="metric-card pa-5">
+                    <MudIcon Icon="@Icons.Material.Filled.AccountTree" Color="Color.Primary" Size="Size.Medium" />
+                    <MudText Typo="Typo.h5" Class="mt-3">Gestão integrada</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">Processos conectados em uma mesma visão operacional.</MudText>
+                </MudPaper>
+            </MudItem>
+            <MudItem xs="12" sm="4">
+                <MudPaper Elevation="0" Class="metric-card pa-5">
+                    <MudIcon Icon="@Icons.Material.Filled.Analytics" Color="Color.Success" Size="Size.Medium" />
+                    <MudText Typo="Typo.h5" Class="mt-3">Decisão com contexto</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">Informações organizadas para acompanhar resultados.</MudText>
+                </MudPaper>
+            </MudItem>
+            <MudItem xs="12" sm="4">
+                <MudPaper Elevation="0" Class="metric-card pa-5">
+                    <MudIcon Icon="@Icons.Material.Filled.Security" Color="Color.Error" Size="Size.Medium" />
+                    <MudText Typo="Typo.h5" Class="mt-3">Controle e rastreabilidade</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">Rotinas estruturadas para dar previsibilidade à operação.</MudText>
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+
+        <div id="visao-geral" class="section-anchor"></div>
+        <MudGrid Spacing="6" Class="mb-12">
+            <MudItem xs="12" md="5">
+                <MudText Typo="Typo.overline" Color="Color.Primary">Visão geral</MudText>
+                <MudText Typo="Typo.h3" Class="section-title mb-4">O sistema por trás da rotina.</MudText>
+                <MudText Typo="Typo.body1" Color="Color.Secondary">
+                    O ADI foi concebido para reunir áreas que precisam trabalhar em conjunto. Cada módulo possui seu foco,
+                    mas compartilha uma lógica comum: reduzir retrabalho, preservar informações e tornar o fluxo da empresa mais claro.
+                </MudText>
+            </MudItem>
+            <MudItem xs="12" md="7">
+                <MudPaper Elevation="0" Class="flow-panel pa-5 pa-md-7">
+                    <MudText Typo="Typo.h6" Class="mb-5">Como o valor circula pela empresa</MudText>
+                    <div class="process-flow">
+                        <div class="process-step"><span>01</span><MudIcon Icon="@Icons.Material.Filled.People" /><MudText Typo="Typo.body2">Relacionamentos</MudText></div>
+                        <MudIcon Icon="@Icons.Material.Filled.ChevronRight" Color="Color.Default" />
+                        <div class="process-step"><span>02</span><MudIcon Icon="@Icons.Material.Filled.ShoppingCart" /><MudText Typo="Typo.body2">Comercial</MudText></div>
+                        <MudIcon Icon="@Icons.Material.Filled.ChevronRight" Color="Color.Default" />
+                        <div class="process-step"><span>03</span><MudIcon Icon="@Icons.Material.Filled.Factory" /><MudText Typo="Typo.body2">Operação</MudText></div>
+                        <MudIcon Icon="@Icons.Material.Filled.ChevronRight" Color="Color.Default" />
+                        <div class="process-step"><span>04</span><MudIcon Icon="@Icons.Material.Filled.Assessment" /><MudText Typo="Typo.body2">Controle</MudText></div>
+                    </div>
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+
+        <div id="modulos" class="section-anchor"></div>
+        <div class="section-heading mb-6">
+            <MudText Typo="Typo.overline" Color="Color.Primary">Ecossistema</MudText>
+            <MudText Typo="Typo.h3" Class="section-title">Módulos que trabalham juntos</MudText>
+            <MudText Typo="Typo.body1" Color="Color.Secondary">Uma base modular para acompanhar diferentes momentos do negócio.</MudText>
+        </div>
+
+        <MudGrid Spacing="3" Class="mb-12">
+            <MudItem xs="12" sm="6" md="4">
+                <MudPaper Elevation="0" Class="module-card pa-5">
+                    <MudAvatar Color="Color.Primary" Variant="Variant.Filled"><MudIcon Icon="@Icons.Material.Filled.Storefront" /></MudAvatar>
+                    <MudText Typo="Typo.h6" Class="mt-4">Comercial</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">Clientes, vendas, notas, embarques, pedidos e rotinas de atendimento.</MudText>
+                    <MudChip T="string" Color="Color.Primary" Variant="Variant.Outlined" Size="Size.Small" Class="mt-4">Relacionamento e vendas</MudChip>
+                </MudPaper>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="4">
+                <MudPaper Elevation="0" Class="module-card pa-5">
+                    <MudAvatar Color="Color.Success" Variant="Variant.Filled"><MudIcon Icon="@Icons.Material.Filled.Payments" /></MudAvatar>
+                    <MudText Typo="Typo.h6" Class="mt-4">Financeiro</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">Contas, custos, movimentações e informações para o acompanhamento financeiro.</MudText>
+                    <MudChip T="string" Color="Color.Success" Variant="Variant.Outlined" Size="Size.Small" Class="mt-4">Controle financeiro</MudChip>
+                </MudPaper>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="4">
+                <MudPaper Elevation="0" Class="module-card pa-5">
+                    <MudAvatar Color="Color.Warning" Variant="Variant.Filled"><MudIcon Icon="@Icons.Material.Filled.Engineering" /></MudAvatar>
+                    <MudText Typo="Typo.h6" Class="mt-4">Engenharia</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">Dados técnicos, processos, estruturas e suporte ao desenvolvimento operacional.</MudText>
+                    <MudChip T="string" Color="Color.Warning" Variant="Variant.Outlined" Size="Size.Small" Class="mt-4">Conhecimento técnico</MudChip>
+                </MudPaper>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="4">
+                <MudPaper Elevation="0" Class="module-card pa-5">
+                    <MudAvatar Color="Color.Error" Variant="Variant.Filled"><MudIcon Icon="@Icons.Material.Filled.Inventory2" /></MudAvatar>
+                    <MudText Typo="Typo.h6" Class="mt-4">Suprimentos e estoque</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">Materiais, inventário, almoxarifado e disponibilidade para a operação.</MudText>
+                    <MudChip T="string" Color="Color.Error" Variant="Variant.Outlined" Size="Size.Small" Class="mt-4">Recursos e abastecimento</MudChip>
+                </MudPaper>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="4">
+                <MudPaper Elevation="0" Class="module-card pa-5">
+                    <MudAvatar Color="Color.Info" Variant="Variant.Filled"><MudIcon Icon="@Icons.Material.Filled.Verified" /></MudAvatar>
+                    <MudText Typo="Typo.h6" Class="mt-4">Qualidade</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">Registros de não conformidade, análise e acompanhamento da melhoria contínua.</MudText>
+                    <MudChip T="string" Color="Color.Info" Variant="Variant.Outlined" Size="Size.Small" Class="mt-4">Conformidade</MudChip>
+                </MudPaper>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="4">
+                <MudPaper Elevation="0" Class="module-card pa-5">
+                    <MudAvatar Color="Color.Secondary" Variant="Variant.Filled"><MudIcon Icon="@Icons.Material.Filled.Groups" /></MudAvatar>
+                    <MudText Typo="Typo.h6" Class="mt-4">Pessoas e operações</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">Apoio às rotinas internas, monitoramento, pesagem e execução do dia a dia.</MudText>
+                    <MudChip T="string" Color="Color.Secondary" Variant="Variant.Outlined" Size="Size.Small" Class="mt-4">Operação integrada</MudChip>
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+
+        <MudPaper Elevation="0" Class="closing-panel pa-6 pa-md-10">
+            <MudGrid AlignItems="AlignItems.Center" Spacing="4">
+                <MudItem xs="12" md="8">
+                    <MudText Typo="Typo.overline" Color="Color.Warning">Uma plataforma, vários pontos de vista</MudText>
+                    <MudText Typo="Typo.h4" Class="mb-3">O ADI transforma dados dispersos em uma operação mais coordenada.</MudText>
+                    <MudText Typo="Typo.body1" Class="closing-copy">Use esta página como apresentação institucional do sistema e adapte os textos aos nomes e processos específicos da sua organização.</MudText>
+                </MudItem>
+                <MudItem xs="12" md="4" Class="d-flex justify-md-end">
+                    <MudButton Href="#visao-geral" Variant="Variant.Filled" Color="Color.Warning" StartIcon="@Icons.Material.Filled.ExpandLess">Voltar ao início</MudButton>
+                </MudItem>
+            </MudGrid>
+        </MudPaper>
+    </MudContainer>
+</div>
+
+<style>
+    :root {
+        --adi-ink: #17242d;
+        --adi-muted: #64727a;
+        --adi-line: #dce5e8;
+        --adi-surface: #f5f8f8;
+        --adi-teal: #0d6867;
+        --adi-coral: #e8795d;
+    }
+
+    .erp-about-page { background: #f4f7f6; min-height: 100vh; color: var(--adi-ink); }
+    .hero-panel { background: linear-gradient(122deg, #103c45 0%, #0e6262 58%, #208583 100%); color: white; overflow: hidden; position: relative; border-radius: 18px; }
+    .hero-title { color: white; font-size: clamp(3.2rem, 8vw, 6.5rem); font-weight: 800; letter-spacing: -0.04em; line-height: .95; }
+    .hero-subtitle { color: #d4eeee; font-weight: 500; max-width: 570px; }
+    .hero-copy { color: #c6dddd; max-width: 650px; line-height: 1.8; }
+    .hero-glow { border-radius: 50%; position: absolute; border: 1px solid rgba(255,255,255,.14); pointer-events: none; }
+    .hero-glow-one { width: 530px; height: 530px; right: -190px; top: -230px; }
+    .hero-glow-two { width: 360px; height: 360px; right: -80px; bottom: -220px; }
+    .hero-orbit { min-height: 270px; display: grid; place-items: center; position: relative; }
+    .orbit-ring { position: absolute; border: 1px solid rgba(255,255,255,.26); border-radius: 50%; transform: rotate(-25deg); }
+    .orbit-ring-large { width: 245px; height: 145px; }
+    .orbit-ring-small { width: 180px; height: 245px; transform: rotate(48deg); }
+    .hero-core { z-index: 1; background: rgba(255,255,255,.97); color: var(--adi-ink); border-radius: 14px; text-align: center; min-width: 190px; }
+    .metric-card, .module-card, .flow-panel { background: white; border: 1px solid var(--adi-line); border-radius: 12px; height: 100%; }
+    .metric-card { transition: transform .2s ease, box-shadow .2s ease; }
+    .metric-card:hover, .module-card:hover { transform: translateY(-4px); box-shadow: 0 12px 28px rgba(23, 36, 45, .08); }
+    .section-anchor { scroll-margin-top: 24px; }
+    .section-title { color: var(--adi-ink); font-weight: 750; letter-spacing: -.025em; }
+    .section-heading { max-width: 720px; }
+    .process-flow { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .process-step { color: var(--adi-teal); display: flex; flex-direction: column; align-items: center; text-align: center; gap: 6px; min-width: 72px; }
+    .process-step span { color: var(--adi-coral); font-size: .7rem; font-weight: 800; letter-spacing: .08em; }
+    .process-step .mud-icon-root { font-size: 1.7rem; }
+    .module-card { transition: transform .2s ease, box-shadow .2s ease; }
+    .module-card .mud-avatar { border-radius: 10px; }
+    .closing-panel { background: #173b43; color: white; border-radius: 16px; }
+    .closing-copy { color: #c7dcdc; max-width: 650px; }
+
+    @@media (max-width: 600px) {
+        .hero-panel { border-radius: 12px; }
+        .hero-orbit { min-height: 210px; }
+        .process-flow { align-items: stretch; flex-wrap: wrap; justify-content: center; }
+        .process-flow > .mud-icon-root { display: none; }
+        .process-step { min-width: 96px; }
+    }
+</style>

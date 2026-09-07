@@ -13,6 +13,7 @@ namespace Domain.Services
         {
         }
 
+
         public async Task<ApiDataService<List<ControlePessoaDto>>> GetColaboradorControladoAsync()
         {
             var result = await GetAsync<List<ControlePessoaDto>>("portaria/get-colaborador-controlado");
@@ -32,6 +33,11 @@ namespace Domain.Services
 
             return result;
         }
+        public Task<ApiDataService<List<ControlePessoaDto>>> GetColaboradorControladoPorMesAsync(int ano, int mes) =>
+            GetAsync<List<ControlePessoaDto>>($"portaria/get-colaborador-controlado-por-mes?ano={ano}&mes={mes}");
+
+        public Task<ApiDataService<List<int>>> GetMesesColaboradorControladoAsync(int ano) =>
+            GetAsync<List<int>>($"portaria/get-meses-colaborador-controlado?ano={ano}");
         public Task<ApiDataService<List<ColaboradoresControladosDto>>> GetColaboradoresAsync() =>
             GetAsync<List<ColaboradoresControladosDto>>("portaria/get-colaboradores");
 
@@ -56,6 +62,9 @@ namespace Domain.Services
         }
         public Task<ApiDataService<PorteiroOperadorDto>> LoginPorteiroOperadorAsync(int operadorId, string senha) =>
             PostAsync<PorteiroOperadorDto>("portaria/login-porteiro-operador", new { OperadorId = operadorId, Senha = senha });
+
+        public Task<ApiDataService<PorteiroOperadorDto>> AlterarSenhaPorteiroOperadorAsync(AlterarSenhaPorteiroOperadorDto dto) =>
+            PutAsync<PorteiroOperadorDto>("portaria/alterar-senha-porteiro-operador", dto);
 
         public Task<ApiDataService<PorteiroOperadorDto>> AdicionarPorteiroOperadorAsync(PorteiroOperadorDto dto) =>
             PostAsync<PorteiroOperadorDto>("portaria/post-porteiro-operador", dto);
@@ -88,9 +97,10 @@ namespace Domain.Services
             result = await PostAsync<bool>("portaria/post-gerar-lista-apontados", data);
             return result;
         }
-        public async Task<ApiDataService<(byte[] Conteudo, string MimeType, string NomeArquivo, bool IsInline)>> GerarRelatorioControlePessoaAsync(string formato, DateTime dataInicial, DateTime dataFinal, List<string> matriculas)
+        public async Task<ApiDataService<(byte[] Conteudo, string MimeType, string NomeArquivo, bool IsInline)>>
+            GerarRelatorioControlePessoaAsync(string formato, DateTime dataInicial, DateTime dataFinal, List<string> matriculas)
         {
-            var result= await PostForFileAsync("portaria/exportar-relatorio-controle-pessoa", new { Formato = formato, DataInicial = dataInicial, DataFinal = dataFinal, Matriculas= matriculas }, $"Relatorio_Controle_Pessoa.{formato.ToLowerInvariant()}");
+            var result = await PostForFileAsync("portaria/exportar-relatorio-controle-pessoa", new { Formato = formato, DataInicial = dataInicial, DataFinal = dataFinal, Matriculas = matriculas }, $"Relatorio_Controle_Pessoa.{formato.ToLowerInvariant()}");
 
             return result;
         }

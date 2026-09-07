@@ -13,7 +13,7 @@
 @using MudBlazor.Services
 @using ADI_WEB
 @using ADI_WEB.Components
-
+@using ADI_WEB.Components.Layout
 
 @using Microsoft.AspNetCore.Authorization
 
@@ -22,6 +22,7 @@
 @inject IDialogService DialogService
 @inject SnackbarComp _snackbarComp
 @inject LoadingHelper Loading
+@inject IJSRuntime JSRuntime
 
 
 @using Shared.Enums
@@ -30,8 +31,11 @@
 @using Domain.Dtos.Login
 @using Domain.Helpers
 @using Domain.Interfaces
+@using Domain.Services
 @using Domain.Dtos.Termos
 @using Domain.Dtos.Portaria
+@using Domain.Dtos.Ramais
+@using Domain.Dtos.Favoritos
 
 
 @using ADI_WEB.Components.Pages.Dialogs

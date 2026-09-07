@@ -29,6 +29,7 @@ public static class JwtAuthenticationExtensions
 
         services.AddScoped<JwtPrincipalFactory>();
         services.AddScoped<JwtTokenNormalizer>();
+        services.AddScoped<PostLoginRedirectCoordinator>();
         services.AddScoped<AuthCookieJsInterop>();
         services.AddScoped<ICookieService, CookieService>();
         services.AddScoped<JwtAuthenticationService>();

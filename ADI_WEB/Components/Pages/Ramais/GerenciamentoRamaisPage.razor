@@ -1,0 +1,122 @@
+@attribute [Authorize]
+@page "/ramais/gerenciamento"
+@using ADI_WEB.Components.Layout
+
+<PageTitle>Cadastro de Ramais</PageTitle>
+
+<HeaderComponent Title="Cadastro de Ramais"
+                 TextBtn1="Novo"
+                 IconBtn1="@Icons.Material.Filled.Add"
+                 ColorBtn1="Color.Primary"
+                 IsVisibleOrNotBtn1="true"
+                 OnBtn1Click="Novo" />
+
+<MudPaper Class="pa-4 mt-2" Elevation="1">
+    <MudText Typo="Typo.h6" Class="mb-3">@(_edicao.Id == 0 ? "Novo contato" : "Editar contato")</MudText>
+    <MudForm @ref="_form" Model="_edicao">
+        <MudGrid>
+            <MudItem xs="12" md="6"><ColaboradorAutocomplete @bind-Value="_colaboradorSelecionado" /></MudItem>
+            <MudItem xs="12" sm="4" md="2"><MudTextField @bind-Value="_edicao.Ramal" For="@(() => _edicao.Ramal)" Label="Ramal" Required="true" MaxLength="4" Variant="Variant.Outlined" Margin="Margin.Dense" /></MudItem>
+            <MudItem xs="12" sm="4" md="2"><MudTextField @bind-Value="_edicao.Ddr" For="@(() => _edicao.Ddr)" Label="DDR" Variant="Variant.Outlined" Margin="Margin.Dense" /></MudItem>
+            <MudItem xs="12" sm="4" md="2"><MudTextField @bind-Value="_edicao.Celular" For="@(() => _edicao.Celular)" Label="Celular" Variant="Variant.Outlined" Margin="Margin.Dense" /></MudItem>
+            <MudItem xs="12" md="5"><MudTextField @bind-Value="_edicao.Setor" For="@(() => _edicao.Setor)" Label="Setor" Variant="Variant.Outlined" Margin="Margin.Dense" /></MudItem>
+            <MudItem xs="12" md="7"><MudTextField @bind-Value="_edicao.Email" For="@(() => _edicao.Email)" Label="E-mail" InputType="InputType.Email" Variant="Variant.Outlined" Margin="Margin.Dense" /></MudItem>
+        </MudGrid>
+        <div class="d-flex justify-end gap-2 mt-3">
+            <MudButton Variant="Variant.Text" OnClick="Novo" Disabled="_salvando">Limpar</MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Save" OnClick="SalvarAsync" Disabled="_salvando">Salvar</MudButton>
+        </div>
+    </MudForm>
+</MudPaper>
+
+<MudPaper Class="pa-4 mt-4" Elevation="1">
+    <MudTextField @bind-Value="_filtro" Label="Pesquisar contato" Immediate="true" Variant="Variant.Outlined" Margin="Margin.Dense"
+                  Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" Class="mb-4" />
+    <MudDataGrid Items="RamaisFiltrados" Hover="true" Dense="true" Loading="_carregando" Bordered="_exibirBordas">
+        <Columns>
+            <PropertyColumn Property="x => x.Nome" Title="NOME" />
+            <PropertyColumn Property="x => x.Matricula" Title="MATRÍCULA" />
+            <PropertyColumn Property="x => x.Ramal" Title="RAMAL" />
+            <PropertyColumn Property="x => x.Ddr" Title="DDR" />
+            <PropertyColumn Property="x => x.Celular" Title="CELULAR" />
+            <PropertyColumn Property="x => x.Setor" Title="SETOR" />
+            <PropertyColumn Property="x => x.Email" Title="E-MAIL" />
+            <TemplateColumn Title="AÇÕES" Sortable="false">
+                <CellTemplate>
+                    <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Primary" Size="Size.Small" OnClick="@(() => Editar(context.Item))" />
+                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small" Disabled="_salvando" OnClick="@(() => ExcluirAsync(context.Item))" />
+                </CellTemplate>
+            </TemplateColumn>
+        </Columns>
+        <PagerContent>
+            <div class="d-flex align-center justify-space-between mt-2 px-2">
+                <MudSwitch @bind-Value="_exibirBordas" Label="Exibir bordas na tabela" Color="Color.Primary" Size="Size.Small" />
+                <MudDataGridPager T="RamalDto" />
+            </div>
+        </PagerContent>
+    </MudDataGrid>
+</MudPaper>
+
+@code {
+    [Inject] private IRamalService RamalService { get; set; } = default!;
+    private MudForm? _form;
+    private List<RamalDto> _ramais = [];
+    private RamalDto _edicao = new();
+    private ColaboradoresControladosDto? _colaboradorSelecionado;
+    private string? _filtro;
+    private bool _carregando;
+    private bool _salvando;
+    private bool _exibirBordas;
+    private IEnumerable<RamalDto> RamaisFiltrados => string.IsNullOrWhiteSpace(_filtro) ? _ramais : _ramais.Where(x =>
+        Contem(x.Nome) || Contem(x.Matricula.ToString()) || Contem(x.Ramal) || Contem(x.Ddr) || Contem(x.Celular) || Contem(x.Setor) || Contem(x.Email));
+    private bool Contem(string? valor) => valor?.Contains(_filtro!, StringComparison.OrdinalIgnoreCase) ?? false;
+
+    protected override Task OnInitializedAsync() => CarregarAsync();
+    private async Task CarregarAsync()
+    {
+        Loading.Show(); _carregando = true;
+        try { var r = await RamalService.ListarAsync(); if (r.Success) _ramais = r.Value ?? []; else Erro(r.Message); }
+        finally { _carregando = false; Loading.Hide(); }
+    }
+    private async Task Novo()
+    {
+        _edicao = new(); _colaboradorSelecionado = null; if (_form is not null) await _form.ResetAsync();
+    }
+    private void Editar(RamalDto x)
+    {
+        _edicao = new() { Id = x.Id, RamalId = x.RamalId, EmpFil = x.EmpFil, Matricula = x.Matricula, PessoaId = x.PessoaId,
+            Nome = x.Nome, Departamento = x.Departamento, Ramal = x.Ramal, Ddr = x.Ddr, Celular = x.Celular, Setor = x.Setor, Email = x.Email };
+        _colaboradorSelecionado = new() { EMPFIL = x.EmpFil, MATRICULA = x.Matricula, PESSOAID = x.PessoaId, NOME = x.Nome, DEPARTAMENTO = x.Departamento };
+    }
+    private async Task SalvarAsync()
+    {
+        if (_colaboradorSelecionado is null)
+        {
+            _snackbarComp.Message("Selecione um colaborador da lista.", Severity.Warning, Color.Warning);
+            return;
+        }
+        _edicao.EmpFil = _colaboradorSelecionado.EMPFIL;
+        _edicao.Matricula = _colaboradorSelecionado.MATRICULA;
+        _edicao.PessoaId = _colaboradorSelecionado.PESSOAID;
+        _edicao.Nome = _colaboradorSelecionado.NOME ?? string.Empty;
+        _edicao.Departamento = _colaboradorSelecionado.DEPARTAMENTO ?? _colaboradorSelecionado.TRADUCAO_CC;
+        await _form!.ValidateAsync(); if (!_form.IsValid) return;
+        Loading.Show(); _salvando = true;
+        try
+        {
+            var r = _edicao.Id == 0 ? await RamalService.AdicionarAsync(_edicao) : await RamalService.AtualizarAsync(_edicao);
+            _snackbarComp.Message(r.Message ?? (r.Success ? "Operação concluída." : "Não foi possível salvar."), r.Success ? Severity.Success : Severity.Error, r.Success ? Color.Success : Color.Error);
+            if (r.Success) { await Novo(); await CarregarAsync(); }
+        }
+        finally { _salvando = false; Loading.Hide(); }
+    }
+    private async Task ExcluirAsync(RamalDto x)
+    {
+        var confirmar = await DialogService.ShowMessageBoxAsync("Excluir ramal", $"Deseja excluir {x.Nome} (ramal {x.Ramal})?", yesText: "Excluir", cancelText: "Cancelar");
+        if (confirmar != true) return;
+        Loading.Show(); _salvando = true;
+        try { var r = await RamalService.ExcluirAsync(x.Id); _snackbarComp.Message(r.Message ?? "Operação concluída.", r.Success ? Severity.Success : Severity.Error, r.Success ? Color.Success : Color.Error); if (r.Success) { if (_edicao.Id == x.Id) await Novo(); await CarregarAsync(); } }
+        finally { _salvando = false; Loading.Hide(); }
+    }
+    private void Erro(string? mensagem) => _snackbarComp.Message(mensagem ?? "Não foi possível carregar os ramais.", Severity.Error, Color.Error);
+}

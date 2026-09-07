@@ -1,0 +1,26 @@
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="pa-0">
+    <MudSkeleton SkeletonType="SkeletonType.Rectangle" Width="220px" Height="48px" Class="mb-2" />
+    <MudSkeleton SkeletonType="SkeletonType.Rectangle" Width="180px" Height="22px" Class="mb-5" />
+
+    <MudGrid>
+        @for (var i = 0; i < Quantidade; i++)
+        {
+            <MudItem xs="12" sm="6" md="4" lg="3">
+                <MudPaper Elevation="1" Class="pa-4" Style="height: 120px">
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                        <MudSkeleton SkeletonType="SkeletonType.Circle" Width="48px" Height="48px" />
+                        <MudStack Spacing="1" Style="flex: 1">
+                            <MudSkeleton SkeletonType="SkeletonType.Rectangle" Width="75%" Height="18px" />
+                            <MudSkeleton SkeletonType="SkeletonType.Rectangle" Width="45%" Height="14px" />
+                        </MudStack>
+                    </MudStack>
+                    <MudSkeleton SkeletonType="SkeletonType.Rectangle" Width="100%" Height="10px" Class="mt-4" />
+                </MudPaper>
+            </MudItem>
+        }
+    </MudGrid>
+</MudContainer>
+
+@code {
+    [Parameter] public int Quantidade { get; set; } = 20;
+}

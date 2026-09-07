@@ -1,0 +1,20 @@
+<MudDialog>
+    <DialogContent>
+        <MudText Typo="Typo.body1" Class="mb-4">Escolha o formato da lista de ramais.</MudText>
+        <MudSelect T="string" @bind-Value="_formato" Label="Formato" Variant="Variant.Outlined">
+            <MudSelectItem Value="@("PDF")">PDF</MudSelectItem>
+            <MudSelectItem Value="@("EXCEL")">Excel (.xlsx)</MudSelectItem>
+        </MudSelect>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancelar">Cancelar</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.Download" OnClick="Gerar">Gerar relatório</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+    private string _formato = "PDF";
+    private void Gerar() => MudDialog.Close(DialogResult.Ok(_formato));
+    private void Cancelar() => MudDialog.Cancel();
+}

@@ -7,11 +7,24 @@
 @inject JwtAuthenticationService _jwtAuthenticationService
 @inject IDataSessionHelper DataSessionHelper
 @inject ILogger<NavMenu> Logger
+@inject FavoritoPaginaState FavoritosState
+@inject IHttpContextAccessor HttpContextAccessor
+@inject SessionExpirationState SessionExpirationState
 
 <MudThemeProvider Theme="@_theme" IsDarkMode="_isDarkMode" />
 <MudPopoverProvider />
 <MudDialogProvider />
 <MudSnackbarProvider />
+
+<MudMessageBox @bind-Visible="_exibirSessaoExpirada"
+               Title="Sessão expirada"
+               Message="Sua sessão expirou. Entre novamente para continuar de onde parou.">
+    <YesButton>
+        <MudButton Color="Color.Warning" Variant="Variant.Filled" OnClick="RedirecionarAposExpiracaoAsync">
+            Ir para o login
+        </MudButton>
+    </YesButton>
+</MudMessageBox>
 
 <MudLayout>
     @if (Loading.IsLoading)
@@ -23,120 +36,193 @@
     }
     @if (ShowAppBar)
     {
-        <MudAppBar Elevation="1" Dense=true>
-            @if (ShowDrawer)
+        var uri = new Uri(Navigation.Uri).AbsolutePath.TrimEnd('/').ToLower();
+        var isHome = string.IsNullOrEmpty(uri) || uri == "/home" || uri == "/";
+        var isSobreSistema = uri == "/sobre-o-sistema";
+
+        <MudAppBar Dense="true"
+                   Fixed="true"
+                   Elevation="@(isHome || isSobreSistema ? 2 : 1)"
+                   Color="Color.Inherit"
+                   Style="@(isHome
+                                       ? "position: fixed; top: 0; left: 0; right: 0; z-index: 1300; background-color: transparent !important; background-image: none !important; color: #ffffff !important;"
+                                       : (isSobreSistema
+                                           ? "position: fixed; top: 0; left: 0; right: 0; z-index: 1300; background-color: #0f766e !important; color: #ffffff !important;"
+                                           : ""))">
+
+        @if (ShowDrawer)
             {
-                <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@DrawerToggle" />
+                <MudIconButton Class="mr-2"
+                               Color="Color.Inherit"
+                               Edge="Edge.Start"
+                               Icon="@Icons.Material.Filled.Menu"
+                               OnClick="@DrawerToggle" />
             }
 
-            <MudText Typo="Typo.h6" Class="ml-3">ADI WEB</MudText>
+            <!-- LOGO -->
+            <MudStack AlignItems="AlignItems.Center"
+                      Row="true"
+                      Spacing="2">
+
+                <MudAvatar Size="Size.Small"
+                           Elevation="0"
+                           Class="pa-0"
+                           Style="background: transparent;">
+
+                    <MudImage Src="ico_adi_2025.png"
+                              Alt="Logo ADI"
+                              ObjectFit="ObjectFit.Contain" />
+                </MudAvatar>
+                <MudText Typo="Typo.subtitle1"
+                         Class="adi-logo-text">
+                    INTRANET ADI
+                </MudText>
+            </MudStack>
+
+            <!-- BOTÃO HOME (Exibido apenas em /sobre-o-sistema) -->
+            @if (isSobreSistema)
+            {
+                <MudButton Class="ml-4 adi-menu-button px-3"
+                           Color="Color.Inherit"
+                           Href="/"
+                           StartIcon="@Icons.Material.Outlined.Home"
+                           Variant="Variant.Text">
+                    Home
+                </MudButton>
+            }
+
+            <!-- MENU CENTRAL (Oculto em /sobre-o-sistema e se autenticado) -->
+            @if (!_isAuthenticated && !isSobreSistema)
+            {
+                <MudHidden Breakpoint="Breakpoint.MdAndDown">
+                    <MudStack Class="ml-6"
+                              Row="true"
+                              Spacing="0">
+
+                        <MudButton Class="adi-menu-button px-3"
+                                   Color="Color.Inherit"
+                                   Href="/#sobre-adi"
+                                   StartIcon="@Icons.Material.Outlined.Info"
+                                   Variant="Variant.Text">
+                            Sobre o ADI
+                        </MudButton>
+
+                        <MudButton Class="adi-menu-button px-3"
+                                   Color="Color.Inherit"
+                                   Href="/#sobre-pw"
+                                   StartIcon="@Icons.Material.Outlined.Business"
+                                   Variant="Variant.Text">
+                            Sobre a PWUSINAGEM
+                        </MudButton>
+
+                        <MudButton Class="adi-menu-button px-3"
+                                   Color="Color.Inherit"
+                                   Href="/#suporte-ajuda"
+                                   StartIcon="@Icons.Material.Outlined.HelpOutline"
+                                   Variant="Variant.Text">
+                            Ajuda-me
+                        </MudButton>
+                    </MudStack>
+                </MudHidden>
+            }
+
             <MudSpacer />
 
-    @*         <MudMenu Dense
-                     Variant="Variant.Text"
-                     Size="Size.Medium"
-                     Color="Color.Inherit"
-                     Icon="@Icons.Material.TwoTone.MoreVert">
-
-                <MudMenu StartIcon="@Icons.Material.TwoTone.Settings"
-                         IconColor="Color.Primary"
-                         Label="Settings">
-                    <MudMenuItem Icon="@Icons.Material.TwoTone.DarkMode"
-                                 IconColor="Color.Secondary"
-                                 Label="Dark Theme" />
-                </MudMenu>
-
-                <MudDivider />
-
-                <MudMenuItem Href="/"
-                             ForceLoad
-                             Icon="@Icons.Material.TwoTone.Login"
-                             IconColor="Color.Primary"
-                             Label="Sign In" />
-
-                <MudMenuItem Href="/"
-                             ForceLoad
-                             Icon="@Icons.Material.TwoTone.Logout"
-                             IconColor="Color.Primary"
-                             Label="Sign Out" />
-            </MudMenu> *@
-
+            <!-- ÁREA DO USUÁRIO / BOTÕES DA DIREITA -->
             @if (_isAuthenticated)
             {
-              
-                    <MudMenu Dense
-                             Variant="Variant.Text"
-                             Size="Size.Medium"
-                             Color="Color.Inherit"
-                             Label="@FirstName"
-                             Icon="@Icons.Material.Filled.AccountCircle">
+                <MudStack AlignItems="AlignItems.Center"
+                          Row="true"
+                          Spacing="2">
 
-                        @*   <MudMenuItem ForceLoad
-                                 Icon="@Icons.Material.TwoTone.Surfing"
-                                 IconColor="Color.Primary"
-                                 Label="@FirstName" /> *@
+                    <MudIconButton Class="mr-1"
+                                   Color="Color.Inherit"
+                                   Icon="@DarkLightModeButtonIcon"
+                                   OnClick="@DarkModeToggle"
+                                   Size="Size.Small" />
 
-                         <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1" Class="mr-3">
-                            <MudChip T="string" Size="Size.Small" Color="Color.Secondary" Variant="Variant.Filled">@SessionType</MudChip>
-                        </MudStack>
-                         <MudDivider />
-                        <MudMenu StartIcon="@Icons.Material.TwoTone.Settings"
-                                 IconColor="Color.Primary"
-                                 Label="Settings">
-                            <MudMenuItem Icon="@DarkLightModeButtonIcon"
-                                         OnClick="@DarkModeToggle"
-                                         IconColor="Color.Secondary"
-                                         Label="Dark Theme" />
-                        </MudMenu>
+                    <MudButton Class="px-2"
+                               Color="Color.Inherit"
+                               StartIcon="@Icons.Material.Outlined.Logout"
+                               OnClick="@EfetuarLogout"
+                               Variant="Variant.Text">
+                        Sair
+                    </MudButton>
 
-                   
-                        @*  <MudMenu StartIcon="@Icons.Material.TwoTone.Settings"
-                             IconColor="Color.Primary"
-                             Label="">
-                        <MudChip T="string" Size="Size.Small" Color="Color.Secondary" Variant="Variant.Filled">@SessionType</MudChip>
-                    </MudMenu> *@
-
-                       
-                       @*  <MudMenuItem OnClick="EfetuarLogout"
-                                     ForceLoad
-                                     Icon="@Icons.Material.TwoTone.Logout"
-                                     IconColor="Color.Primary"
-                                     Label="Sign Out" /> *@
+                    <MudMenu AnchorOrigin="Origin.BottomRight"
+                             Dense="true"
+                             TransformOrigin="Origin.TopRight">
+                        <ActivatorContent>
+                            <MudButton Class="px-2"
+                                       Color="Color.Inherit"
+                                       EndIcon="@Icons.Material.Filled.ArrowDropDown"
+                                       StartIcon="@Icons.Material.Outlined.AccountCircle"
+                                       Variant="Variant.Text">
+                                @FirstName
+                            </MudButton>
+                        </ActivatorContent>
+                        <ChildContent>
+                            <MudText Class="px-4 py-2"
+                                     Typo="Typo.caption">
+                                Conectado como <b>@FirstName</b>
+                            </MudText>
+                            <MudDivider />
+                            <MudMenuItem Href="/configuracoes"
+                                         Icon="@Icons.Material.Outlined.Settings">
+                                Configurações
+                            </MudMenuItem>
+                            <MudDivider />
+                            <MudMenuItem Icon="@Icons.Material.Outlined.Logout"
+                                         IconColor="Color.Error"
+                                         OnClick="@EfetuarLogout">
+                                Sair
+                            </MudMenuItem>
+                        </ChildContent>
                     </MudMenu>
-                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1" Class="mr-3">
-                        <MudText Typo="Typo.body2">Usuário</MudText>
-                    </MudStack>
-
-                
-         @*        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1" Class="mr-3">
-               @*      <MudIcon Icon="@Icons.Material.Filled.AccountCircle" Color="Color.Inherit" />
-                    <MudText Typo="Typo.body2">@FirstName</MudText> *
-                    <MudChip T="string" Size="Size.Small" Color="Color.Secondary" Variant="Variant.Filled">@SessionType</MudChip>
-                </MudStack> *@
-                <MudIconButton Icon="@Icons.Material.TwoTone.Logout"  Color="Color.Inherit" OnClick="@EfetuarLogout" >
-                    <MudText Typo="Typo.body2">Sair</MudText>
-                </MudIconButton>
+                </MudStack>
             }
             else
             {
-                <MudIconButton  Icon="@Icons.Material.Filled.Login" Color="Color.Inherit" OnClick="@(() => Navigation.NavigateTo("/user/login"))" >
-                   
-                </MudIconButton>
-                <MudText Typo="Typo.caption" Class="ml-1">Login</MudText>
-            }
+                <MudStack AlignItems="AlignItems.Center"
+                          Row="true"
+                          Spacing="1">
 
-           
+                    @if (!isSobreSistema)
+                    {
+                        <MudButton Class="adi-menu-button px-3"
+                                   Color="Color.Inherit"
+                                   OnClick="@(() => Navigation.NavigateTo("/user/login"))"
+                                   StartIcon="@Icons.Material.Outlined.Login"
+                                   Variant="Variant.Text">
+                            Entrar
+                        </MudButton>
+
+                        <MudButton Class="adi-menu-button px-3"
+                                   Color="Color.Inherit"
+                                   Href="/download"
+                                   StartIcon="@Icons.Material.Outlined.Download"
+                                   Variant="Variant.Text">
+                            Downloads
+                        </MudButton>
+                    }
+
+                    <MudIconButton Color="Color.Inherit"
+                                   Icon="@DarkLightModeButtonIcon"
+                                   OnClick="@DarkModeToggle"
+                                   Size="Size.Small"
+                                   Title="Alternar Tema" />
+                </MudStack>
+            }
         </MudAppBar>
     }
-
     @if (ShowDrawer)
     {
-        <MudDrawer id="nav-drawer" @bind-Open="_drawerOpen" ClipMode="DrawerClipMode.Always" Elevation="2">
+        <MudDrawer id="nav-drawer" @bind-Open="_drawerOpen" ClipMode="DrawerClipMode.Always" Width="260px" Elevation="2">
             <NavMenu />
         </MudDrawer>
     }
 
-    <MudMainContent Class="@(ShowAppBar ? "pt-16 pa-4" : "pa-4")">
+    <MudMainContent Class="@GetMainContentClass()">
         @Body
     </MudMainContent>
 </MudLayout>
@@ -156,10 +242,11 @@
     private string? _fullName;
     private string? _level;
     private string? _environment;
+    private bool _exibirSessaoExpirada;
+    private string _returnUrlAposExpiracao = "/main";
 
     private bool IsLoginPage => _currentPath?.StartsWith("user/login", StringComparison.OrdinalIgnoreCase) == true;
-    private bool IsPublicHome => string.IsNullOrEmpty(_currentPath) || _currentPath.Equals("home", StringComparison.OrdinalIgnoreCase);
-    private bool ShowAppBar => !IsLoginPage;
+    private bool IsPublicHome => string.IsNullOrEmpty(_currentPath) || _currentPath.Equals("home", StringComparison.OrdinalIgnoreCase) || _currentPath.Equals("/", StringComparison.OrdinalIgnoreCase); private bool ShowAppBar => !IsLoginPage;
     private bool ShowDrawer => _isAuthenticated && !IsLoginPage && !IsPublicHome;
 
     private string FirstName => string.IsNullOrWhiteSpace(_fullName)
@@ -170,6 +257,7 @@
 
     protected override async Task OnInitializedAsync()
     {
+        _isDarkMode = ThemePreference.GetInitialDarkMode(HttpContextAccessor);
         _theme = new()
         {
             PaletteLight = _lightPalette,
@@ -180,8 +268,8 @@
         UpdateCurrentPath();
         Navigation.LocationChanged += OnLocationChanged;
         AuthenticationStateProvider.AuthenticationStateChanged += OnAuthenticationStateChanged;
+        SessionExpirationState.SessionExpired += OnSessionExpiredAsync;
 
-        // Mantenha APENAS esta linha registrada:
         Loading.OnChange += OnLoadingChanged;
 
         await LoadAuthenticationStateAsync();
@@ -192,11 +280,30 @@
         await InvokeAsync(StateHasChanged);
     }
 
+    private Task OnSessionExpiredAsync(string returnUrl)
+    {
+        _returnUrlAposExpiracao = NormalizarReturnUrl(returnUrl);
+        _exibirSessaoExpirada = true;
+        return InvokeAsync(StateHasChanged);
+    }
+
+    private async Task RedirecionarAposExpiracaoAsync()
+    {
+        _exibirSessaoExpirada = false;
+        await DataSessionHelper.ClearAsync();
+        FavoritosState.Limpar();
+        await _jwtAuthenticationService.LogoutAsync();
+
+        var returnUrl = Uri.EscapeDataString(_returnUrlAposExpiracao);
+        Navigation.NavigateTo($"/user/login?returnUrl={returnUrl}", forceLoad: true);
+    }
+
     private async Task EfetuarLogout()
     {
         try
         {
             await _jwtAuthenticationService.LogoutAsync();
+            FavoritosState.Limpar();
 
             Snackbar.Add("Sessão encerrada com sucesso.", Severity.Info);
             Navigation.NavigateTo("/user/login", forceLoad: true);
@@ -226,7 +333,7 @@
     private async Task DarkModeToggle()
     {
         _isDarkMode = !_isDarkMode;
-        await JS.InvokeVoidAsync("localStorage.setItem", "adi_dark_mode", _isDarkMode.ToString().ToLower());
+        await JS.InvokeVoidAsync("adiTheme.set", _isDarkMode);
     }
 
     public string DarkLightModeButtonIcon => _isDarkMode
@@ -247,14 +354,13 @@
             _fullName = user1.Name;
             _level = user1.Level;
             _environment = ((EnvironmentEnum?)user1.EnvironmentType).ToString();
-        }       
+            try { await FavoritosState.GarantirCarregadoAsync(); }
+            catch (Exception ex) { Logger.LogWarning(ex, "Não foi possível pré-carregar os favoritos do usuário."); }
+        }
 
         var user = authState.User;
 
         _isAuthenticated = user.Identity?.IsAuthenticated == true;
-        //_fullName = user.Claims.FirstOrDefault(x => x.Type == "Name")?.Value ?? user.Identity?.Name;
-        //_level = user.Claims.FirstOrDefault(x => x.Type == "Level")?.Value;
-        //_environment = FormatEnvironment(user.Claims.FirstOrDefault(x => x.Type == "Environment")?.Value);
     }
 
     private async void OnAuthenticationStateChanged(Task<AuthenticationState> task)
@@ -286,11 +392,23 @@
         return EnvironmentClaimFormatter.Format(value);
     }
 
+    private static string NormalizarReturnUrl(string? returnUrl)
+    {
+        if (string.IsNullOrWhiteSpace(returnUrl)) return "/main";
+
+        var rota = returnUrl.Trim();
+        if (!rota.StartsWith('/') || rota.StartsWith("//") || rota.StartsWith("/user/login", StringComparison.OrdinalIgnoreCase))
+            return "/main";
+
+        return rota;
+    }
+
     public void Dispose()
     {
         Navigation.LocationChanged -= OnLocationChanged;
         AuthenticationStateProvider.AuthenticationStateChanged -= OnAuthenticationStateChanged;
         Loading.OnChange -= OnLoadingChanged;
+        SessionExpirationState.SessionExpired -= OnSessionExpiredAsync;
     }
 
     private readonly PaletteLight _lightPalette = new()
@@ -335,4 +453,16 @@
         OverlayLight = "#1e1e2d80",
     };
 
+    private string GetMainContentClass()
+    {
+        var uri = new Uri(Navigation.Uri).AbsolutePath.TrimEnd('/').ToLower();
+        bool isHome = string.IsNullOrEmpty(uri) || uri == "/home" || uri == "/";
+
+        if (ShowAppBar)
+        {
+            return isHome ? "pa-0" : "pt-12 pa-4";
+        }
+
+        return isHome ? "pa-0" : "pa-4";
+    }
 }

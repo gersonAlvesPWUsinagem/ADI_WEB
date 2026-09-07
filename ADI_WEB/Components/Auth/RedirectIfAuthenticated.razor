@@ -1,22 +1,41 @@
+@using ADI_WEB.Components.Pages
 @using Microsoft.AspNetCore.Components.Authorization
 @inject NavigationManager Navigation
+
+
+@if (_isChecking)
+{
+    <FavoritosSkeleton Quantidade="20" />
+}
 
 @code {
     [Parameter] public string RedirectTo { get; set; } = "/main";
 
     [CascadingParameter] private Task<AuthenticationState>? AuthenticationStateTask { get; set; }
 
-    protected override async Task OnAfterRenderAsync(bool firstRender)
+    private bool _isChecking = true;
+
+    protected override async Task OnInitializedAsync()
     {
-        if (!firstRender || AuthenticationStateTask is null)
+        if (AuthenticationStateTask is null)
         {
+            _isChecking = false;
             return;
         }
 
-        var authState = await AuthenticationStateTask;
-        if (authState.User.Identity?.IsAuthenticated == true)
+        try
         {
-            Navigation.NavigateTo(RedirectTo, replace: true);
+            var authState = await AuthenticationStateTask;
+            if (authState.User.Identity?.IsAuthenticated == true)
+            {
+                Navigation.NavigateTo(RedirectTo, replace: true);
+                return;
+            }
         }
+        catch
+        {
+        }
+
+        _isChecking = false;
     }
 }

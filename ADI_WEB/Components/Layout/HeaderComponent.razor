@@ -1,39 +1,35 @@
-﻿<PageTitle>@Title</PageTitle>
+﻿@page "/exemplo-botoes"
+@using Domain.Dtos.Permission
+@inject ILoginService _loginService;
 
-@* ADICIONE mb-4 (Margin Bottom 4) aqui para criar um espaçamento abaixo do componente *@
+<PageTitle>@Title</PageTitle>
+
 <MudGrid Class="align-center mb-9 mt-1">
-
-    @* 1. Título *@
     <MudItem xs="12" sm="6">
         <h1>@(string.IsNullOrEmpty(Title2) ? Title : Title2)</h1>
     </MudItem>
 
-    @* 2. Espaçador *@
     <MudSpacer />
 
-    @* 3. Botões *@
     <MudItem>
         <MudStack Row="true" Spacing="2" Class="d-flex justify-end align-center">
             @foreach (var item in ListBtnDaTela)
-            @* Verifica se a propriedade está visível para não renderizar à toa *@
             {
                 @if (item.IsVisibleOrNot)
                 {
-                    @if (string.IsNullOrEmpty(item.Title) || item.Title == "None")
+                    @if (item.IsFab)
                     {
-                        @* Se o título for nulo ou "None", assume o MudFab (botão de ícone) *@
                         <MudFab Color="@item.Color"
                                 StartIcon="@item.Icon"
-                                Disabled="Processing"
+                                Disabled="@(Processing || item.IsDisabled)"
                                 Size="Size.Small"
                                 OnClick="item.OnClick"
                                 Style="@item.IsVisibleOrNotCss" />
                     }
                     else
                     {
-                        @* Caso contrário, renderiza o MudButton normal com texto *@
                         <MudButton Variant="@item.Variant"
-                                   Disabled="Processing"
+                                   Disabled="@(Processing || item.IsDisabled)"
                                    Size="@item.Size"
                                    Color="@item.Color"
                                    StartIcon="@item.Icon"
@@ -60,16 +56,24 @@
     [Parameter] public string Title { get; set; } = "NONE";
     [Parameter] public string? Title2 { get; set; }
 
+    [Parameter] public ModuloEnum? Modulo { get; set; }
+    [Parameter] public int? Permission { get; set; }
+
     [Parameter] public string TextBtn1 { get; set; } = "None";
     [Parameter] public string TextBtn2 { get; set; } = "None";
     [Parameter] public string TextBtn3 { get; set; } = "None";
-    [Parameter] public string? TextBtn4 { get; set; }
+    [Parameter] public string TextBtn4 { get; set; } = "None";
 
-    [Parameter] public bool IsVisibleOrNotBtn1 { get; set; }
-    [Parameter] public bool IsVisibleOrNotBtn2 { get; set; }
-    [Parameter] public bool IsVisibleOrNotBtn3 { get; set; }
-    [Parameter] public bool IsVisibleOrNotBtn4 { get; set; }
+    [Parameter] public bool IsVisibleOrNotBtn1 { get; set; } = true;
+    [Parameter] public bool IsVisibleOrNotBtn2 { get; set; } = true;
+    [Parameter] public bool IsVisibleOrNotBtn3 { get; set; } = true;
+    [Parameter] public bool IsVisibleOrNotBtn4 { get; set; } = true;
     [Parameter] public bool Processing { get; set; }
+
+    [Parameter] public bool MudFab1 { get; set; }
+    [Parameter] public bool MudFab2 { get; set; }
+    [Parameter] public bool MudFab3 { get; set; }
+    [Parameter] public bool MudFab4 { get; set; }
 
     [Parameter] public string IconBtn1 { get; set; } = string.Empty;
     [Parameter] public string IconBtn2 { get; set; } = string.Empty;
@@ -81,64 +85,114 @@
     [Parameter] public Color? ColorBtn3 { get; set; } = Color.Default;
     [Parameter] public Color? ColorBtn4 { get; set; } = Color.Default;
 
+    [Parameter] public int? LevelBtn1 { get; set; }
+    [Parameter] public int? LevelBtn2 { get; set; }
+    [Parameter] public int? LevelBtn3 { get; set; }
+    [Parameter] public int? LevelBtn4 { get; set; }
+
     [Parameter] public EventCallback OnBtn1Click { get; set; }
     [Parameter] public EventCallback OnBtn2Click { get; set; }
     [Parameter] public EventCallback OnBtn3Click { get; set; }
     [Parameter] public EventCallback OnBtn4Click { get; set; }
 
     private List<BtnLayout> ListBtnDaTela { get; } = new List<BtnLayout>();
+    private List<PermissionUserDto>? PermissionUserList { get; set; }
+    private bool _permissoesCarregadas = false;
 
-    // Mudado para OnParametersSet para atualizar a lista sempre que o componente pai alterar as variáveis de visibilidade
+    protected override async Task OnInitializedAsync()
+    {
+        await CarregarPermissoesEAtualizarBotoesAsync();
+    }
+
     protected override void OnParametersSet()
     {
+        AtualizarApenasEstadoDosBotoes();
+    }
+
+    private async Task CarregarPermissoesEAtualizarBotoesAsync()
+    {
+        var botoesCandidatos = CriarListaCandidatos();
+        var IsDisabledValidate = botoesCandidatos.Any(b => b.Level.HasValue);
+
+        if (IsDisabledValidate && !_permissoesCarregadas)
+        {
+            var data = await _loginService.ValidarPermissaoAsync(Modulo ?? 0, Permission ?? 0);
+
+            if (data is not null && data.Success && data.Value is not null && data.Value.Count > 0)
+            {
+                PermissionUserList = data.Value;
+                _permissoesCarregadas = true;
+            }
+        }
+
+        AplicarRegrasDeNegocioNosBotoes(botoesCandidatos);
+
         ListBtnDaTela.Clear();
+        ListBtnDaTela.AddRange(botoesCandidatos);
+    }
 
-        ListBtnDaTela.Add(new BtnLayout
-        {
-            Title = TextBtn1,
-            Icon = IconBtn1,
-            Color = ColorBtn1 ?? Color.Primary,
-            IsVisibleOrNot = IsVisibleOrNotBtn1,
-            OnClick = OnBtn1Click
-        });
+    private void AtualizarApenasEstadoDosBotoes()
+    {
+        var botoesCandidatos = CriarListaCandidatos();
+        AplicarRegrasDeNegocioNosBotoes(botoesCandidatos);
 
-        ListBtnDaTela.Add(new BtnLayout
-        {
-            Title = TextBtn2,
-            Icon = IconBtn2,
-            Color = ColorBtn2 ?? Color.Secondary,
-            IsVisibleOrNot = IsVisibleOrNotBtn2,
-            OnClick = OnBtn2Click
-        });
+        ListBtnDaTela.Clear();
+        ListBtnDaTela.AddRange(botoesCandidatos);
+    }
 
-        ListBtnDaTela.Add(new BtnLayout
+    private List<BtnLayout> CriarListaCandidatos()
+    {
+        return new List<BtnLayout>
         {
-            Title = TextBtn3,
-            Icon = IconBtn3,
-            Color = ColorBtn3 ?? Color.Tertiary,
-            IsVisibleOrNot = IsVisibleOrNotBtn3,
-            OnClick = OnBtn3Click
-        });
+            new BtnLayout { IsDisabled = LevelBtn1.HasValue, Title = TextBtn1, Icon = IconBtn1, Color = ColorBtn1 ?? Color.Primary, IsVisibleBase = IsVisibleOrNotBtn1, Level = LevelBtn1, IsFab = MudFab1, OnClick = OnBtn1Click },
+            new BtnLayout { IsDisabled = LevelBtn2.HasValue, Title = TextBtn2, Icon = IconBtn2, Color = ColorBtn2 ?? Color.Secondary, IsVisibleBase = IsVisibleOrNotBtn2, Level = LevelBtn2, IsFab = MudFab2, OnClick = OnBtn2Click },
+            new BtnLayout { IsDisabled = LevelBtn3.HasValue, Title = TextBtn3, Icon = IconBtn3, Color = ColorBtn3 ?? Color.Tertiary, IsVisibleBase = IsVisibleOrNotBtn3, Level = LevelBtn3, IsFab = MudFab3, OnClick = OnBtn3Click },
+            new BtnLayout { IsDisabled = LevelBtn4.HasValue, Title = TextBtn4, Icon = IconBtn4, Color = ColorBtn4 ?? Color.Tertiary, IsVisibleBase = IsVisibleOrNotBtn4, Level = LevelBtn4, IsFab = MudFab4, OnClick = OnBtn4Click }
+        };
+    }
 
-        ListBtnDaTela.Add(new BtnLayout
+    private void AplicarRegrasDeNegocioNosBotoes(List<BtnLayout> botoesCandidatos)
+    {
+        foreach (var item in botoesCandidatos)
         {
-            Title = TextBtn4,
-            Icon = IconBtn4,
-            Color = ColorBtn4 ?? Color.Tertiary,
-            IsVisibleOrNot = IsVisibleOrNotBtn4,
-            OnClick = OnBtn4Click
-        });
+            if (string.Equals(item.Title, "None", StringComparison.OrdinalIgnoreCase) || string.IsNullOrWhiteSpace(item.Title))
+                item.IsVisibleOrNot = false;
+            else
+                item.IsVisibleOrNot = item.IsVisibleBase;
+        }
+
+        if (PermissionUserList is not null && PermissionUserList.Count > 0)
+        {
+            foreach (var item in botoesCandidatos)
+            {
+                if (!item.Level.HasValue) continue;
+
+                bool temPermissao = PermissionUserList.Any(x =>
+                    int.TryParse(x.Level.ToString(), out var nivelUser) &&
+                    int.TryParse(item.Level?.ToString(), out var nivelBotao) &&
+                    nivelBotao <= nivelUser);
+
+                if (temPermissao)
+                {
+                    item.IsDisabled = false;
+                }
+            }
+        }
     }
 
     public class BtnLayout
     {
         public string? Title { get; set; }
         public Color Color { get; set; } = Color.Default;
+        public bool IsVisibleBase { get; set; } = true;
         public bool IsVisibleOrNot { get; set; } = true;
+        public bool IsDisabled { get; set; } = false;
         public Size Size { get; } = Size.Small;
         public Variant Variant { get; } = Variant.Filled;
         public string Icon { get; set; } = Icons.Material.Filled.AccessAlarm;
         public EventCallback OnClick { get; set; }
         public string IsVisibleOrNotCss => !IsVisibleOrNot ? "display: none;" : string.Empty;
+        public int? Level { get; set; }
+        public bool IsFab { get; set; }
     }
 }

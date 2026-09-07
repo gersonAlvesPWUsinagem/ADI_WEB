@@ -3,32 +3,32 @@
 
 <MudDialog>
     <DialogContent>
-        <!-- Área dinâmica que exibe os dias e alerta se passar de 30 -->
-        @if (TotalDias > 30)
+        <!-- Área dinâmica que exibe os dias e alerta se passar do limite do mês -->
+        @if (TotalDias > LimiteDiasMes)
         {
             <MudText Typo="Typo.body2" Color="Color.Error" Class="mb-3">
-                <b>Atenção:</b> O período selecionado é de <b>@TotalDias dias</b>. Períodos superiores a 30 dias podem deixar o relatório muito extenso ou demorar para carregar.
+                <b>Atenção:</b> O período selecionado é de <b>@TotalDias dias</b>, mas o limite para este mês é de <b>@LimiteDiasMes dias</b>. Períodos extensos podem demorar para carregar.
             </MudText>
         }
         else
         {
             <MudText Typo="Typo.body2" Color="Color.Success" Class="mb-3">
-                Período selecionado: <b style="font-size:16px">@TotalDias dias</b> (de Domingo a Sábado).
+                Período selecionado: <b style="font-size:16px">@TotalDias dias</b> (Limite do mês: @LimiteDiasMes dias).
             </MudText>
         }
 
-        <MudDatePicker @bind-Date="_dataInicial"
-                       Label="Data inicial (Domingo)"
-                       DateFormat="dd/MM/yyyy"
-                       Editable="true"
-                       Variant="Variant.Outlined" />
+        <MudTextField @bind-Value="_dataInicialStr"
+                      Label="Data inicial (Domingo)"
+                      Placeholder="dd/MM/yyyy"
+                      Variant="Variant.Outlined"
+                      OnBlur="ConverterDataInicial" />
 
-        <MudDatePicker @bind-Date="_dataFinal"
-                       Label="Data final (Sábado)"
-                       DateFormat="dd/MM/yyyy"
-                       Editable="true"
-                       Variant="Variant.Outlined"
-                       Class="mt-3" />
+        <MudTextField @bind-Value="_dataFinalStr"
+                      Label="Data final (Sábado)"
+                      Placeholder="dd/MM/yyyy"
+                      Variant="Variant.Outlined"
+                      Class="mt-3"
+                      OnBlur="ConverterDataFinal" />
 
         <MudSelect T="string" @bind-Value="_formato" Label="Formato" Variant="Variant.Outlined" Class="mt-3">
             <MudSelectItem Value="@("PDF")">PDF</MudSelectItem>
@@ -52,10 +52,74 @@
 
     private DateTime? _dataInicial = DateTime.Today.AddDays(-(int)DateTime.Today.DayOfWeek);
     private DateTime? _dataFinal = DateTime.Today.AddDays(6 - (int)DateTime.Today.DayOfWeek);
-    private string _formato = "PDF";
-    private bool _filtrarApenasSelecionados = false; // Flag para a opção de filtro
 
-    // Propriedade calculada para retornar a quantidade de dias dinamicamente
+    private string _dataInicialStr = string.Empty;
+    private string _dataFinalStr = string.Empty;
+
+    private string _formato = "PDF";
+    private bool _filtrarApenasSelecionados = false;
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        if (_dataInicial.HasValue) _dataInicialStr = _dataInicial.Value.ToString("dd/MM/yyyy");
+        if (_dataFinal.HasValue) _dataFinalStr = _dataFinal.Value.ToString("dd/MM/yyyy");
+    }
+
+    private void ConverterDataInicial()
+    {
+        _dataInicialStr = TratarEConverterData(_dataInicialStr, out _dataInicial);
+        if (!_dataInicial.HasValue && !string.IsNullOrWhiteSpace(_dataInicialStr))
+        {
+            Snackbar.Add("Data inicial inválida. Use o formato dd/MM/yyyy.", Severity.Warning);
+        }
+    }
+
+    private void ConverterDataFinal()
+    {
+        _dataFinalStr = TratarEConverterData(_dataFinalStr, out _dataFinal);
+        if (!_dataFinal.HasValue && !string.IsNullOrWhiteSpace(_dataFinalStr))
+        {
+            Snackbar.Add("Data final inválida. Use o formato dd/MM/yyyy.", Severity.Warning);
+        }
+    }
+
+    private string TratarEConverterData(string input, out DateTime? dataRetorno)
+    {
+        dataRetorno = null;
+        if (string.IsNullOrWhiteSpace(input)) return string.Empty;
+
+        string apenasNumeros = new string(input.Where(char.IsDigit).ToArray());
+
+        if (apenasNumeros.Length == 8)
+        {
+            string formatado = $"{apenasNumeros.Substring(0, 2)}/{apenasNumeros.Substring(2, 2)}/{apenasNumeros.Substring(4, 4)}";
+            if (DateTime.TryParseExact(formatado, "dd/MM/yyyy", null, System.Globalization.DateTimeStyles.None, out var parsed))
+            {
+                dataRetorno = parsed;
+                return formatado;
+            }
+        }
+
+        if (DateTime.TryParseExact(input, "dd/MM/yyyy", null, System.Globalization.DateTimeStyles.None, out var parsedDireto))
+        {
+            dataRetorno = parsedDireto;
+            return input;
+        }
+
+        return input;
+    }
+
+    // Retorna a quantidade de dias do mês da data inicial (28, 29, 30 ou 31)
+    private int LimiteDiasMes
+    {
+        get
+        {
+            if (!_dataInicial.HasValue) return 30; // Padrão se não informado
+            return DateTime.DaysInMonth(_dataInicial.Value.Year, _dataInicial.Value.Month);
+        }
+    }
+
     private int TotalDias
     {
         get
@@ -68,9 +132,12 @@
 
     private void Submit()
     {
+        ConverterDataInicial();
+        ConverterDataFinal();
+
         if (!_dataInicial.HasValue || !_dataFinal.HasValue)
         {
-            Snackbar.Add("Selecione ambas as datas.", Severity.Warning);
+            Snackbar.Add("Selecione ambas as datas corretamente.", Severity.Warning);
             return;
         }
 
@@ -82,7 +149,7 @@
             Formato = _formato,
             DataInicial = inicio,
             DataFinal = fim,
-            FiltrarApenasSelecionados = _filtrarApenasSelecionados // Certifique-se de ter essa propriedade no seu DTO
+            FiltrarApenasSelecionados = _filtrarApenasSelecionados
         }));
     }
 

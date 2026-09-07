@@ -1,0 +1,26 @@
+@using Microsoft.AspNetCore.Components.Routing
+
+@foreach (var entrada in Menu)
+{
+    var nome = entrada.Key;
+    var item = entrada.Value;
+    var filhos = item.Filhos ?? new Dictionary<string, NavMenuItem>();
+
+    @if (item.EhGrupo)
+    {
+        <MudNavGroup Title="@nome" Icon="@item.Icone" Expanded="false">
+            <NavMenuTree Menu="@filhos" />
+        </MudNavGroup>
+    }
+    else
+    {
+        <MudNavLink Href="@item.Rota" Match="NavLinkMatch.Prefix" Icon="@item.Icone">
+            @nome
+        </MudNavLink>
+    }
+}
+
+@code {
+    [Parameter, EditorRequired]
+    public IReadOnlyDictionary<string, NavMenuItem> Menu { get; set; } = new Dictionary<string, NavMenuItem>();
+}
