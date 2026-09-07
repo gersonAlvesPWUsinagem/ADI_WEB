@@ -34,7 +34,7 @@
 @* TRAVADO: Garante que nada passe de 100vh e oculta qualquer tentativa de scroll *@
 <MudLayout Style="height: 70vh; max-height: 100vh; width: 100%; display: flex; flex-direction: column; position: relative; overflow: hidden !important;">
 
-    @* ALINHAMENTO AJUSTADO: Justify.Center com uma margem negativa sutil para compensar as valida��es *@
+    @* Alinhamento centralizado do formulário. *@
     <MudStack Justify="Justify.Center" AlignItems="AlignItems.Center" Class="flex-grow-1" Style="width: 100%; margin-top: -60px;">
         <MudContainer MaxWidth="MaxWidth.Small" Style="max-width: 330px; padding: 0;">
             <EditForm Model="@_loginModel" OnValidSubmit="OnValidSubmit">
@@ -47,7 +47,7 @@
                     <MudAvatar Style="height: 90px; width: 100px; background-color: #ffffff;  border-radius: 12px; padding: 10px; box-shadow: 0px 4px 12px rgba(0,0,0,0.15);"
                                Variant="Variant.Filled">
 
-                        @* A imagem ocupa todo o espa�o interno de forma proporcional *@
+                        @* A imagem ocupa todo o espaço interno de forma proporcional. *@
                         <MudImage Src="../imagens/pwusinagem_transparente.png"
                                   Alt="Logo PW Usinagem"
                                   Style="width: 100%; height: 100%; object-fit: contain;" />
@@ -104,10 +104,10 @@
         </MudContainer>
     </MudStack>
 
-    @* FIXADO ABSOLUTO: O rodap� fica preso embaixo de forma independente, sem ser empurrado por valida��es *@
+    @* O rodapé fica preso embaixo de forma independente das validações. *@
     <div style="position: absolute; bottom: 16px; left: 0; right: 0; text-align: center; pointer-events: none;">
         <MudText Typo="Typo.body2" Color="Color.Secondary">
-            � 2025 ADI v @_loginModel.Version
+            © 2025 ADI v @_loginModel.Version
         </MudText>
     </div>
 
@@ -127,7 +127,7 @@
     private bool _isDarkMode = false;
     private MudTheme? _theme = null;
 
-    // Chave id�ntica � utilizada no componente de di�logo para ler o mesmo registro
+    // Chave utilizada pelo componente de diálogo para ler o mesmo registro.
     private const string LocalStorageKey = "adi_session_directives";
 
     [Inject]
@@ -153,7 +153,7 @@
             LayoutProperties = new LayoutProperties()
         };
 
-        // Obt�m a vers�o definida no .csproj em tempo de execu��o
+        // Obtém a versão definida no .csproj em tempo de execução.
         var assembly = Assembly.GetExecutingAssembly();
         var versao = assembly.GetName().Version;
 
@@ -168,14 +168,14 @@
     {
         if (firstRender)
         {
-            // 1. Mant�m o seu carregamento padr�o do modo escuro
+            // 1. Mantém o carregamento padrão do modo escuro.
             var localSettings = await JS.InvokeAsync<string>("localStorage.getItem", "adi_dark_mode");
             if (!string.IsNullOrEmpty(localSettings))
             {
                 _isDarkMode = bool.Parse(localSettings);
             }
 
-            // 2. BUSCA AS DIRETIVAS DA SESS�O ARMAZENADAS NO NAVEGADOR
+            // 2. Busca as diretivas da sessão armazenadas no navegador.
             try
             {
                 var jsonSaved = await JS.InvokeAsync<string?>("localStorage.getItem", LocalStorageKey);
@@ -193,7 +193,7 @@
                 Logger.LogWarning(ex, "Erro ao recuperar diretivas de sessao na Login.");
             }
 
-            // Atualiza o estado da tela uma �nica vez ap�s ler as configura��es locais
+            // Atualiza o estado da tela após ler as configurações locais.
             StateHasChanged();
         }
     }
@@ -246,25 +246,32 @@
 
                 if (!string.IsNullOrEmpty(tokenValido))
                 {
-                    await _jwtAuthenticationService.LoginAsync(tokenValido);
+                    using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+                    await _jwtAuthenticationService.LoginAsync(tokenValido).WaitAsync(timeout.Token);
 
                     Snackbar.Add($"Bem-vindo, {_loginModel.Username}! Login efetuado com sucesso.", Severity.Success);
 
-                    Navigation.NavigateTo("/main", forceLoad: true);
+                    var destino = ObterDestinoPosLogin();
+                    Navigation.NavigateTo(destino, replace: true);
                 }
                 else
                 {
-                    Snackbar.Add("A API autenticou, mas n�o retornou um token v�lido.", Severity.Warning);
+                    Snackbar.Add("A API autenticou, mas não retornou um token válido.", Severity.Warning);
                 }
             }
             else
             {
-                Snackbar.Add(resultado?.Message ?? "Usu�rio ou senha inv�lidos.", Severity.Error);
+                Snackbar.Add(ObterMensagemFalhaLogin(resultado?.StatusCode, resultado?.Message), Severity.Error);
             }
+        }
+        catch (OperationCanceledException)
+        {
+            Snackbar.Add("A sessão não pôde ser concluída em tempo hábil. Verifique o HTTPS e tente novamente.", Severity.Error);
+            Logger.LogWarning("Timeout ao gravar ou validar o cookie de autenticação.");
         }
         catch (Exception ex)
         {
-            Snackbar.Add("N�o foi poss�vel processar o login no momento.", Severity.Error);
+            Snackbar.Add("Não foi possível processar o login no momento. Tente novamente.", Severity.Error);
             Logger.LogError(ex, "Erro critico na pagina de login.");
         }
         finally
@@ -272,6 +279,38 @@
             _isProcessing = false;
             StateHasChanged();
         }
+    }
+
+    private static string ObterMensagemFalhaLogin(int? statusCode, string? mensagem)
+    {
+        if (statusCode == 601)
+        {
+            return "Usuário ou senha incorretos. Verifique as credenciais e tente novamente.";
+        }
+
+        return string.IsNullOrWhiteSpace(mensagem)
+            ? "Não foi possível validar o login no momento. Tente novamente."
+            : mensagem;
+    }
+
+    private string ObterDestinoPosLogin()
+    {
+        var uri = Navigation.ToAbsoluteUri(Navigation.Uri);
+        var query = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(uri.Query);
+
+        var destino = query.TryGetValue("returnUrl", out var returnUrl)
+            ? returnUrl.ToString()
+            : string.Empty;
+
+        if (!string.IsNullOrWhiteSpace(destino) &&
+            destino.StartsWith('/') &&
+            !destino.StartsWith("//") &&
+            !destino.StartsWith("/user/login", StringComparison.OrdinalIgnoreCase))
+        {
+            return destino;
+        }
+
+        return "/main";
     }
 
     private TargetOSTypeEnum ObterNomeNavegador()

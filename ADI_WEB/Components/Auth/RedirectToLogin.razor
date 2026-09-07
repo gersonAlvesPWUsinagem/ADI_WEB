@@ -29,42 +29,42 @@ else if (_exibirMensagemSessaoExpirada)
     private bool _isAuthenticated;
     private bool _exibirMensagemSessaoExpirada;
     private string _returnUrl = string.Empty;
-
-    protected override async Task OnInitializedAsync()
-    {
-        await VerificarElegibilidadeRedirecionamento();
-    }
-
-    protected override async Task OnParametersSetAsync()
-    {
-        await VerificarElegibilidadeRedirecionamento();
-    }
+    private bool _redirectChecked;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (!firstRender || AuthenticationStateTask is null)
+        if (!firstRender || _redirectChecked || AuthenticationStateTask is null)
         {
             return;
         }
 
-        var authState = await AuthenticationStateTask;
-        _isAuthenticated = authState.User.Identity?.IsAuthenticated == true;
-
-        if (!_isAuthenticated)
+        try
         {
+            var authState = await AuthenticationStateTask;
+            _isAuthenticated = authState.User.Identity?.IsAuthenticated == true;
             _returnUrl = Navigation.ToBaseRelativePath(Navigation.Uri);
-            if (JwtAuthenticationService.ConsumirTokenExpirado())
-            {
-                _exibirMensagemSessaoExpirada = true;
-                await InvokeAsync(StateHasChanged);
-                return;
-            }
+            _redirectChecked = true;
 
-            Navigation.NavigateTo($"{LoginPath}?returnUrl={Uri.EscapeDataString(_returnUrl)}", replace: true);
+            if (!_isAuthenticated)
+            {
+                if (JwtAuthenticationService.ConsumirTokenExpirado())
+                {
+                    _exibirMensagemSessaoExpirada = true;
+                    await InvokeAsync(StateHasChanged);
+                    return;
+                }
+
+                Navigation.NavigateTo($"{LoginPath}?returnUrl={Uri.EscapeDataString(_returnUrl)}", replace: true);
+            }
+            else
+            {
+                await InvokeAsync(StateHasChanged);
+            }
         }
-        else
+        catch (Exception)
         {
-            StateHasChanged();
+            _redirectChecked = true;
+            Navigation.NavigateTo(LoginPath, replace: true);
         }
     }
 
@@ -72,24 +72,6 @@ else if (_exibirMensagemSessaoExpirada)
     {
         _exibirMensagemSessaoExpirada = false;
         Navigation.NavigateTo($"{LoginPath}?returnUrl={Uri.EscapeDataString(_returnUrl)}", replace: true);
-        return Task.CompletedTask;
-    }
-
-    private Task VerificarElegibilidadeRedirecionamento()
-    {
-        var uri = Navigation.ToAbsoluteUri(Navigation.Uri);
-
-        // Evita loop infinito se já estiver na página de login
-        if (uri.AbsolutePath.StartsWith(LoginPath, StringComparison.OrdinalIgnoreCase))
-        {
-            return Task.CompletedTask;
-        }
-
-        var returnUrl = Uri.EscapeDataString(Navigation.ToBaseRelativePath(Navigation.Uri));
-
-        // Força o redirecionamento imediato para o login com forceLoad para limpar o estado do Blazor Server
-        Navigation.NavigateTo($"{LoginPath}?returnUrl={returnUrl}", forceLoad: true);
-
         return Task.CompletedTask;
     }
 }

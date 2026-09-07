@@ -56,8 +56,7 @@ namespace Domain.Helpers
                         }
                     }
 
-                    // Se o código chegou aqui, o erro veio como string bruta (aquela que você postou)
-                    // Vamos tentar extrair a primeira linha (que contém a mensagem de erro)
+                    // Se o código chegou aqui, o erro veio como string bruta
                     var clearMessage = json.Split('\n')[0].Replace("Domain.Exceptions.ApiException:", "").Trim();
                     throw new ApiException(statusCode, (string.IsNullOrWhiteSpace(clearMessage) ? response.ReasonPhrase : clearMessage ?? "Fatal error") ?? "Fatal erro!");
                 }
@@ -76,13 +75,26 @@ namespace Domain.Helpers
                 {
                     var apiResult = JsonSerializer.Deserialize<ApiDataService<T>>(json, options);
 
-                    // Se o backend mandou Success = false mesmo com HTTP 200 (raro, mas possível)
+                    // Se o backend mandou Success = false mesmo com HTTP 200
                     if (apiResult != null && !apiResult.Success)
                     {
                         throw new ApiException(apiResult.StatusCode, apiResult.Message ?? "Fatal erro!");
                     }
 
                     return apiResult!;
+                }
+
+                if (typeof(T) == typeof(string) && root.ValueKind == JsonValueKind.String)
+                {
+                    var stringResult = root.GetString() ?? string.Empty;
+                    return new ApiDataService<T>((T)(object)stringResult, true, customSuccessMessage, statusCode);
+                }
+
+                if (typeof(T) == typeof(string) && root.ValueKind == JsonValueKind.Object &&
+                    (root.TryGetProperty("token", out var tokenProperty) || root.TryGetProperty("Token", out tokenProperty)))
+                {
+                    var tokenResult = tokenProperty.GetString() ?? string.Empty;
+                    return new ApiDataService<T>((T)(object)tokenResult, true, customSuccessMessage, statusCode);
                 }
 
                 // 4. CENÁRIO: O JSON é o objeto bruto (T)
@@ -97,8 +109,7 @@ namespace Domain.Helpers
                         ex.Message,
                         ex.ErrorCode
                     );
-
-            } // Garante que ApiException passe direto para quem chamou
+            }
             catch (Exception ex)
             {
                 return new ApiDataService<T>(

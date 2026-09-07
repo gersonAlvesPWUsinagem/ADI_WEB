@@ -12,7 +12,6 @@ public sealed class JwtAuthenticationService
     private readonly ICookieService _cookieService;
     private readonly JwtPrincipalFactory _principalFactory;
     private readonly JwtTokenNormalizer _tokenNormalizer;
-    private readonly PostLoginRedirectCoordinator _postLoginRedirectCoordinator;
     private readonly ILogger<JwtAuthenticationService> _logger;
     private int _tokenExpirado;
 
@@ -28,13 +27,11 @@ public sealed class JwtAuthenticationService
         ICookieService cookieService,
         JwtPrincipalFactory principalFactory,
         JwtTokenNormalizer tokenNormalizer,
-        PostLoginRedirectCoordinator postLoginRedirectCoordinator,
         ILogger<JwtAuthenticationService> logger)
     {
         _cookieService = cookieService;
         _principalFactory = principalFactory;
         _tokenNormalizer = tokenNormalizer;
-        _postLoginRedirectCoordinator = postLoginRedirectCoordinator;
         _logger = logger;
     }
 
@@ -44,11 +41,10 @@ public sealed class JwtAuthenticationService
     public async Task LoginAsync(string token)
     {
         var normalizedToken = _tokenNormalizer.Normalize(token);
+        var principal = _principalFactory.CreatePrincipal(normalizedToken);
 
         await _cookieService.SetAuthTokenAsync(normalizedToken);
         Interlocked.Exchange(ref _tokenExpirado, 0);
-        _postLoginRedirectCoordinator.PrepararDestinoDaPaginaDeLogin();
-        var principal = _principalFactory.CreatePrincipal(normalizedToken);
         _logger.LogInformation("Usuario autenticado: {UserName}", principal.Identity?.Name);
         await NotifyAuthenticationStateChangedAsync(principal);
     }

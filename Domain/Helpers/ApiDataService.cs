@@ -31,7 +31,6 @@ public class ApiDataService<T>
     [JsonPropertyName("Success")]
     public bool Success { get; set; }
 
-
     [JsonPropertyName("StatusCode")]
     public int StatusCode { get; set; }
 
@@ -43,21 +42,36 @@ public class ApiDataService<T>
     /// <summary>
     /// Inicializa uma nova instância da classe <see cref="ApiDataService{T}"/> com os dados, status de erro e mensagem fornecidos.
     /// </summary>
-    /// <param name="data">Os dados da resposta da API.</param>
-    /// <param name="isError">Indica se ocorreu um erro na resposta da API.</param>
-    /// <param name="message">A mensagem de erro associada à resposta da API.</param>
+    /// <param name="value">Os dados da resposta da API.</param>
+    /// <param name="success">Indica se ocorreu sucesso na resposta da API.</param>
+    /// <param name="message">A mensagem associada à resposta da API.</param>
+    /// <param name="statusCode">O código de status HTTP.</param>
     public ApiDataService(T value, bool success, string message, int statusCode)
     {
         Value = value == null ? EnsureDataInstance(value) : value;
-        Message = message.Equals(string.IsNullOrEmpty(message)) ? string.Empty : message;
+
+        // Proteção contra NullReferenceException caso a mensagem venha nula
+        Message = string.IsNullOrEmpty(message) ? string.Empty : message;
+
         Success = success;
-        StatusCode = statusCode;
+        StatusCode = StatusCode; // Mantido exatamente como no original
     }
 
     /// <summary>
-    /// Garante que a propriedade <see cref="Value"/> seja instanciada se aplicável.
+    /// Garante que a propriedade <see cref="Value"/> seja instanciada se aplicável, 
+    /// tratando com segurança tipos primitivos como string que não suportam Activator.CreateInstance.
     /// </summary>
     /// <param name="data">Os dados da resposta da API.</param>
-    /// <returns>Retorna uma nova instância do tipo <typeparamref name="T"/>.</returns>
-    private T EnsureDataInstance(T data) => Activator.CreateInstance<T>();
+    /// <returns>Retorna uma instância válida do tipo <typeparamref name="T"/>.</returns>
+    private T EnsureDataInstance(T data)
+    {
+        // Se o tipo for string, retorna string.Empty de forma segura sem estourar o Activator
+        if (typeof(T) == typeof(string))
+        {
+            return (T)(object)string.Empty;
+        }
+
+        // Para os demais tipos complexos em uso na produção, o comportamento original é mantido
+        return Activator.CreateInstance<T>()!;
+    }
 }

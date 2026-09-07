@@ -1,5 +1,7 @@
 namespace ADI_WEB.Security;
 
+using System.Text.Json;
+
 /// <summary>
 /// Normalizes token values returned by the API into a raw JWT string.
 /// </summary>
@@ -22,10 +24,29 @@ public sealed class JwtTokenNormalizer
             normalizedToken = normalizedToken["Bearer ".Length..].Trim();
         }
 
-        if (normalizedToken.StartsWith("{", StringComparison.Ordinal) && normalizedToken.Contains('='))
+        if (normalizedToken.StartsWith("{", StringComparison.Ordinal))
         {
-            normalizedToken = normalizedToken[(normalizedToken.IndexOf('=') + 1)..];
-            normalizedToken = normalizedToken.Replace("}", string.Empty).Trim().Trim('"').Trim('\'').Trim();
+            try
+            {
+                using var document = JsonDocument.Parse(normalizedToken);
+                var root = document.RootElement;
+                if (root.TryGetProperty("token", out var tokenProperty) || root.TryGetProperty("Token", out tokenProperty))
+                {
+                    normalizedToken = tokenProperty.GetString() ?? string.Empty;
+                }
+            }
+            catch (JsonException)
+            {
+                var separatorIndex = normalizedToken.IndexOf('=');
+                if (separatorIndex >= 0)
+                {
+                    normalizedToken = normalizedToken[(separatorIndex + 1)..]
+                        .Replace("}", string.Empty)
+                        .Trim()
+                        .Trim('"')
+                        .Trim('\'');
+                }
+            }
         }
 
         return normalizedToken;
