@@ -1,0 +1,142 @@
+.adi-mobile-nav {
+    display: none;
+}
+
+.adi-mobile-only {
+    display: none !important;
+}
+
+.adi-desktop-brand {
+    display: flex;
+    align-items: center;
+}
+
+.adi-desktop-brand__text {
+    display: inline-flex;
+}
+
+@media (max-width: 600px) {
+    .adi-mobile-only {
+        display: inline-flex !important;
+    }
+
+    .adi-desktop-only {
+        display: none !important;
+    }
+
+    .adi-native-button {
+        align-items: center;
+        justify-content: center;
+        min-height: 40px;
+        padding: 8px 16px;
+        border: 1px solid #7e6fff;
+        border-radius: 4px;
+        background-color: #7e6fff;
+        color: #ffffff !important;
+        font-family: Arial, sans-serif;
+        font-size: 14px;
+        font-weight: bold;
+        line-height: 20px;
+        text-align: center;
+        text-decoration: none !important;
+        cursor: pointer;
+    }
+
+    .adi-native-button--outline {
+        border-color: #ffffff;
+        background-color: transparent;
+    }
+
+    .adi-mobile-theme-button {
+        width: 40px;
+        height: 40px;
+        padding: 0;
+        border: 0;
+        background: transparent;
+        color: inherit;
+        font-size: 26px;
+        line-height: 40px;
+    }
+
+    .adi-mobile-login-submit {
+        width: 100%;
+        border: 0;
+    }
+
+    .adi-mobile-login-nav {
+        align-items: center;
+        margin-left: 8px;
+    }
+
+    .adi-mobile-login-nav a {
+        padding: 8px 6px;
+        color: #7e6fff;
+        font-family: Arial, sans-serif;
+        font-size: 12px;
+        font-weight: bold;
+        text-decoration: none;
+    }
+    .adi-mobile-nav {
+        display: block;
+        position: relative;
+        width: 36px;
+        height: 36px;
+    }
+
+    .adi-mobile-nav__button {
+        display: block;
+        width: 36px;
+        height: 36px;
+        margin: 0;
+        padding: 1px;
+        border: 0;
+        background: transparent;
+        cursor: pointer;
+    }
+
+    .adi-mobile-nav__logo {
+        display: block;
+        width: 34px;
+        height: 34px;
+        object-fit: contain;
+    }
+
+    .adi-mobile-nav__menu {
+        display: none;
+        position: absolute;
+        top: 40px;
+        left: 0;
+        z-index: 1600;
+        width: 170px;
+        padding: 4px 0;
+        border: 1px solid #d0d0d0;
+        border-radius: 4px;
+        background-color: #ffffff;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+    }
+
+    .adi-mobile-nav--open .adi-mobile-nav__menu {
+        display: block;
+    }
+
+    .adi-mobile-nav__item {
+        display: block;
+        padding: 12px 16px;
+        color: #202124;
+        font-family: Arial, sans-serif;
+        font-size: 15px;
+        line-height: 20px;
+        text-decoration: none;
+        white-space: nowrap;
+    }
+
+    .adi-mobile-nav__item:active,
+    .adi-mobile-nav__item:focus {
+        background-color: #eeeeee;
+    }
+
+    .adi-desktop-brand,
+    .adi-desktop-brand__text {
+        display: none;
+    }
+}

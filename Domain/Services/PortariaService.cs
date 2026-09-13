@@ -38,8 +38,11 @@ namespace Domain.Services
 
         public Task<ApiDataService<List<int>>> GetMesesColaboradorControladoAsync(int ano) =>
             GetAsync<List<int>>($"portaria/get-meses-colaborador-controlado?ano={ano}");
-        public Task<ApiDataService<List<ColaboradoresControladosDto>>> GetColaboradoresAsync() =>
-            GetAsync<List<ColaboradoresControladosDto>>("portaria/get-colaboradores");
+        public Task<ApiDataService<List<ColaboradoresControladosDto>>> GetColaboradoresAsync(string? search = null) =>
+            GetAsync<List<ColaboradoresControladosDto>>(
+                string.IsNullOrWhiteSpace(search)
+                    ? "portaria/get-colaboradores"
+                    : $"portaria/get-colaboradores?search={Uri.EscapeDataString(search.Trim())}");
 
         public Task<ApiDataService<ColaboradoresControladosDto>> AlternarControleColaboradorAsync(ColaboradoresControladosDto colaborador) =>
             PatchAsync<ColaboradoresControladosDto>("portaria/patch-controle-colaborador", new

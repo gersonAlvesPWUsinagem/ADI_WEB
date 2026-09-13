@@ -1,0 +1,173 @@
+﻿@page "/downloads/publicar"
+@attribute [Authorize]
+@using ADI_WEB.Downloads
+@inject DownloadStorage Storage
+@inject DownloadPublisher Publisher
+@rendermode InteractiveServer
+@inject IRepositorioArquivoAsync _service
+
+<PageTitle>Publicar download</PageTitle>
+
+@if (_accessGranted)
+{
+    <MudContainer MaxWidth="MaxWidth.Medium" Class="my-6">
+    <MudText Typo="Typo.h4" GutterBottom="true">Publicar download</MudText>
+    <MudPaper Class="pa-6">
+        <MudStack Spacing="3">
+            <MudSelect T="bool" Label="Tipo de publicação" @bind-Value="_collector" Disabled="_busy">
+                <MudSelectItem T="bool" Value="true">Nova versão do coletor (APK)</MudSelectItem>
+                <MudSelectItem T="bool" Value="false">Outro aplicativo ou arquivo</MudSelectItem>
+            </MudSelect>
+            @if (_collector)
+            {
+                <MudSelect T="int" Label="Incremento da versão" @bind-Value="_increment" Disabled="_busy">
+                    <MudSelectItem T="int" Value="3">Correção (PATCH)</MudSelectItem>
+                    <MudSelectItem T="int" Value="2">Nova funcionalidade (MINOR)</MudSelectItem>
+                    <MudSelectItem T="int" Value="1">Versão principal (MAJOR)</MudSelectItem>
+                </MudSelect>
+                <MudTextField T="string" Label="Notas da versão" @bind-Value="_notes" Lines="4" Required="true" Disabled="_busy" />
+                <MudCheckBox T="bool" @bind-Value="_mandatory" Label="Atualização obrigatória" Disabled="_busy" />
+                <MudText Typo="Typo.body2">O número da versão será gerado automaticamente ao publicar.</MudText>
+            }
+            else
+            {
+                <MudCheckBox T="bool" @bind-Value="_create" Label="Criar novo diretório" Disabled="_busy" />
+                @if (_create)
+                {
+                    <MudTextField T="string" Label="Nome do novo diretório" @bind-Value="_newDirectory" Disabled="_busy" />
+                }
+                else
+                {
+                    <MudSelect T="string" Label="Diretório" @bind-Value="_directory" Disabled="_busy">
+                        @foreach (var directory in _directories)
+                        {
+                            <MudSelectItem T="string" Value="@directory.Path">@directory.Name</MudSelectItem>
+                        }
+                    </MudSelect>
+                }
+                <MudTextField T="string" Label="Nome do arquivo para download" @bind-Value="_name" Disabled="_busy" />
+            }
+            <div>
+                <label for="download-upload">Arquivo (até 500 MB)</label><br />
+                <InputFile id="download-upload" OnChange="SelectFile" accept="@(_collector ? ".apk" : null)" disabled="@_busy" />
+            </div>
+            @if (_file is not null)
+            {
+                <MudText Typo="Typo.body2">@_file.Name — @((_file.Size / 1024d / 1024d).ToString("N2")) MB</MudText>
+            }
+            @if (_busy)
+            {
+                <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+            }
+            @if (!string.IsNullOrEmpty(_error))
+            {
+                <MudAlert Severity="Severity.Error">@_error</MudAlert>
+            }
+            @if (!string.IsNullOrEmpty(_success))
+            {
+                <MudAlert Severity="Severity.Success">@_success</MudAlert>
+            }
+            <MudStack Row="true">
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="PublishAsync" Disabled="@(_busy || _file is null)">Publicar</MudButton>
+                <MudButton Href="downloads" Disabled="_busy">Ver downloads</MudButton>
+            </MudStack>
+        </MudStack>
+    </MudPaper>
+</MudContainer>
+}
+else
+{
+    <MudContainer MaxWidth="MaxWidth.Medium" Class="my-6">
+        <FavoritosSkeleton></FavoritosSkeleton>
+    </MudContainer>
+}
+
+@code {
+    private bool _accessGranted, _collector = true, _mandatory, _create, _busy;
+    private int _increment = 3;
+    private string _notes = "", _directory = "", _newDirectory = "", _name = "", _error = "", _success = "";
+    private IBrowserFile? _file;
+    private IReadOnlyList<DownloadEntry> _directories = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Task.CompletedTask;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try
+            {
+                var acess = await _service.LoadingPage();
+
+                if (!acess.Success)
+                {
+                    _snackbarComp.Message(acess.Message ?? "Acesso não autorizado.", Severity.Error, Color.Error);
+                    await JSRuntime.InvokeVoidAsync("window.history.back");
+                    return;
+                }
+
+                LoadDirectories();
+                _accessGranted = true;
+                StateHasChanged();
+            }
+            catch (Exception ex)
+            {
+                _error = ex.Message ?? "Não foi possível consultar as pastas de downloads. Verifique a disponibilidade do servidor.";
+                _snackbarComp.Message(_error, Severity.Error, Color.Error);
+                await JSRuntime.InvokeVoidAsync("window.history.back");
+            }
+        }
+    }
+
+
+    private void LoadDirectories() => _directories = Storage.List(null)
+        .Where(x => x.IsDirectory && !x.Name.Equals("COLETOR", StringComparison.OrdinalIgnoreCase)).ToList();
+
+    private void SelectFile(InputFileChangeEventArgs args)
+    {
+        _file = args.File;
+        _name = _file.Name;
+        _error = _success = "";
+    }
+
+    private async Task PublishAsync()
+    {
+        if (_busy || _file is null) return;
+        _busy = true;
+        _error = _success = "";
+        try
+        {
+            if (_file.Size <= 0 || _file.Size > DownloadStorage.MaxFileSize)
+                throw new ArgumentException("Selecione um arquivo entre 1 byte e 500 MB.");
+            if (_collector && (!System.IO.Path.GetExtension(_file.Name).Equals(".apk", StringComparison.OrdinalIgnoreCase) || string.IsNullOrWhiteSpace(_notes)))
+                throw new ArgumentException("Selecione um APK e informe as notas da versão.");
+            await using var stream = _file.OpenReadStream(DownloadStorage.MaxFileSize);
+            if (_collector)
+            {
+                var result = await Publisher.PublishCollectorAsync(stream, _file.Name, _increment, _notes, _mandatory);
+                _success = result.Message ?? $"Versão {result.Version} publicada.";
+            }
+            else
+            {
+                var directory = _create ? _newDirectory : _directory;
+                DownloadStorage.ValidateName(directory);
+                await Publisher.SaveAsync(directory, _name, stream, _file.Size, _create);
+                _success = "Arquivo publicado e disponível para download.";
+            }
+            _file = null;
+            try { LoadDirectories(); } catch { }
+        }
+        catch (Exception ex) when (ex is ArgumentException or IOException or UnauthorizedAccessException)
+        {
+            _error = ex.Message;
+        }
+        catch (Exception)
+        {
+            _error = "Não foi possível concluir a publicação. Verifique a conexão e tente novamente.";
+        }
+        finally { _busy = false; }
+    }
+}

@@ -6,9 +6,9 @@ public class RamalDto
 {
     public int Id { get; set; }
     public int RamalId { get; set; }
-    [Range(1, long.MaxValue, ErrorMessage = "Selecione um colaborador.")] public long EmpFil { get; set; }
-    [Range(1, long.MaxValue, ErrorMessage = "Selecione um colaborador.")] public long Matricula { get; set; }
-    [Range(1, long.MaxValue, ErrorMessage = "Selecione um colaborador.")] public long PessoaId { get; set; }
+    public long EmpFil { get; set; }
+    public long Matricula { get; set; }
+    public long PessoaId { get; set; }
     public string Nome { get; set; } = string.Empty;
     public string? Departamento { get; set; }
     [Required(ErrorMessage = "O ramal é obrigatório.")]

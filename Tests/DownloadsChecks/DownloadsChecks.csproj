@@ -1,0 +1,12 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../ADI_WEB/Downloads/DownloadStorage.cs" Link="DownloadStorage.cs" />
+    <Compile Include="../../ADI_WEB/Downloads/DownloadEndpoints.cs" Link="DownloadEndpoints.cs" />
+  </ItemGroup>
+</Project>

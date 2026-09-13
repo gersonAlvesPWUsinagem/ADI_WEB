@@ -1,4 +1,6 @@
-<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="pa-0">
+@if (Carregando)
+{
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="pa-0" aria-busy="true" aria-live="polite">
     <MudSkeleton SkeletonType="SkeletonType.Rectangle" Width="220px" Height="48px" Class="mb-2" />
     <MudSkeleton SkeletonType="SkeletonType.Rectangle" Width="180px" Height="22px" Class="mb-5" />
 
@@ -20,7 +22,24 @@
         }
     </MudGrid>
 </MudContainer>
+}
 
 @code {
     [Parameter] public int Quantidade { get; set; } = 20;
+    [Parameter] public bool Carregando { get; set; } = true;
+    [Parameter] public EventCallback<bool> CarregandoChanged { get; set; }
+
+    public Task IniciarAsync() => AlterarEstadoAsync(true);
+
+    public Task FinalizarAsync() => AlterarEstadoAsync(false);
+
+    private async Task AlterarEstadoAsync(bool carregando)
+    {
+        if (Carregando == carregando)
+            return;
+
+        Carregando = carregando;
+        await CarregandoChanged.InvokeAsync(carregando);
+        await InvokeAsync(StateHasChanged);
+    }
 }

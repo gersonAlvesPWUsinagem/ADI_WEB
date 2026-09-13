@@ -12,7 +12,7 @@ namespace Domain.Interfaces
     public interface IPortariaService
     {
         Task<ApiDataService<List<ControlePessoaDto>>> GetColaboradorControladoAsync();
-        Task<ApiDataService<List<ColaboradoresControladosDto>>> GetColaboradoresAsync();
+        Task<ApiDataService<List<ColaboradoresControladosDto>>> GetColaboradoresAsync(string? search = null);
         Task<ApiDataService<ColaboradoresControladosDto>> AlternarControleColaboradorAsync(ColaboradoresControladosDto colaborador);
         Task<ApiDataService<List<PorteiroOperadorDto>>> GetPorteiroOperadorAsync();
         Task<ApiDataService<PorteiroOperadorDto>> LoginPorteiroOperadorAsync(int operadorId, string senha);

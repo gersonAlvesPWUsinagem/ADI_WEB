@@ -1,5 +1,6 @@
-﻿using ADI_WEB.Components;
+using ADI_WEB.Components;
 using ADI_WEB.Components.SharedComps;
+using ADI_WEB.Downloads;
 using ADI_WEB.Security;
 using Domain.Helpers;
 using Domain.Interfaces;
@@ -7,6 +8,13 @@ using Domain.Services;
 using MudBlazor.Services;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.Services.AddSingleton<DownloadStorage>();
+builder.Services.AddScoped<DownloadPublisher>();
+builder.Services.AddHttpClient("DownloadsApi", client =>
+{
+    client.BaseAddress = new Uri((builder.Configuration["Downloads:ApiBaseUrl"] ?? Servidores.GetBaseUrl()).TrimEnd('/') + "/");
+    client.Timeout = TimeSpan.FromMinutes(30);
+});
 
 #region [ Configurações de Framework e Interface (Blazor & MudBlazor) ]
 // Injeta componentes do MudBlazor UI
@@ -50,6 +58,7 @@ builder.Services.AddScoped<IGeradorTermoService, GeradorTermoService>();
 builder.Services.AddScoped<IPortariaService, PortariaService>();
 builder.Services.AddScoped<IRamalService, RamalService>();
 builder.Services.AddScoped<IFavoritoPaginaService, FavoritoPaginaService>();
+builder.Services.AddScoped<IRepositorioArquivoAsync, RepositorioArquivoAsync>();
 builder.Services.AddScoped<FavoritoPaginaState>();
 builder.Services.AddScoped<SessionExpirationState>();
 builder.Services.AddScoped<ApiAuthenticationFailureHandler>();
@@ -103,6 +112,7 @@ app.UseAntiforgery();
 
 #region [ Mapeamento de Rotas e Execução da Aplicação ]
 app.MapStaticAssets();
+app.MapDownloads();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 

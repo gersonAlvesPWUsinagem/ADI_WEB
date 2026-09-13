@@ -45,44 +45,79 @@
                    Elevation="@(isHome || isSobreSistema ? 2 : 1)"
                    Color="Color.Inherit"
                    Style="@(isHome
-                                       ? "position: fixed; top: 0; left: 0; right: 0; z-index: 1300; background-color: transparent !important; background-image: none !important; color: #ffffff !important;"
-                                       : (isSobreSistema
-                                           ? "position: fixed; top: 0; left: 0; right: 0; z-index: 1300; background-color: #0f766e !important; color: #ffffff !important;"
-                                           : ""))">
+                                                   ? "position: fixed; top: 0; left: 0; right: 0; z-index: 1300; background-color: transparent !important; background-image: none !important; color: #ffffff !important;"
+                                                   : (isSobreSistema
+                                                       ? "position: fixed; top: 0; left: 0; right: 0; z-index: 1300; background-color: #0f766e !important; color: #ffffff !important;"
+                                                       : ""))">
 
         @if (ShowDrawer)
             {
-                <MudIconButton Class="mr-2"
+                <MudIconButton Class="mr-1"
                                Color="Color.Inherit"
                                Edge="Edge.Start"
                                Icon="@Icons.Material.Filled.Menu"
                                OnClick="@DrawerToggle" />
             }
 
-            <!-- LOGO -->
-            <MudStack AlignItems="AlignItems.Center"
-                      Row="true"
-                      Spacing="2">
+            <!-- MOBILE: somente a imagem abre o menu -->
+            @if (!_isAuthenticated && !isSobreSistema)
+            {
+                <div class="adi-mobile-nav" data-adi-mobile-menu>
+                    <button type="button"
+                            class="adi-mobile-nav__button"
+                            data-adi-mobile-menu-button
+                            aria-label="Abrir menu ADI"
+                            aria-haspopup="true"
+                            aria-expanded="false">
+                        <img src="/ico_adi_2025.png" alt="ADI" class="adi-mobile-nav__logo" />
+                    </button>
+                    <div class="adi-mobile-nav__menu" data-adi-mobile-menu-panel role="menu">
+                        <a href="/user/login" class="adi-mobile-nav__item" role="menuitem">Entrar</a>
+                        <a href="/downloads" class="adi-mobile-nav__item" role="menuitem">Downloads</a>
+                    </div>
+                </div>
 
-                <MudAvatar Size="Size.Small"
-                           Elevation="0"
-                           Class="pa-0"
-                           Style="background: transparent;">
-
-                    <MudImage Src="ico_adi_2025.png"
-                              Alt="Logo ADI"
-                              ObjectFit="ObjectFit.Contain" />
-                </MudAvatar>
-                <MudText Typo="Typo.subtitle1"
-                         Class="adi-logo-text">
-                    INTRANET ADI
-                </MudText>
-            </MudStack>
+                <!-- DESKTOP: mantém a apresentação original -->
+                <div class="adi-desktop-brand">
+                    <MudStack AlignItems="AlignItems.Center" Row="true" Spacing="2">
+                        <MudAvatar Size="Size.Small"
+                                   Elevation="0"
+                                   Class="pa-0"
+                                   Style="background: transparent;">
+                            <MudImage Src="ico_adi_2025.png"
+                                      Alt="Logo ADI"
+                                      ObjectFit="ObjectFit.Contain" />
+                        </MudAvatar>
+                        <MudText Typo="Typo.subtitle1" Class="adi-logo-text">
+                            INTRANET ADI
+                        </MudText>
+                    </MudStack>
+                </div>
+            }
+            else
+            {
+                <!-- Usuário autenticado ou página Sobre: apresentação original -->
+                <MudStack AlignItems="AlignItems.Center" Row="true" Spacing="2">
+                    <MudAvatar Size="Size.Small"
+                               Elevation="0"
+                               Class="pa-0"
+                               Style="background: transparent;">
+                        <MudImage Src="ico_adi_2025.png"
+                                  Alt="Logo ADI"
+                                  ObjectFit="ObjectFit.Contain" />
+                    </MudAvatar>
+                    <span class="adi-desktop-brand__text">
+                        <MudText Typo="Typo.subtitle1" Class="adi-logo-text">
+                            INTRANET ADI
+                        </MudText>
+                    </span>
+                </MudStack>
+            }
 
             <!-- BOTÃO HOME (Exibido apenas em /sobre-o-sistema) -->
             @if (isSobreSistema)
             {
-                <MudButton Class="ml-4 adi-menu-button px-3"
+                <MudButton Class="ml-2 adi-menu-button px-2"
                            Color="Color.Inherit"
                            Href="/"
                            StartIcon="@Icons.Material.Outlined.Home"
@@ -95,7 +130,7 @@
             @if (!_isAuthenticated && !isSobreSistema)
             {
                 <MudHidden Breakpoint="Breakpoint.MdAndDown">
-                    <MudStack Class="ml-6"
+                    <MudStack Class="ml-4"
                               Row="true"
                               Spacing="0">
 
@@ -133,7 +168,7 @@
             {
                 <MudStack AlignItems="AlignItems.Center"
                           Row="true"
-                          Spacing="2">
+                          Spacing="1">
 
                     <MudIconButton Class="mr-1"
                                    Color="Color.Inherit"
@@ -141,29 +176,35 @@
                                    OnClick="@DarkModeToggle"
                                    Size="Size.Small" />
 
-                    <MudButton Class="px-2"
-                               Color="Color.Inherit"
-                               StartIcon="@Icons.Material.Outlined.Logout"
-                               OnClick="@EfetuarLogout"
-                               Variant="Variant.Text">
-                        Sair
-                    </MudButton>
+                    <MudHidden Breakpoint="Breakpoint.SmAndDown">
+                        <MudButton Class="px-2"
+                                   Color="Color.Inherit"
+                                   StartIcon="@Icons.Material.Outlined.Logout"
+                                   OnClick="@EfetuarLogout"
+                                   Variant="Variant.Text">
+                            Sair
+                        </MudButton>
+                    </MudHidden>
 
                     <MudMenu AnchorOrigin="Origin.BottomRight"
                              Dense="true"
                              TransformOrigin="Origin.TopRight">
                         <ActivatorContent>
-                            <MudButton Class="px-2"
+                            <MudButton Class="px-1 px-md-2"
                                        Color="Color.Inherit"
                                        EndIcon="@Icons.Material.Filled.ArrowDropDown"
                                        StartIcon="@Icons.Material.Outlined.AccountCircle"
                                        Variant="Variant.Text">
-                                @FirstName
+                                <MudHidden Breakpoint="Breakpoint.SmAndDown" Invert="true">
+                                    @FirstName.Substring(0, Math.Min(FirstName.Length, 6))...
+                                </MudHidden>
+                                <MudHidden Breakpoint="Breakpoint.SmAndDown">
+                                    @FirstName
+                                </MudHidden>
                             </MudButton>
                         </ActivatorContent>
                         <ChildContent>
-                            <MudText Class="px-4 py-2"
-                                     Typo="Typo.caption">
+                            <MudText Class="px-4 py-2" Typo="Typo.caption">
                                 Conectado como <b>@FirstName</b>
                             </MudText>
                             <MudDivider />
@@ -189,28 +230,36 @@
 
                     @if (!isSobreSistema)
                     {
-                        <MudButton Class="adi-menu-button px-3"
-                                   Color="Color.Inherit"
-                                   OnClick="@(() => Navigation.NavigateTo("/user/login"))"
-                                   StartIcon="@Icons.Material.Outlined.Login"
-                                   Variant="Variant.Text">
-                            Entrar
-                        </MudButton>
+                        <!-- Botões visíveis apenas em telas médias para cima (Desktop) -->
+                        <MudHidden Breakpoint="Breakpoint.SmAndDown">
+                            <MudButton Class="adi-menu-button px-2"
+                                       Color="Color.Inherit"
+                                       OnClick="@(() => Navigation.NavigateTo("/user/login"))"
+                                       StartIcon="@Icons.Material.Outlined.Login"
+                                       Variant="Variant.Text">
+                                Entrar
+                            </MudButton>
 
-                        <MudButton Class="adi-menu-button px-3"
-                                   Color="Color.Inherit"
-                                   Href="/download"
-                                   StartIcon="@Icons.Material.Outlined.Download"
-                                   Variant="Variant.Text">
-                            Downloads
-                        </MudButton>
+                            <MudButton Class="adi-menu-button px-2"
+                                       Color="Color.Inherit"
+                                       Href="/downloads"
+                                       StartIcon="@Icons.Material.Outlined.Download"
+                                       Variant="Variant.Text">
+                                Downloads
+                            </MudButton>
+                        </MudHidden>
                     }
 
-                    <MudIconButton Color="Color.Inherit"
+                    <MudIconButton Class="adi-desktop-only"
+                                   Color="Color.Inherit"
                                    Icon="@DarkLightModeButtonIcon"
                                    OnClick="@DarkModeToggle"
                                    Size="Size.Small"
                                    Title="Alternar Tema" />
+                    <button type="button"
+                            class="adi-mobile-only adi-mobile-theme-button"
+                            onclick="adiMobileThemeToggle()"
+                            aria-label="Alternar tema">&#9789;</button>
                 </MudStack>
             }
         </MudAppBar>
@@ -246,7 +295,8 @@
     private string _returnUrlAposExpiracao = "/main";
 
     private bool IsLoginPage => _currentPath?.StartsWith("user/login", StringComparison.OrdinalIgnoreCase) == true;
-    private bool IsPublicHome => string.IsNullOrEmpty(_currentPath) || _currentPath.Equals("home", StringComparison.OrdinalIgnoreCase) || _currentPath.Equals("/", StringComparison.OrdinalIgnoreCase); private bool ShowAppBar => !IsLoginPage;
+    private bool IsPublicHome => string.IsNullOrEmpty(_currentPath) || _currentPath.Equals("home", StringComparison.OrdinalIgnoreCase) || _currentPath.Equals("/", StringComparison.OrdinalIgnoreCase);
+    private bool ShowAppBar => !IsLoginPage;
     private bool ShowDrawer => _isAuthenticated && !IsLoginPage && !IsPublicHome;
 
     private string FirstName => string.IsNullOrWhiteSpace(_fullName)

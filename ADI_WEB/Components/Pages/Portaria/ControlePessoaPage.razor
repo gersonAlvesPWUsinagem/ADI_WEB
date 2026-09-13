@@ -12,259 +12,260 @@
 @*implements IDisposable*@
 @inject AtualizacaoPortariaNotifier AtualizacaoPortariaNotifier
 
-<HeaderComponent Title="Controle de Pessoas" Modulo="ModuloEnum.Comercial" Permission="189"
-                 TextBtn1="Atualizar"
-                 IconBtn1="@Icons.Material.Filled.Refresh"
-                 ColorBtn1="@Color.Primary"
-                 LevelBtn1="1"
-                 OnBtn1Click="AtualizarPaginaAsync"
-                 TextBtn2="Nova lista"
-                 IconBtn2="@Icons.Material.Filled.Approval"
-                 ColorBtn2="@Color.Success"
-                 LevelBtn2="3"
-                 OnBtn2Click="GerarListaDeApontamentAsync"
-                 TextBtn3="Relatório"
-                 IconBtn3="@Icons.Material.Filled.Assessment"
-                 LevelBtn3="4"
-                 ColorBtn3="Color.Tertiary"
-                 OnBtn3Click="AbrirRelatorioAsync"
-                 TextBtn4="Limpar Filtro"
-                 IconBtn4="@Icons.Material.Filled.FilterAltOff"
-                 IsVisibleOrNotBtn4="@_isFiltradoPorData"
-                 ColorBtn4="Color.Error"
-                 MudFab4="true"
-                 LevelBtn4="1"
-                 OnBtn4Click="LimparFiltroDataAsync"
-                 Processing=@(!_carregado) />
+        <HeaderComponent Title="Controle de Pessoas" Modulo="ModuloEnum.Comercial" Permission="189"
+                         TextBtn1="Atualizar"
+                         IconBtn1="@Icons.Material.Filled.Refresh"
+                         ColorBtn1="@Color.Primary"
+                         LevelBtn1="1"
+                         OnBtn1Click="AtualizarPaginaAsync"
+                         TextBtn2="Nova lista"
+                         IconBtn2="@Icons.Material.Filled.Approval"
+                         ColorBtn2="@Color.Success"
+                         LevelBtn2="3"
+                         OnBtn2Click="GerarListaDeApontamentAsync"
+                         TextBtn3="Relatório"
+                         IconBtn3="@Icons.Material.Filled.Assessment"
+                         LevelBtn3="4"
+                         ColorBtn3="Color.Tertiary"
+                         OnBtn3Click="AbrirRelatorioAsync"
+                         TextBtn4="Limpar Filtro"
+                         IconBtn4="@Icons.Material.Filled.FilterAltOff"
+                         IsVisibleOrNotBtn4="@_isFiltradoPorData"
+                         ColorBtn4="Color.Error"
+                         MudFab4="true"
+                         LevelBtn4="1"
+                         OnBtn4Click="LimparFiltroDataAsync"
+                         Processing=@(!_carregado) />
 
-<MudMessageBox @bind-Visible="_exibirAvisoSenhaProvisoria"
-               Title="Senha provisória"
-               Message="@_mensagemAvisoSenhaProvisoria">
-    <YesButton>
-        <MudButton Color="Color.Warning"
-                   Variant="Variant.Filled"
-                   OnClick="@(() => _exibirAvisoSenhaProvisoria = false)">
-            Entendi
-        </MudButton>
-    </YesButton>
-</MudMessageBox>
+        <MudMessageBox @bind-Visible="_exibirAvisoSenhaProvisoria"
+                       Title="Senha provisória"
+                       Message="@_mensagemAvisoSenhaProvisoria">
+            <YesButton>
+                <MudButton Color="Color.Warning"
+                           Variant="Variant.Filled"
+                           OnClick="@(() => _exibirAvisoSenhaProvisoria = false)">
+                    Entendi
+                </MudButton>
+            </YesButton>
+        </MudMessageBox>
+
+        <!-- Filtro de Meses -->
+        <MudItem xs="12" Class="mb-1">
+            <div class="d-flex flex-wrap align-center gap-4">
+                <MudChipSet T="int" Size="Size.Large"
+                            SelectedValue="_mesSelecionado"
+                            SelectedValueChanged="OnMesSelecionadoChanged"
+                            CheckMark
+                            SelectionMode="SelectionMode.SingleSelection"
+                            Variant="Variant.Text" Color="Color.Info">
+                    <MudChip Value="13" Disabled="@(!(Elements != null && Elements.Any()))">Todos</MudChip>
+                    @foreach (var mes in MesesAbreviados)
+                    {
+                        <MudChip Value="@mes.Key" Color="@(MesExisteNaBase(mes.Key) ? Color.Primary : Color.Default)">@mes.Value</MudChip>
+                    }
+                </MudChipSet>
+            </div>
+        </MudItem>
+
+        <!-- Filtros de Status de Movimentação -->
+        <MudPaper Class="pa-4 mb-4" Elevation="1">
+            <div class="d-flex align-center justify-space-between flex-wrap gap-4">
+                <MudChipSet T="string" Size="Size.Medium"
+                            SelectedValue="_filtroStatusMovimentacao"
+                            SelectedValueChanged="OnFiltroStatusMovimentacaoChanged"
+                            CheckMark
+                            SelectionMode="SelectionMode.SingleSelection"
+                            Variant="Variant.Outlined" Color="Color.Primary">
+                    <MudChip Value="@("TODOS")">Todos</MudChip>
+                    <MudChip Value="@("SOMENTE_ENTRADA")">C/Entrada</MudChip>
+                    <MudChip Value="@("SOMENTE_SAIDA")">C/Saída</MudChip>
+                    <MudChip Value="@("ENTRADA_SAIDA")">Concluídos</MudChip>
+                </MudChipSet>
+
+                <div class="d-flex align-center gap-3">
+                    <span class="mud-typography mud-typography-body1 font-weight-bold">
+                        @GetFilteredItems().Count() visíveis
+                    </span>
+                    <MudAvatar Color="@(value2 is null ? Color.Error : Color.Success)">
+                        @(value2 is null ? "Of" : "On")
+                    </MudAvatar>
+                </div>
+            </div>
+        </MudPaper>
 
 
-<!-- Filtro de Meses -->
-<MudItem xs="12" Class="mb-1">
-    <div class="d-flex flex-wrap align-center gap-4">
-        <MudChipSet T="int" Size="Size.Large"
-                    SelectedValue="_mesSelecionado"
-                    SelectedValueChanged="OnMesSelecionadoChanged"
-                    CheckMark
-                    SelectionMode="SelectionMode.SingleSelection"
-                    Variant="Variant.Text" Color="Color.Info">
-            <MudChip Value="13" Disabled="@(!(Elements != null && Elements.Any()))">Todos</MudChip>
-            @foreach (var mes in MesesAbreviados)
-            {
-                <MudChip Value="@mes.Key" Color="@(MesExisteNaBase(mes.Key) ? Color.Primary : Color.Default)">@mes.Value</MudChip>
-            }
-        </MudChipSet>
-    </div>
-</MudItem>
+    @if (!_carregado && _somenteAtualizarGrid== false)
+    {
+        <MudPaper Class="d-flex justify-center flex-grow-1 gap-4" Elevation="0">
+            <MudProgressCircular Size="Size.Large" Color="Color.Primary" Indeterminate="true" />
+        </MudPaper>
+    }
+    else
+    {
+        <MudPaper Class="pa-4" Elevation="1">
+            <MudDataGrid T="ControlePessoaDto"
+                         @ref="_dataGrid"
+                         MultiSelection="false"
+                         Items="@GetFilteredItems()"
+                         SortMode="SortMode.Single"
+                         Filterable="false"
+                         QuickFilter="@_quickFilter"
+                         Hideable="false"
+                         RowClick="@RowClicked"
+                         RowContextMenuClick="RowRightClicked"
+                         SelectedItemsChanged="@SelectedItemsChanged"
+                         Dense="true"
+                         Striped="true"
+                         Hover="true"
+                         Bordered="@_bordered"
+                         Loading=@(!_carregado)>
 
-<!-- Filtros de Status de Movimentação -->
-<MudPaper Class="pa-4 mb-4" Elevation="1">
-    <div class="d-flex align-center justify-space-between flex-wrap gap-4">
-        <MudChipSet T="string" Size="Size.Medium"
-                    SelectedValue="_filtroStatusMovimentacao"
-                    SelectedValueChanged="OnFiltroStatusMovimentacaoChanged"
-                    CheckMark
-                    SelectionMode="SelectionMode.SingleSelection"
-                    Variant="Variant.Outlined" Color="Color.Primary">
-            <MudChip Value="@("TODOS")">Todos</MudChip>
-            <MudChip Value="@("SOMENTE_ENTRADA")">C/Entrada</MudChip>
-            <MudChip Value="@("SOMENTE_SAIDA")">C/Saída</MudChip>
-            <MudChip Value="@("ENTRADA_SAIDA")">Concluídos</MudChip>
-        </MudChipSet>
+                <ToolBarContent>
+                    <MudPaper Class="d-flex justify-space-between flex-grow-1 gap-4" Elevation="0">
 
-        <div class="d-flex align-center gap-3">
-            <span class="mud-typography mud-typography-body1 font-weight-bold">
-                @GetFilteredItems().Count() visíveis
-            </span>
-            <MudAvatar Color="@(value2 is null ? Color.Error : Color.Success)">
-                @(value2 is null ? "Of" : "On")
-            </MudAvatar>
-        </div>
-    </div>
-</MudPaper>
+                        <MudTextField Value="@UserName"
+                                      Label="Operador"
+                                      Placeholder="Nenhum operador autenticado"
+                                      Variant="Variant.Outlined"
+                                      Margin="Margin.Dense"
+                                      ReadOnly="true"
+                                      Adornment="Adornment.End"
+                                      OnAdornmentClick="AlterarPorteiroAsync"
+                                      AdornmentIcon="@Icons.Material.Filled.Person" />
 
-@if (!_carregado && _somenteAtualizarGrid== false)
-{
-    <MudPaper Class="d-flex justify-center flex-grow-1 gap-4" Elevation="0">
-        <MudProgressCircular Size="Size.Large" Color="Color.Primary" Indeterminate="true" />
-    </MudPaper>
-}
-else
-{
-    <MudPaper Class="pa-4" Elevation="1">
-        <MudDataGrid T="ControlePessoaDto"
-                     @ref="_dataGrid"
-                     MultiSelection="false"
-                     Items="@GetFilteredItems()"
-                     SortMode="SortMode.Single"
-                     Filterable="false"
-                     QuickFilter="@_quickFilter"
-                     Hideable="false"
-                     RowClick="@RowClicked"
-                     RowContextMenuClick="RowRightClicked"
-                     SelectedItemsChanged="@SelectedItemsChanged"
-                     Dense="true"
-                     Striped="true"
-                     Hover="true"
-                     Bordered="@_bordered"
-                     Loading=@(!_carregado)>
+                        <MudTextField Label="REF DIA"
+                                      Value="@_dataTextoInput"
+                                      ValueChanged="@(async (string val) => await OnDataInputChanged(val))"
+                                      OnAdornmentClick="PesquisarPorDataDigitada"
+                                      @onkeydown="@(async (KeyboardEventArgs e) => { if (e.Key == "Enter") await PesquisarPorDataDigitada(); })"
+                                      AdornmentAriaLabel="Pesquisar por data"
+                                      AdornmentIcon="@Icons.Material.Filled.Search"
+                                      Adornment="Adornment.End"
+                                      Variant="Variant.Outlined"
+                                      Margin="Margin.Dense"
+                                      Placeholder="dd/mm/aaaa" />
 
-            <ToolBarContent>
-                <MudPaper Class="d-flex justify-space-between flex-grow-1 gap-4" Elevation="0">
+                        <MudTextField @bind-Value="_searchString"
+                                      Label="Pesquisar"
+                                      Placeholder="Nome, Matrícula ou C. Custo..."
+                                      Variant="Variant.Outlined"
+                                      Margin="Margin.Dense"
+                                      Adornment="Adornment.End"
+                                      Immediate="true"
+                                      AdornmentIcon="@Icons.Material.Filled.Search"
+                                      IconSize="Size.Medium" />
+                    </MudPaper>
+                </ToolBarContent>
 
-                    <MudTextField Value="@UserName"
-                                  Label="Operador"
-                                  Placeholder="Nenhum operador autenticado"
-                                  Variant="Variant.Outlined"
-                                  Margin="Margin.Dense"
-                                  ReadOnly="true"
-                                  Adornment="Adornment.End"
-                                  OnAdornmentClick="AlterarPorteiroAsync"
-                                  AdornmentIcon="@Icons.Material.Filled.Person" />
-
-                    <MudTextField Label="REF DIA"
-                                  Value="@_dataTextoInput"
-                                  ValueChanged="@(async (string val) => await OnDataInputChanged(val))"
-                                  OnAdornmentClick="PesquisarPorDataDigitada"
-                                  @onkeydown="@(async (KeyboardEventArgs e) => { if (e.Key == "Enter") await PesquisarPorDataDigitada(); })"
-                                  AdornmentAriaLabel="Pesquisar por data"
-                                  AdornmentIcon="@Icons.Material.Filled.Search"
-                                  Adornment="Adornment.End"
-                                  Variant="Variant.Outlined"
-                                  Margin="Margin.Dense"
-                                  Placeholder="dd/mm/aaaa" />
-
-                    <MudTextField @bind-Value="_searchString"
-                                  Label="Pesquisar"
-                                  Placeholder="Nome, Matrícula ou C. Custo..."
-                                  Variant="Variant.Outlined"
-                                  Margin="Margin.Dense"
-                                  Adornment="Adornment.End"
-                                  Immediate="true"
-                                  AdornmentIcon="@Icons.Material.Filled.Search"
-                                  IconSize="Size.Medium" />
-                </MudPaper>
-            </ToolBarContent>
-
-            <Columns>
-                <TemplateColumn Title="Ação">
-                    <CellTemplate>
-                        <MudStack Row="true" Spacing="1">
-                            <MudIconButton Icon="@Icons.Material.Filled.Approval"
-                                           Color="((string.IsNullOrEmpty(context.Item.HoraEntrada)) && (string.IsNullOrEmpty(context.Item.HoraSaida)) ? Color.Success :
-                                                                                                                                                                      (!string.IsNullOrEmpty(context.Item.HoraEntrada)) && (string.IsNullOrEmpty(context.Item.HoraSaida)) ? Color.Info : Color.Default)"
+                <Columns>
+                    <TemplateColumn Title="Ação">
+                        <CellTemplate>
+                            <MudStack Row="true" Spacing="1">
+                                <MudIconButton Icon="@Icons.Material.Filled.Approval"
+                                               Color="((string.IsNullOrEmpty(context.Item.HoraEntrada)) && (string.IsNullOrEmpty(context.Item.HoraSaida)) ? Color.Success :
+                                                                                                                                                                                                                                                                    (!string.IsNullOrEmpty(context.Item.HoraEntrada)) && (string.IsNullOrEmpty(context.Item.HoraSaida)) ? Color.Info : Color.Default)"
                                        OnClick="@(() => ApontarAsync(context.Item))"
                                        Disabled="@((!string.IsNullOrEmpty(context.Item.HoraEntrada) && !string.IsNullOrEmpty(context.Item.HoraSaida)) || !PodeMovimentarOuEditar(context.Item.DataOcorrencia))" />
 
                         @if (PodeMovimentarOuEditar(context.Item.DataOcorrencia, context.Item.HoraEntrada, context.Item.HoraSaida))
-                            {
-                                <MudIconButton Icon="@Icons.Material.Filled.Edit"
-                                               Color="Color.Warning"
-                                               Disabled=(string.IsNullOrEmpty(context.Item.DataApEntrada))
-                                               OnClick="@(() => AlterarApontamentoAsync(context.Item))" />
-                            }
-                        </MudStack>
-                    </CellTemplate>
-                </TemplateColumn>
-
-                <TemplateColumn Title="Status">
-                    <CellTemplate>
-                        <MudStack Row Justify="Justify.Center">
-                            @if (!context.Item.OcorrenciaEntrada)
-                            {
-                                if (string.IsNullOrEmpty(context.Item.Ocorrencia))
                                 {
-                                    <MudChip T="string" Size="Size.Small"
-                                             Color="@(!string.IsNullOrEmpty(context.Item.DataApEntrada) ? Color.Primary : Color.Default)">E</MudChip>
+                                    <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                                   Color="Color.Warning"
+                                                   Disabled=(string.IsNullOrEmpty(context.Item.DataApEntrada))
+                                                   OnClick="@(() => AlterarApontamentoAsync(context.Item))" />
+                                }
+                            </MudStack>
+                        </CellTemplate>
+                    </TemplateColumn>
+
+                    <TemplateColumn Title="Status">
+                        <CellTemplate>
+                            <MudStack Row Justify="Justify.Center">
+                                @if (!context.Item.OcorrenciaEntrada)
+                                {
+                                    if (string.IsNullOrEmpty(context.Item.Ocorrencia))
+                                    {
+                                        <MudChip T="string" Size="Size.Small"
+                                                 Color="@(!string.IsNullOrEmpty(context.Item.DataApEntrada) ? Color.Primary : Color.Default)">E</MudChip>
+                                    }
+                                    else
+                                    {
+                                        <MudIcon Size="Size.Small" Class="mt-1" Color="Color.Warning"
+                                                 Icon="@Icons.Material.Filled.ReportGmailerrorred" Title="Registrado Ocorrência na Entrada" />
+                                    }
                                 }
                                 else
                                 {
-                                    <MudIcon Size="Size.Small" Class="mt-1" Color="Color.Warning"
-                                             Icon="@Icons.Material.Filled.ReportGmailerrorred" Title="Registrado Ocorrência na Entrada" />
+                                    <MudIconButton Size="Size.Small"
+                                                   Icon="@Icons.Material.Filled.ReportGmailerrorred"
+                                                   Color=Color.Error
+                                                   OnClick="@(() => OcorrenciaAsync(context.Item))" />
                                 }
-                            }
-                            else
-                            {
-                                <MudIconButton Size="Size.Small"
-                                               Icon="@Icons.Material.Filled.ReportGmailerrorred"
-                                               Color=Color.Error
-                                               OnClick="@(() => OcorrenciaAsync(context.Item))" />
-                            }
-                            @if (!context.Item.OcorrenciaSaida)
-                            {
-
-                                if (!string.IsNullOrEmpty(context.Item.Ocorrencia) && (context.Item.DataApSaida ?? string.Empty).Length > 0)
+                                @if (!context.Item.OcorrenciaSaida)
                                 {
-                                    <MudIcon Size="Size.Small"
-                                             Icon="@Icons.Material.Filled.ReportGmailerrorred" Title="Registrado Ocorrência na Entrada" />
+
+                                    if (!string.IsNullOrEmpty(context.Item.Ocorrencia) && (context.Item.DataApSaida ?? string.Empty).Length > 0)
+                                    {
+                                        <MudIcon Size="Size.Small"
+                                                 Icon="@Icons.Material.Filled.ReportGmailerrorred" Title="Registrado Ocorrência na Entrada" />
+                                    }
+                                    else
+                                    {
+                                        <MudChip T="string" Size="Size.Small"
+                                                 Color="@(!string.IsNullOrEmpty(context.Item.DataApSaida) ? Color.Primary : Color.Default)">S</MudChip>
+                                    }
                                 }
                                 else
                                 {
-                                    <MudChip T="string" Size="Size.Small"
-                                             Color="@(!string.IsNullOrEmpty(context.Item.DataApSaida) ? Color.Primary : Color.Default)">S</MudChip>
+                                    <MudIconButton Size="Size.Small"
+                                                   Icon="@Icons.Material.Filled.ReportGmailerrorred"
+                                                   Color=Color.Error
+                                                   OnClick="@(() => OcorrenciaAsync(context.Item))" />
                                 }
-                            }
-                            else
-                            {
-                                <MudIconButton Size="Size.Small"
-                                               Icon="@Icons.Material.Filled.ReportGmailerrorred"
-                                               Color=Color.Error
-                                               OnClick="@(() => OcorrenciaAsync(context.Item))" />
-                            }
-                        </MudStack>
-                    </CellTemplate>
-                </TemplateColumn>
+                            </MudStack>
+                        </CellTemplate>
+                    </TemplateColumn>
 
-                <PropertyColumn Property="x => x.NOME" Title="NOME">
-                    <MudTooltip Text="Delete" />
-                </PropertyColumn>
+                    <PropertyColumn Property="x => x.NOME" Title="NOME">
+                        <MudTooltip Text="Delete" />
+                    </PropertyColumn>
 
-                <PropertyColumn Property="x => x.Operador1Display" Title="OPER (ENTR)" />
-                <PropertyColumn Property="x => x.HoraEntrada" Title="HR ENTR" />
-                <PropertyColumn Property="x => x.Operador2Display" Title="OPER (SAID)" />
-                <PropertyColumn Property="x => x.HoraSaida" Title="HR SAID" />
-                <PropertyColumn Property="x => x.DataApEntrada" Title="DT AP" />
-                <PropertyColumn Property="x => x.DataOcorrencia" Title="DT RF" />
-            </Columns>
+                    <PropertyColumn Property="x => x.Operador1Display" Title="OPER (ENTR)" />
+                    <PropertyColumn Property="x => x.HoraEntrada" Title="HR ENTR" />
+                    <PropertyColumn Property="x => x.Operador2Display" Title="OPER (SAID)" />
+                    <PropertyColumn Property="x => x.HoraSaida" Title="HR SAID" />
+                    <PropertyColumn Property="x => x.DataApEntrada" Title="DT AP" />
+                    <PropertyColumn Property="x => x.DataOcorrencia" Title="DT RF" />
+                </Columns>
 
-            <PagerContent>
-                <div class="d-flex justify-space-between align-center px-4 py-2 w-100 flex-wrap gap-4">
-                    <div class="d-flex align-center gap-2">
-                    </div>
-
-                    <!-- Exibe os botões de dia apenas se NÃO estiver no modo "Todos" -->
-                    @if (_mesSelecionado != 13)
-                    {
-                        <div class="d-flex align-center">
-                            <MudIconButton Icon="@Icons.Material.Filled.ChevronLeft" Color="Color.Primary" OnClick="IrParaDiaAnterior" />
-                            <MudIconButton Icon="@Icons.Material.Filled.ChevronRight" Color="Color.Primary" OnClick="IrParaProximoDia" />
+                <PagerContent>
+                    <div class="d-flex justify-space-between align-center px-4 py-2 w-100 flex-wrap gap-4">
+                        <div class="d-flex align-center gap-2">
                         </div>
-                    }
-                </div>
-            </PagerContent>
-            <PagerContent>
-                <MudDataGridPager T="ControlePessoaDto" PageSizeOptions="new int[] { 25, 45, 85, 100 }" />
-            </PagerContent>
-        </MudDataGrid>
-    </MudPaper>
 
-    <MudPaper Class="pa-4" Elevation="1">
-        <MudGrid Class="d-flex justify-start flex-grow-1 gap-4" Spacing="11">
-            <MudSwitch Class="ml-10" @bind-Value="_bordered" Color="Color.Warning">Exibir bordas na tabela</MudSwitch>
-        </MudGrid>
-    </MudPaper>
+                        <!-- Exibe os botões de dia apenas se NÃO estiver no modo "Todos" -->
+                        @if (_mesSelecionado != 13)
+                        {
+                            <div class="d-flex align-center">
+                                <MudIconButton Icon="@Icons.Material.Filled.ChevronLeft" Color="Color.Primary" OnClick="IrParaDiaAnterior" />
+                                <MudIconButton Icon="@Icons.Material.Filled.ChevronRight" Color="Color.Primary" OnClick="IrParaProximoDia" />
+                            </div>
+                        }
+                    </div>
+                </PagerContent>
+                <PagerContent>
+                    <MudDataGridPager T="ControlePessoaDto" PageSizeOptions="new int[] { 25, 45, 85, 100 }" />
+                </PagerContent>
+            </MudDataGrid>
+        </MudPaper>
+
+        <MudPaper Class="pa-4" Elevation="1">
+            <MudGrid Class="d-flex justify-start flex-grow-1 gap-4" Spacing="11">
+                <MudSwitch Class="ml-10" @bind-Value="_bordered" Color="Color.Warning">Exibir bordas na tabela</MudSwitch>
+            </MudGrid>
+        </MudPaper>
 }
+
 @code {
     private MudDataGrid<ControlePessoaDto> _dataGrid = default!;
     private IEnumerable<ControlePessoaDto> Elements = new List<ControlePessoaDto>();

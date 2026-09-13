@@ -1,0 +1,18 @@
+@inherits LayoutComponentBase
+@using Microsoft.AspNetCore.Components.Authorization
+
+<AuthorizeView>
+    <Authorized>
+        <LayoutView Layout="@typeof(MainLayout)">
+            @Body
+        </LayoutView>
+    </Authorized>
+    <NotAuthorized>
+        <LayoutView Layout="@typeof(LoginLayout)">
+            @Body
+        </LayoutView>
+    </NotAuthorized>
+    <Authorizing>
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+    </Authorizing>
+</AuthorizeView>

@@ -7,27 +7,34 @@
     <base href="/" />
     <link href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&display=swap" rel="stylesheet" />
     <link href=@Assets["_content/MudBlazor/MudBlazor.min.css"] rel="stylesheet" />
+    <link href="css/mobile-menu.css" rel="stylesheet" />
     <ImportMap />
 @*     <link rel="icon" type="image/ico" href="favicon.ico" />
  *@   
         <link rel="icon" type="image/png" href="ico_adi_2025.png" />
     <script>
-        (() => {
+        (function () {
             try {
-                const savedTheme = localStorage.getItem('adi_dark_mode');
+                var savedTheme = localStorage.getItem('adi_dark_mode');
                 if (savedTheme === 'true' || savedTheme === 'false') {
-                    document.cookie = `adi_dark_mode=${savedTheme};path=/;max-age=31536000;SameSite=Lax`;
-                    document.documentElement.dataset.adiDarkMode = savedTheme;
+                    document.cookie = 'adi_dark_mode=' + savedTheme + ';path=/;max-age=31536000;SameSite=Lax';
+                    document.documentElement.setAttribute('data-adi-dark-mode', savedTheme);
                 }
-            } catch { }
+            } catch (error) { }
 
             window.adiTheme = {
-                set: isDarkMode => {
-                    const value = isDarkMode ? 'true' : 'false';
+                set: function (isDarkMode) {
+                    var value = isDarkMode ? 'true' : 'false';
                     localStorage.setItem('adi_dark_mode', value);
-                    document.cookie = `adi_dark_mode=${value};path=/;max-age=31536000;SameSite=Lax`;
-                    document.documentElement.dataset.adiDarkMode = value;
+                    document.cookie = 'adi_dark_mode=' + value + ';path=/;max-age=31536000;SameSite=Lax';
+                    document.documentElement.setAttribute('data-adi-dark-mode', value);
                 }
+            };
+
+            window.adiMobileThemeToggle = function () {
+                var current = document.documentElement.getAttribute('data-adi-dark-mode') === 'true';
+                window.adiTheme.set(!current);
+                window.location.reload();
             };
         })();
     </script>
@@ -60,6 +67,7 @@
     <script src=@Assets["_content/MudBlazor/MudBlazor.min.js"]></script>
     <script src="js/agente.js"></script>
     <script src="js/files.js"></script>
+    <script src="js/mobile-menu.js"></script>
 
 @*     <script>
         window.obterDadosAgenteLocal = async function () {

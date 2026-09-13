@@ -45,16 +45,17 @@
     private static readonly Dictionary<string, NavMenuItem> Paginas = new()
     {
         ["INÍCIO"] = NavMenuItem.Pagina(Icons.Material.Filled.Home, "/main"),
+        ["DOWNLOADS"] = NavMenuItem.Pagina(Icons.Material.Filled.Home, "/downloads"),
+        ["RAMAIS"] = NavMenuItem.Pagina(Icons.Material.Filled.ContactPhone, "/ramais"),
 
-        ["RAMAIS"] = NavMenuItem.Grupo(Icons.Material.Filled.ContactPhone, new Dictionary<string, NavMenuItem>
-        {
-            ["LISTA DE RAMAIS"] = NavMenuItem.Pagina(Icons.Material.Filled.Phone, "/ramais"),
-            ["CADASTRO DE RAMAIS"] = NavMenuItem.Pagina(Icons.Material.Filled.EditNote, "/ramais/gerenciamento")
-        }),
+        // ["RAMAIS"] = NavMenuItem.Grupo(Icons.Material.Filled.ContactPhone, new Dictionary<string, NavMenuItem>
+        // {
+        //     ["RAMAIS"] = NavMenuItem.Pagina(Icons.Material.Filled.ContactPhone, "/ramais/gerenciamento")
+        // }),
 
         ["TI"] = NavMenuItem.Grupo(Icons.Material.Filled.Computer, new Dictionary<string, NavMenuItem>
         {
-            ["DOWNLOADS"] = NavMenuItem.Pagina(Icons.Material.Filled.Download, "/download-agent"),
+            ["PUBLICAR ARQUIVO"] = NavMenuItem.Pagina(Icons.Material.Filled.Upload, "/downloads/publicar"),
             ["GERADOR DE TERMO"] = NavMenuItem.Pagina(Icons.Material.Filled.Description, "/glpi/termo-concessao")
         }),
 

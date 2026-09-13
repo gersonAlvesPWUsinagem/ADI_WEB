@@ -46,7 +46,6 @@ else
             _favoritos = FavoritosState.Favoritos;
             return;
         }
-        _carregando = true;
         try
         {
             await FavoritosState.GarantirCarregadoAsync();

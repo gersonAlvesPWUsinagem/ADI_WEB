@@ -1,34 +1,116 @@
-<MudAutocomplete T="ColaboradoresControladosDto"
-                 Value="Value" ValueChanged="ValueChanged"
-                 SearchFunc="PesquisarAsync"
-                 ToStringFunc="Formatar"
-                 Label="Colaborador" Placeholder="Digite ao menos 2 caracteres"
-                 Variant="Variant.Outlined" Margin="Margin.Dense"
-                 MinCharacters="2" DebounceInterval="300"
-                 ResetValueOnEmptyText="true" CoerceText="false" CoerceValue="false"
-                 Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.PersonSearch"
-                 NoItemsTemplate="@NoItems" />
+
+
+@if (!_modoTextoLivre)
+{
+    <MudAutocomplete T="ColaboradoresControladosDto"
+                     Value="Value" ValueChanged="OnValueChanged"
+                     SearchFunc="PesquisarAsync"
+                     ToStringFunc="Formatar"
+                     Label="Colaborador" Placeholder="Digite ao menos 2 caracteres"
+                     Variant="Variant.Outlined" Margin="Margin.Dense"
+                     MinCharacters="2" DebounceInterval="300"
+                     ResetValueOnEmptyText="true" CoerceText="false" CoerceValue="false"
+                     Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.PersonSearch"
+                     NoItemsTemplate="@NoItems" />
+}
+else
+{
+    <MudTextField @ref="_textFieldRef"
+                  T="string"
+                  Value="_nomeLivre"
+                  ValueChanged="OnNomeLivreChanged"
+                  Label="Colaborador (Não cadastrado)"
+                  Variant="Variant.Outlined" Margin="Margin.Dense"
+                  Adornment="Adornment.End"
+                  AdornmentIcon="@Icons.Material.Filled.Close"
+                  OnAdornmentClick="VoltarParaAutocomplete" />
+}
 
 @code {
     [Inject] private IPortariaService PortariaService { get; set; } = default!;
     [Parameter] public ColaboradoresControladosDto? Value { get; set; }
     [Parameter] public EventCallback<ColaboradoresControladosDto?> ValueChanged { get; set; }
-    private List<ColaboradoresControladosDto>? _colaboradores;
-    private RenderFragment NoItems => builder => builder.AddContent(0, "Nenhum colaborador encontrado");
+
+    private bool _modoTextoLivre;
+    private string? _nomeLivre;
+    private MudTextField<string>? _textFieldRef;
+
+    private RenderFragment NoItems => builder => builder.AddContent(0, "Nenhum colaborador encontrado. Digite para cadastrar livremente.");
 
     private async Task<IEnumerable<ColaboradoresControladosDto>> PesquisarAsync(string texto, CancellationToken token)
     {
         if (string.IsNullOrWhiteSpace(texto) || texto.Trim().Length < 2) return [];
-        if (_colaboradores is null)
-        {
-            var resultado = await PortariaService.GetColaboradoresAsync();
-            _colaboradores = resultado.Success ? resultado.Value ?? [] : [];
-        }
+
         token.ThrowIfCancellationRequested();
-        return _colaboradores.Where(x =>
-            (x.NOME?.Contains(texto, StringComparison.OrdinalIgnoreCase) ?? false) ||
-            x.MATRICULA.ToString().Contains(texto, StringComparison.OrdinalIgnoreCase) ||
-            (x.DEPARTAMENTO?.Contains(texto, StringComparison.OrdinalIgnoreCase) ?? false)).Take(20);
+
+        var resultado = await PortariaService.GetColaboradoresAsync(texto.Trim());
+        token.ThrowIfCancellationRequested();
+        var encontrados = resultado.Success ? resultado.Value ?? [] : [];
+
+        if (resultado.Success && !encontrados.Any())
+        {
+            _nomeLivre = texto.Trim().ToUpper();
+            _modoTextoLivre = true;
+
+            Value = new ColaboradoresControladosDto
+            {
+                NOME = _nomeLivre,
+                DEPARTAMENTO = "EXTERNO"
+            };
+            await ValueChanged.InvokeAsync(Value);
+
+            StateHasChanged();
+
+            // Aguarda a renderização do campo livre para focar e posicionar o cursor no final.
+            await Task.Delay(50);
+            if (_textFieldRef is not null)
+            {
+                await _textFieldRef.FocusAsync();
+                await JSRuntime.InvokeVoidAsync("eval", $"document.querySelector('input[value=\"{_nomeLivre}\"]')?.setSelectionRange({_nomeLivre.Length}, {_nomeLivre.Length})");
+            }
+        }
+
+        return encontrados;
     }
-    private static string Formatar(ColaboradoresControladosDto? x) => x is null ? string.Empty : $"{x.NOME} - {x.MATRICULA}";
+
+    private async Task OnValueChanged(ColaboradoresControladosDto? novoValor)
+    {
+        Value = novoValor;
+        if (Value is not null && !string.IsNullOrEmpty(Value.NOME))
+        {
+            Value.NOME = Value.NOME.ToUpper();
+        }
+        await ValueChanged.InvokeAsync(Value);
+    }
+
+    private async Task OnNomeLivreChanged(string novoTexto)
+    {
+        _nomeLivre = novoTexto?.ToUpper();
+
+        if (Value is not null)
+        {
+            Value.NOME = _nomeLivre;
+        }
+        else
+        {
+            Value = new ColaboradoresControladosDto { NOME = _nomeLivre, DEPARTAMENTO = "EXTERNO" };
+        }
+
+        await ValueChanged.InvokeAsync(Value);
+    }
+
+    private async Task VoltarParaAutocomplete()
+    {
+        _modoTextoLivre = false;
+        _nomeLivre = null;
+        Value = null;
+        await ValueChanged.InvokeAsync(null);
+    }
+
+    private static string Formatar(ColaboradoresControladosDto? x)
+    {
+        if (x is null) return string.Empty;
+        string nomeMaiusculo = x.NOME?.ToUpper() ?? string.Empty;
+        return x.MATRICULA == 0 ? nomeMaiusculo : $"{nomeMaiusculo} - {x.MATRICULA}";
+    }
 }

@@ -1,198 +1,98 @@
 ﻿@page "/downloads"
-@using ADI_WEB.Components.Layout
-@layout LoginLayout
-@inject IJSRuntime JS
-@inject ISnackbar Snackbar
-@inject NavigationManager Navigation
+@page "/download-agent"
+@page "/downloads/COLETOR/{Version}"
+@using ADI_WEB.Downloads
+@using Microsoft.AspNetCore.Components.Authorization
+@layout DownloadsLayout
+@inject DownloadStorage Storage
 @rendermode InteractiveServer
 
-<PageTitle>Downloads</PageTitle>
+    <HeaderComponent Title="Downloads" />
+<AuthorizeView>
+            <NotAuthorized>
+                <NavBarLoginComp />
+            </NotAuthorized>
+        </AuthorizeView>
+        <MudContainer MaxWidth="MaxWidth.Large" Class="my-8">
 
-@if (_isProcessing)
-{
-    <MudProgressLinear Color="Color.Primary"
-                       Indeterminate="true"
-                       Size="Size.Small"
-                       Style="position: absolute; top: 0; left: 0; right: 0; z-index: 2000; height: 4px;" />
-}
-
-@* Instanciação do componente compartilhado *@
-<NavBarLoginComp />
-
-@* Se o seu LoginLayout já não contiver um MudThemeProvider, você pode adicionar e amarrar a propriedade aqui *@
-<MudThemeProvider Theme="@_theme" IsDarkMode="_isDarkMode" />
-
-<MudLayout>
-    <MudContainer MaxWidth="MaxWidth.Large" Class="mt-8 mb-8">
-
-        <MudText Typo="Typo.h4" GutterBottom="true">
-            Downloads
-        </MudText>
-
-        <MudText Typo="Typo.body1" Class="mb-6">
-            Faça o download dos aplicativos e utilitários disponibilizados pela equipe de TI.
-        </MudText>
-
-        <MudGrid>
-            @foreach (var item in DownloadsList)
+            @*     <HeaderComponent Title="@Title" Modulo="ModuloEnum.Comercial" Permission="114"
+                     TextBtn1="Publicar arquivo"
+                     IconBtn1="@Icons.Material.Filled.Upload"
+                     ColorBtn1="@Color.Primary"
+                     LevelBtn1="2"
+                     OnBtn1Click="Downloads" /> *@
+@*             <HeaderComponent Title="@Title" Modulo="ModuloEnum.Comercial" Permission="114" />
+ *@
+            @if (!string.IsNullOrEmpty(CurrentDirectory))
             {
-                <MudItem xs="12" sm="6" md="4">
-                    <MudCard Elevation="4" Style="height: 100%; display: flex; flex-direction: column; justify-content: space-between;">
-                        <MudCardHeader>
-                            <CardHeaderContent>
-                                <MudStack Row="true" AlignItems="AlignItems.Center">
-                                    <MudIcon Icon="@item.Icon" Size="Size.Large" Color="Color.Primary" />
-                                    <MudText Typo="Typo.h6">@item.Nome</MudText>
-                                </MudStack>
-                            </CardHeaderContent>
-                        </MudCardHeader>
-
-                        <MudCardContent>
-                            <MudText Typo="Typo.body2">@item.Descricao</MudText>
-                            <MudDivider Class="my-3" />
-                            <MudText Typo="Typo.caption">
-                                Versão: <b>@item.Versao</b>
-                            </MudText>
-                        </MudCardContent>
-
-                        <MudCardActions>
-                            <MudButton Variant="Variant.Filled"
-                                       Color="Color.Primary"
-                                       StartIcon="@Icons.Material.Filled.Download"
-                                       Href="@item.DownloadUrl"
-                                       Target="_blank">
-                                Download
-                            </MudButton>
-                        </MudCardActions>
-                    </MudCard>
-                </MudItem>
+                <MudButton Href="@ParentUrl" StartIcon="@Icons.Material.Filled.ArrowBack" Class="mb-4 adi-desktop-only">Voltar</MudButton>
+                <a href="@ParentUrl" class="adi-mobile-only adi-native-button mb-4">Voltar</a>
             }
-        </MudGrid>
-
-    </MudContainer>
-</MudLayout>
+            @if (!string.IsNullOrEmpty(_error))
+            {
+                <MudAlert Severity="Severity.Warning">@_error</MudAlert>
+            }
+            else if (_entries.Count == 0)
+            {
+                <MudAlert Severity="Severity.Info">Nenhum arquivo disponível nesta pasta.</MudAlert>
+            }
+            else
+            {
+                <MudGrid>
+                    @foreach (var entry in _entries)
+                    {
+                        <MudItem xs="12" sm="6" md="4">
+                            <MudPaper Class="pa-4" Elevation="2">
+                                <MudIcon Icon="@(entry.IsDirectory? Icons.Material.Filled.Folder : Icons.Material.Filled.InsertDriveFile)" Color="Color.Primary" />
+                                <MudText Typo="Typo.h6" Style="overflow-wrap:anywhere">@entry.Name</MudText>
+                                @if (!entry.IsDirectory)
+                                {
+                                    <MudText Typo="Typo.caption">@((entry.Size / 1024d / 1024d).ToString("N2")) MB</MudText>
+                                }
+                                <MudButton Href="@EntryUrl(entry)" Color="Color.Primary" Variant="Variant.Filled" Class="mt-3 adi-desktop-only">
+                                    @(entry.IsDirectory ? "Abrir pasta" : "Baixar arquivo")
+                                </MudButton>
+                                <a href="@EntryUrl(entry)" class="adi-mobile-only adi-native-button mt-3">
+                                    @(entry.IsDirectory ? "Abrir pasta" : "Baixar arquivo")
+                                </a>
+                            </MudPaper>
+                        </MudItem>
+                    }
+                </MudGrid>
+            }
+</MudContainer>
 
 @code {
-    private bool _isProcessing = false;
-    private bool _isDarkMode = false;
-    private MudTheme? _theme = null;
-    private DefSessionDtos _currentSession = new();
 
-    protected override void OnInitialized()
+    [Parameter] public string? Version { get; set; }
+    [SupplyParameterFromQuery(Name = "pasta")] public string? Directory { get; set; }
+    private string? CurrentDirectory => Version is null ? Directory : $"COLETOR/{Version}";
+    private string Title => Version is null ? "Downloads" : $"Atualização do coletor — {Version}";
+    private string ParentUrl => CurrentDirectory?.Contains('/') == true
+        ? $"downloads?pasta={Uri.EscapeDataString(CurrentDirectory[..CurrentDirectory.LastIndexOf('/')])}" : "downloads";
+    private IReadOnlyList<DownloadEntry> _entries = [];
+    private string? _error;
+
+    protected override void OnParametersSet()
     {
-        base.OnInitialized();
-
-        _theme = new()
+        _error = null;
+        try
         {
-            PaletteLight = _lightPalette,
-            PaletteDark = _darkPalette,
-            LayoutProperties = new LayoutProperties()
-        };
+            _entries = Storage.List(CurrentDirectory);
+            if (Version is not null)
+                _entries = _entries.Where(x => !x.IsDirectory && x.Name.EndsWith(".apk", StringComparison.OrdinalIgnoreCase)).ToList();
+        }
+        catch (ArgumentException) { _error = "O diretório solicitado não é válido."; }
+        catch (Exception) { _error = "Os arquivos desta pasta estão indisponíveis no momento."; }
     }
 
-    @* RESGATA A OPÇÃO SALVA NO LOCALSTORAGE ASSIM QUE A PÁGINA FOR RENDERIZADA *@
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (firstRender)
-        {
-            var localSettings = await JS.InvokeAsync<string>("localStorage.getItem", "adi_dark_mode");
-            if (!string.IsNullOrEmpty(localSettings))
-            {
-                _isDarkMode = bool.Parse(localSettings);
-                StateHasChanged();
-            }
-        }
-    }
+    private static string EntryUrl(DownloadEntry entry) => entry.IsDirectory
+        ? $"downloads?pasta={Uri.EscapeDataString(entry.Path)}"
+        : "downloads/file/" + string.Join("/", entry.Path.Split('/').Select(Uri.EscapeDataString));
 
-    private readonly List<DownloadItem> DownloadsList = [
-        new() {
-            Nome = "Agente ADI x64",
-            Descricao = "Assistente Local responsável pela integração entre o navegador e os recursos do computador.",
-            Versao = "1.0.0",
-            Icon = Icons.Material.Filled.Computer,
-            DownloadUrl = "https://192.168.0.235:5260/downloads/AGENT_ADI/AgenteADI_Setup_x64.exe"
-        },
-        new() {
-            Nome = "Agente ADI x86",
-            Descricao = "Assistente Local responsável pela integração entre o navegador e os recursos do computador.",
-            Versao = "1.0.0",
-            Icon = Icons.Material.Filled.Computer,
-            DownloadUrl = "https://192.168.0.235:5260/downloads/AGENT_ADI/AgenteADI_Setup_x86.exe"
-        },
-        new() {
-            Nome = "Certificados de Segurança",
-            Descricao = "Pacote contendo os certificados utilizados pelos sistemas internos.",
-            Versao = "2026.1",
-            Icon = Icons.Material.Filled.VerifiedUser,
-            DownloadUrl = "https://192.168.0.235:5260/downloads/CERTIFICADOS/Certificados.zip"
-        },
-        new() {
-            Nome = "Aplicativo do Coletor",
-            Descricao = "Aplicativo Android utilizado nos coletores de dados.",
-            Versao = "2.3.0",
-            Icon = Icons.Material.Filled.Devices,
-            DownloadUrl = "https://192.168.0.235:5260/downloads/COLETOR/Coletor.apk"
-        }
-    ];
-
-    private readonly PaletteLight _lightPalette = new()
+    private void Downloads()
     {
-        Background = "#f7f8fa",
-        Surface = "#ffffff",
-        AppbarText = "#ffffff",
-        DrawerBackground = "#ffffff",
-        DrawerText = "#2b2b2b",
-        DrawerIcon = "#6b7280",
-        Divider = "#bfbfbf",
-        GrayLight = "#e8e8e8",
-        GrayLighter = "#f9f9f9"
-    };
 
-    private readonly PaletteDark _darkPalette = new()
-    {
-        Primary = "#7e6fff",
-        Surface = "#1e1e2d",
-        Background = "#1a1a27",
-        BackgroundGray = "#151521",
-        AppbarText = "#92929f",
-        AppbarBackground = "rgba(26,26,39,0.8)",
-        DrawerBackground = "#1a1a27",
-        ActionDefault = "#74718e",
-        ActionDisabled = "#9999994d",
-        ActionDisabledBackground = "#605f6d4d",
-        TextPrimary = "#b2b0bf",
-        TextSecondary = "#92929f",
-        TextDisabled = "#ffffff33",
-        DrawerIcon = "#92929f",
-        DrawerText = "#92929f",
-        GrayLight = "#2a2833",
-        GrayLighter = "#1e1e2d",
-        Info = "#4a86ff",
-        Success = "#3dcb6c",
-        Warning = "#ffb545",
-        Error = "#ff3f5f",
-        LinesDefault = "#33323e",
-        TableLines = "#33323e",
-        Divider = "#292838",
-        OverlayLight = "#1e1e2d80",
-    };
-
-    private void AbrirAjuda(string tipo)
-    {
-        switch (tipo)
-        {
-            case "filial":
-                Snackbar.Add("Instruções para configurar a filial: Acesse o menu X...", Severity.Info);
-                break;
-            case "maquina":
-                Snackbar.Add("Para vincular sua máquina, baixe o agente ADI...", Severity.Info);
-                break;
-            case "credenciais":
-                Snackbar.Add("Solicite suas credenciais ao RH ou gestor direto.", Severity.Info);
-                break;
-            case "senha":
-                Navigation.NavigateTo("/recuperar-senha");
-                break;
-        }
+        Navigation.NavigateTo("/downloads/publicar");
     }
 }

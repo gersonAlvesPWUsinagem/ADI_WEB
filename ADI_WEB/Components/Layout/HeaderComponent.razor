@@ -1,55 +1,62 @@
 ﻿@page "/exemplo-botoes"
 @using Domain.Dtos.Permission
 @inject ILoginService _loginService;
+@using Microsoft.AspNetCore.Components.Authorization
 
 <PageTitle>@Title</PageTitle>
 
 <MudGrid Class="align-center mb-9 mt-1">
     <MudItem xs="12" sm="6">
-        <h1>@(string.IsNullOrEmpty(Title2) ? Title : Title2)</h1>
+        <!-- Exibe Title2 se preenchido, caso contrário exibe Title -->
+@*                 <h1>@(!string.IsNullOrEmpty(Title2) ? Title2 : Title)</h1>
+ *@                <MudText Typo="Typo.h4" GutterBottom="true">@(!string.IsNullOrEmpty(Title2) ? Title2 : Title)</MudText>
     </MudItem>
 
     <MudSpacer />
 
-    <MudItem>
-        <MudStack Row="true" Spacing="2" Class="d-flex justify-end align-center">
-            @foreach (var item in ListBtnDaTela)
-            {
-                @if (item.IsVisibleOrNot)
-                {
-                    @if (item.IsFab)
+    <AuthorizeView>
+        <Authorized>
+            <MudItem>
+                <MudStack Row="true" Spacing="2" Class="d-flex justify-end align-center">
+                    @foreach (var item in ListBtnDaTela)
                     {
-                        <MudFab Color="@item.Color"
-                                StartIcon="@item.Icon"
-                                Disabled="@(Processing || item.IsDisabled)"
-                                Size="Size.Small"
-                                OnClick="item.OnClick"
-                                Style="@item.IsVisibleOrNotCss" />
-                    }
-                    else
+                        @if (item.IsVisibleOrNot)
                     {
-                        <MudButton Variant="@item.Variant"
-                                   Disabled="@(Processing || item.IsDisabled)"
-                                   Size="@item.Size"
-                                   Color="@item.Color"
-                                   StartIcon="@item.Icon"
-                                   OnClick="item.OnClick"
-                                   Style="@item.IsVisibleOrNotCss">
-                            @if (Processing)
-                            {
-                                <MudProgressCircular Size="Size.Small" Indeterminate="true" />
-                                <span style="margin-left: 8px;">Carregando...</span>
+                            @if (item.IsFab)
+                        {
+                                <MudFab Color="@item.Color"
+                                        StartIcon="@item.Icon"
+                                        Disabled="@(Processing || item.IsDisabled)"
+                                        Size="Size.Small"
+                                    OnClick="@(() => ExecutarCliqueAsync(item))"
+                                        Style="@item.IsVisibleOrNotCss" />
                             }
                             else
                             {
-                                <span>@item.Title</span>
+                                <MudButton Variant="@item.Variant"
+                                           Disabled="@(Processing || item.IsDisabled)"
+                                           Size="@item.Size"
+                                           Color="@item.Color"
+                                           StartIcon="@item.Icon"
+                                           OnClick="@(() => ExecutarCliqueAsync(item))"
+                                           Style="@item.IsVisibleOrNotCss">
+                                    @if (Processing)
+                                    {
+                                        <MudProgressCircular Size="Size.Small" Indeterminate="true" />
+                                        <span style="margin-left: 8px;">Carregando...</span>
+                                    }
+                                    else
+                                    {
+                                        <span>@item.Title</span>
+                                    }
+                                </MudButton>
                             }
-                        </MudButton>
+                        }
                     }
-                }
-            }
-        </MudStack>
-    </MudItem>
+                </MudStack>
+            </MudItem>
+        </Authorized>
+    </AuthorizeView>
 </MudGrid>
 
 @code {
@@ -140,6 +147,28 @@
         ListBtnDaTela.AddRange(botoesCandidatos);
     }
 
+    private async Task ExecutarCliqueAsync(BtnLayout item)
+    {
+        if (item.Level.HasValue && !TemPermissao(item.Level.Value))
+        {
+            _snackbarComp.Message(
+                $"Você não tem permissão para executar esta tarefa. Módulo: {Modulo}. Permissão: {Permission}. Nível necessário: {item.Level}.",
+                Severity.Error,
+                Color.Error);
+            return;
+        }
+
+        await item.OnClick.InvokeAsync();
+    }
+
+    private bool TemPermissao(int nivelNecessario)
+    {
+        return PermissionUserList?.Any(x =>
+            x.Modulo == (Modulo ?? ModuloEnum.Default) &&
+            x.Permission == (Permission ?? 0) &&
+            x.Level >= nivelNecessario) == true;
+    }
+
     private List<BtnLayout> CriarListaCandidatos()
     {
         return new List<BtnLayout>
@@ -167,10 +196,7 @@
             {
                 if (!item.Level.HasValue) continue;
 
-                bool temPermissao = PermissionUserList.Any(x =>
-                    int.TryParse(x.Level.ToString(), out var nivelUser) &&
-                    int.TryParse(item.Level?.ToString(), out var nivelBotao) &&
-                    nivelBotao <= nivelUser);
+                bool temPermissao = TemPermissao(item.Level.Value);
 
                 if (temPermissao)
                 {

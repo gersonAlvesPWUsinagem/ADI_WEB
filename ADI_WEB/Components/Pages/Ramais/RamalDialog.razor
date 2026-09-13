@@ -1,0 +1,105 @@
+<MudDialog>
+    <DialogContent>
+        <MudForm @ref="_form" Model="_modelo">
+            <MudGrid Spacing="3">
+                <MudItem xs="12" md="6">
+                    <ColaboradorAutocomplete @bind-Value="_colaboradorSelecionado" />
+                </MudItem>
+                <MudItem xs="12" sm="4" md="2">
+                    <MudTextField T="string" @bind-Value="_modelo.Ramal" For="@(() => _modelo.Ramal)" Label="Ramal" Required="true" MaxLength="4" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                </MudItem>
+                <MudItem xs="12" sm="4" md="2">
+                    <MudTextField T="string" @bind-Value="_modelo.Ddr" Label="DDR" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                </MudItem>
+                <MudItem xs="12" sm="4" md="2">
+                    <MudTextField T="string" @bind-Value="_modelo.Celular" Label="Celular" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                </MudItem>
+                <MudItem xs="12" md="4">
+                    <MudTextField T="string" @bind-Value="_modelo.Departamento" Label="Departamento" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                </MudItem>
+                <MudItem xs="12" md="4">
+                    <MudTextField T="string" @bind-Value="_modelo.Setor" For="@(() => _modelo.Setor)" Label="Setor" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                </MudItem>
+                <MudItem xs="12" md="4">
+                    <MudTextField T="string" @bind-Value="_modelo.Email" For="@(() => _modelo.Email)" Label="E-mail" InputType="InputType.Email" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                </MudItem>
+            </MudGrid>
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancelar">Cancelar</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.Save" OnClick="SalvarAsync">
+            @(_modelo.Id == 0 ? "Inserir" : "Alterar")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter] public RamalDto Modelo { get; set; } = new();
+
+    private MudForm? _form;
+    private RamalDto _modelo = new();
+    private ColaboradoresControladosDto? _colaboradorSelecionado;
+
+    protected override void OnInitialized()
+    {
+        _modelo = CopiarModelo(Modelo);
+        _colaboradorSelecionado = _modelo.PessoaId > 0
+            ? new ColaboradoresControladosDto
+            {
+                EMPFIL = _modelo.EmpFil,
+                MATRICULA = _modelo.Matricula,
+                PESSOAID = _modelo.PessoaId,
+                NOME = _modelo.Nome,
+                DEPARTAMENTO = _modelo.Departamento
+            }
+            : null;
+    }
+
+    private async Task SalvarAsync()
+    {
+        await _form!.ValidateAsync();
+        if (!_form.IsValid)
+            return;
+
+        if (_colaboradorSelecionado is not null)
+        {
+            _modelo.EmpFil = _colaboradorSelecionado.EMPFIL;
+            _modelo.Matricula = _colaboradorSelecionado.MATRICULA;
+            _modelo.PessoaId = _colaboradorSelecionado.PESSOAID;
+            _modelo.Nome = (_colaboradorSelecionado.NOME ?? string.Empty).Trim().ToUpperInvariant();
+            _modelo.Departamento = (_colaboradorSelecionado.DEPARTAMENTO ?? _colaboradorSelecionado.TRADUCAO_CC ?? string.Empty).Trim().ToUpperInvariant();
+        }
+        else
+        {
+            _modelo.Nome = _modelo.Nome?.Trim().ToUpperInvariant() ?? string.Empty;
+            _modelo.Departamento = _modelo.Departamento?.Trim().ToUpperInvariant() ?? string.Empty;
+        }
+
+        _modelo.Ramal = _modelo.Ramal?.Trim().ToUpperInvariant();
+        _modelo.Ddr = _modelo.Ddr?.Trim().ToUpperInvariant();
+        _modelo.Celular = _modelo.Celular?.Trim().ToUpperInvariant();
+        _modelo.Setor = _modelo.Setor?.Trim().ToUpperInvariant();
+
+        MudDialog.Close(DialogResult.Ok(_modelo));
+    }
+
+    private void Cancelar() => MudDialog.Cancel();
+
+    private static RamalDto CopiarModelo(RamalDto origem) => new()
+    {
+        Id = origem.Id,
+        RamalId = origem.RamalId,
+        EmpFil = origem.EmpFil,
+        Matricula = origem.Matricula,
+        PessoaId = origem.PessoaId,
+        Nome = origem.Nome,
+        Departamento = origem.Departamento,
+        Ramal = origem.Ramal,
+        Ddr = origem.Ddr,
+        Celular = origem.Celular,
+        Setor = origem.Setor,
+        Email = origem.Email
+    };
+}

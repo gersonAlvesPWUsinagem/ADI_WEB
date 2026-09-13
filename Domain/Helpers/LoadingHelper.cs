@@ -23,6 +23,12 @@ public class LoadingHelper
         NotifyStateChanged();
     }
 
+    public void HideRedirectOrNo()
+    {
+        IsLoading = false;
+        NotifyStateChanged();
+    }
+
     private void NotifyStateChanged()
     {
         // Garante que a notificação ocorra de forma segura, evitando erros de thread
