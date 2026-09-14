@@ -4,7 +4,7 @@ using Domain.Interfaces;
 namespace Domain.Services;
 public class FavoritoPaginaService : BaseHttpService, IFavoritoPaginaService
 {
-    public FavoritoPaginaService(HttpClient httpClient, IDataSessionHelper dataSession) : base(httpClient, dataSession) { }
+    public FavoritoPaginaService(HttpClient httpClient, IDataSessionHelper dataSession, IApiErrorContext errorContext) : base(httpClient, dataSession, errorContext) { }
     public Task<ApiDataService<List<FavoritoPaginaDto>>> ListarAsync() => GetAsync<List<FavoritoPaginaDto>>("favoritos");
     public Task<ApiDataService<FavoritoPaginaDto>> AlternarAsync(FavoritoPaginaDto dto) => PostAsync<FavoritoPaginaDto>("favoritos/alternar", dto);
 }

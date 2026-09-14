@@ -6,7 +6,7 @@ namespace Domain.Services;
 
 public class RamalService : BaseHttpService, IRamalService
 {
-    public RamalService(HttpClient httpClient, IDataSessionHelper dataSession) : base(httpClient, dataSession) { }
+    public RamalService(HttpClient httpClient, IDataSessionHelper dataSession, IApiErrorContext errorContext) : base(httpClient, dataSession, errorContext) { }
     public Task<ApiDataService<List<RamalDto>>> ListarAsync() => GetAsync<List<RamalDto>>("ramais");
     public Task<ApiDataService<RamalDto>> AdicionarAsync(RamalDto dto) => PostAsync<RamalDto>("ramais", dto);
     public Task<ApiDataService<RamalDto>> AtualizarAsync(RamalDto dto) => PutAsync<RamalDto>($"ramais/{dto.Id}", dto);

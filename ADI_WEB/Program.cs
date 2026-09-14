@@ -6,6 +6,7 @@ using Domain.Helpers;
 using Domain.Interfaces;
 using Domain.Services;
 using MudBlazor.Services;
+using ADI_WEB.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddSingleton<DownloadStorage>();
@@ -58,8 +59,12 @@ builder.Services.AddScoped<IGeradorTermoService, GeradorTermoService>();
 builder.Services.AddScoped<IPortariaService, PortariaService>();
 builder.Services.AddScoped<IRamalService, RamalService>();
 builder.Services.AddScoped<IFavoritoPaginaService, FavoritoPaginaService>();
+builder.Services.AddScoped<IApiErrorLogService, ApiErrorLogService>();
+builder.Services.AddScoped<IApiErrorContext, ApiErrorContext>();
+builder.Services.AddScoped<IControleChaveService, ControleChaveService>();
 builder.Services.AddScoped<IRepositorioArquivoAsync, RepositorioArquivoAsync>();
 builder.Services.AddScoped<FavoritoPaginaState>();
+builder.Services.AddScoped<OperadorPortariaState>();
 builder.Services.AddScoped<SessionExpirationState>();
 builder.Services.AddScoped<ApiAuthenticationFailureHandler>();
 

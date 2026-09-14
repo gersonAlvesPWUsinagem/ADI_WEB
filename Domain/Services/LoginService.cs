@@ -10,8 +10,8 @@ namespace Domain.Services
 
 
         // O HttpClient já vem configurado com a BaseURL correta graças ao Typed Client
-        public LoginService(HttpClient httpClient, IDataSessionHelper dataSession)
-            : base(httpClient, dataSession)
+        public LoginService(HttpClient httpClient, IDataSessionHelper dataSession, IApiErrorContext errorContext)
+            : base(httpClient, dataSession, errorContext)
         {
         }
 
@@ -23,7 +23,7 @@ namespace Domain.Services
 
         public async Task<ApiDataService<List<PermissionUserDto>>> ValidarPermissaoAsync(Shared.Enums.ModuloEnum modulo, int permission)
         {
-            string url = $"Auth/get-permission-user?modulo={modulo}&permission={permission}";
+            string url = $"Auth/get-permission-user?modulo={(int)modulo}&permission={permission}";
 
             var result = await GetAsync<List<PermissionUserDto>>(url);
 

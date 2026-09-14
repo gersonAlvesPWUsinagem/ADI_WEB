@@ -1,0 +1,118 @@
+@page "/ti/logs-api"
+@attribute [Authorize]
+@rendermode InteractiveServer
+@inject IApiErrorLogService ApiErrorLogService
+@inject ILoginService LoginService
+
+<PageTitle>Logs da API</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="my-6">
+    <FavoritosSkeleton @ref="_skeleton" @bind-Carregando="_carregandoInicial" />
+</MudContainer>
+
+@if (!_carregandoInicial)
+{
+    <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="my-6">
+        <MudText Typo="Typo.h4" GutterBottom="true">Logs de erros da API</MudText>
+        <MudPaper Class="pa-4 mb-4">
+            <MudStack Row="true" Spacing="3" AlignItems="AlignItems.End" Class="flex-wrap">
+                <MudDatePicker Label="Data" Date="@_dataAtual" DateFormat="dd/MM/yyyy"
+                               Editable="false" Disabled="true" />
+                <MudTextField T="string" Label="Nome do usuário ou matrícula"
+                              @bind-Value="_filtro" Immediate="true"
+                              Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search"
+                              OnKeyDown="PesquisarAoPressionarEnter" />
+                <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.Search" OnClick="CarregarAsync"
+                           Disabled="_carregando">Pesquisar</MudButton>
+            </MudStack>
+        </MudPaper>
+
+        @if (_carregando)
+        {
+            <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="mb-3" />
+        }
+
+        <MudTable Items="_logs" Hover="true" Striped="true" Dense="true" Breakpoint="Breakpoint.Md">
+            <HeaderContent>
+                <MudTh>Data</MudTh><MudTh>Tela</MudTh><MudTh>Nome do usuário</MudTh>
+                <MudTh>Matrícula TB_USER</MudTh><MudTh>Matrícula VIEW_PESSOAS</MudTh><MudTh>Mensagem de erro</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="Data">@context.DataHora.ToString("dd/MM/yyyy")</MudTd>
+                <MudTd DataLabel="Tela">@context.Tela</MudTd>
+                <MudTd DataLabel="Nome do usuário">@context.UsuarioNome (@context.UsuarioLogin)</MudTd>
+                <MudTd DataLabel="Matrícula TB_USER">@(context.MatriculaUsuario > 0 ? context.MatriculaUsuario.ToString() : "Não localizada")</MudTd>
+                <MudTd DataLabel="Matrícula VIEW_PESSOAS">@(context.MatriculaPessoa?.ToString() ?? "Não localizada")</MudTd>
+                <MudTd DataLabel="Mensagem de erro">@context.MensagemErro</MudTd>
+            </RowTemplate>
+            <NoRecordsContent>
+                <MudText Class="pa-4">Nenhum erro encontrado para @_dataAtual.ToString("dd/MM/yyyy").</MudText>
+            </NoRecordsContent>
+            <PagerContent><MudTablePager RowsPerPageString="Registros por página" /></PagerContent>
+        </MudTable>
+    </MudContainer>
+}
+
+@code {
+    private readonly DateTime _dataAtual = DateTime.Today;
+    private List<ApiErrorLogDto> _logs = [];
+    private string? _filtro;
+    private bool _carregandoInicial = true;
+    private bool _carregando;
+    private bool _acessoPermitido;
+    private FavoritosSkeleton? _skeleton;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender || _skeleton is null) return;
+
+        await _skeleton.IniciarAsync();
+        try
+        {
+            var acesso = await LoginService.ValidarPermissaoAsync(ModuloEnum.Comercial, 116);
+            var podeConsultar = acesso.Success &&
+                                acesso.Value?.Any(x => x.Level >= 1) == true;
+
+            if (!podeConsultar)
+            {
+                _snackbarComp.Message(
+                    acesso.Message ?? "Acesso não autorizado aos logs de erros da API.",
+                    Severity.Error,
+                    Color.Error);
+                await JSRuntime.InvokeVoidAsync("window.history.back");
+                return;
+            }
+
+            _acessoPermitido = true;
+            await CarregarAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Não foi possível consultar os logs da API: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            if (_acessoPermitido)
+                await _skeleton.FinalizarAsync();
+        }
+    }
+
+    private async Task CarregarAsync()
+    {
+        if (_carregando) return;
+        _carregando = true;
+        try
+        {
+            var resultado = await ApiErrorLogService.ListarAsync(_dataAtual, _filtro);
+            if (resultado.Success) _logs = resultado.Value ?? [];
+            else Snackbar.Add(resultado.Message ?? "Não foi possível consultar os logs da API.", Severity.Error);
+        }
+        finally { _carregando = false; }
+    }
+
+    private async Task PesquisarAoPressionarEnter(KeyboardEventArgs args)
+    {
+        if (args.Key == "Enter") await CarregarAsync();
+    }
+}

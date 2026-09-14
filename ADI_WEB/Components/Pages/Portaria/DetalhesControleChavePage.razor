@@ -1,0 +1,162 @@
+@page "/portaria/controle-chave/{Id:int}"
+@using Domain.Dtos.ControleChaves
+@attribute [Authorize]
+@rendermode InteractiveServer
+@inject IControleChaveService Service
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+
+<PageTitle>Detalhes da Chave</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="my-6">
+    <FavoritosSkeleton @ref="_skeleton" @bind-Carregando="_carregando" />
+</MudContainer>
+
+@if (!_carregando && _chave is not null)
+{
+    <MudContainer MaxWidth="MaxWidth.Large" Class="my-6">
+        <!-- Header da Página -->
+        <HeaderComponent Title="Painel de Controle da Chave" TextBtn1="Voltar" IconBtn1="@Icons.Material.Filled.ArrowBack" ColorBtn1="Color.Primary" OnBtn1Click="Voltar" />
+
+        <MudGrid Spacing="4" Class="mt-2">
+
+            <!-- CARD PRINCIPAL / STATUS -->
+            <MudItem xs="12">
+                <MudPaper Elevation="2" Class="pa-5">
+                    <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Wrap="Wrap.Wrap">
+                        <div>
+                            <MudText Typo="Typo.subtitle2" Color="Color.Secondary">IDENTIFICAÇÃO</MudText>
+                            <MudText Typo="Typo.h4" Class="fw-bold">@_chave.Identificacao</MudText>
+                            <MudText Typo="Typo.body2" Class="text-muted mt-1">@_chave.Descricao</MudText>
+                        </div>
+                        <div>
+                            @if (_chave.Disponivel)
+                            {
+                                <MudChip T="string" Color="Color.Success" Variant="Variant.Filled" Icon="@Icons.Material.Filled.CheckCircle">Disponível</MudChip>
+                            }
+                            else
+                            {
+                                <MudChip T="string" Color="Color.Error" Variant="Variant.Filled" Icon="@Icons.Material.Filled.Lock">Emprestada</MudChip>
+                            }
+                        </div>
+                    </MudStack>
+
+                    <MudDivider Class="my-4" />
+
+                    <MudGrid>
+                        <MudItem xs="12" md="4">
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">LOCALIZAÇÃO</MudText>
+                            <MudText Typo="Typo.body1"><b>@(_chave.Localizacao ?? "-")</b></MudText>
+                        </MudItem>
+                        <MudItem xs="12" md="4">
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">TEMPO EM POSSE</MudText>
+                            <MudText Typo="Typo.body1"><b>@TempoEmPosse()</b></MudText>
+                        </MudItem>
+                        <MudItem xs="12" md="4">
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">OBSERVAÇÃO DO CADASTRO</MudText>
+                            <MudText Typo="Typo.body2">@(_chave.Observacao ?? "-")</MudText>
+                        </MudItem>
+                    </MudGrid>
+                </MudPaper>
+            </MudItem>
+
+            <!-- SEÇÃO: OPERAÇÃO ATUAL OU ÚLTIMO EMPRÉSTIMO -->
+            <MudItem xs="12" md="6">
+                <MudPaper Elevation="2" Class="pa-5 h-100">
+                    <MudText Typo="Typo.h6" Class="mb-3" Color="Color.Primary">
+                        <MudIcon Icon="@Icons.Material.Filled.Output" Class="mr-2" Size="Size.Small" /> Dados da Saída
+                    </MudText>
+                    <MudDivider Class="mb-3" />
+
+                    <MudStack Spacing="2">
+                        <div>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">RETIRADO POR</MudText>
+                            <MudText Typo="Typo.body1"><b>@(_chave.NomePessoaEmprestimo ?? "-")</b></MudText>
+                        </div>
+                        <div>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">LIBERADO POR (PORTEIRO)</MudText>
+                            <MudText Typo="Typo.body2">@(_chave.PorteiroEmprestimoNome ?? "-")</MudText>
+                        </div>
+                        <div>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">DATA/HORA DA SAÍDA</MudText>
+                            <MudText Typo="Typo.body2">@(_chave.DataEmprestimo?.ToString("dd/MM/yyyy HH:mm") ?? "-")</MudText>
+                        </div>
+                        <div>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">OBSERVAÇÃO DO EMPRÉSTIMO</MudText>
+                            <MudText Typo="Typo.body2">@(_chave.ObservacaoEmprestimo ?? "-")</MudText>
+                        </div>
+                    </MudStack>
+                </MudPaper>
+            </MudItem>
+
+            <!-- SEÇÃO: DEVOLUÇÃO / HISTÓRICO RECENTE -->
+            <MudItem xs="12" md="6">
+                <MudPaper Elevation="2" Class="pa-5 h-100">
+                    <MudText Typo="Typo.h6" Class="mb-3" Color="Color.Primary">
+                        <MudIcon Icon="@Icons.Material.Filled.Input" Class="mr-2" Size="Size.Small" /> Dados do Retorno
+                    </MudText>
+                    <MudDivider Class="mb-3" />
+
+                    <MudStack Spacing="2">
+                        <div>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">DEVOLVIDO POR</MudText>
+                            <MudText Typo="Typo.body1"><b>@(_chave.NomePessoaDevolucao ?? "-")</b></MudText>
+                        </div>
+                        <div>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">RECEBIDO POR (PORTEIRO)</MudText>
+                            <MudText Typo="Typo.body2">@(_chave.PorteiroDevolucaoNome ?? "-")</MudText>
+                        </div>
+                        <div>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">DATA/HORA DO RETORNO</MudText>
+                            <MudText Typo="Typo.body2">@(_chave.DataDevolucao?.ToString("dd/MM/yyyy HH:mm") ?? "-")</MudText>
+                        </div>
+                    </MudStack>
+                </MudPaper>
+            </MudItem>
+
+            <!-- RODAPÉ DO REGISTRO (METADADOS) -->
+            <MudItem xs="12">
+                <MudText Typo="Typo.caption" Align="Align.Center" Color="Color.Secondary" Class="d-block mt-2">
+                    Chave cadastrada por @(_chave.PorteiroCadastroNome ?? "Sistema") em @_chave.CriadoEm.ToString("dd/MM/yyyy HH:mm")
+                </MudText>
+            </MudItem>
+
+        </MudGrid>
+    </MudContainer>
+}
+
+@code {
+    [Parameter] public int Id { get; set; }
+    private FavoritosSkeleton? _skeleton;
+    private ControleChaveDto? _chave;
+    private bool _carregando = true;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender || _skeleton is null) return;
+
+        await _skeleton.IniciarAsync();
+        try
+        {
+            var r = await Service.ObterAsync(Id);
+            if (r.Success)
+                _chave = r.Value;
+            else
+                Snackbar.Add(r.Message ?? "Chave não localizada.", Severity.Error);
+        }
+        finally
+        {
+            await _skeleton.FinalizarAsync();
+        }
+    }
+
+    private string TempoEmPosse()
+    {
+        if (_chave?.DataEmprestimo is null) return "Não aplicada";
+        var fim = _chave.DataDevolucao ?? DateTime.Now;
+        var tempo = fim - _chave.DataEmprestimo.Value;
+        return $"{Math.Max(0, (int)tempo.TotalDays)} dia(s) e {Math.Max(0, tempo.Hours)} hora(s)";
+    }
+
+    private void Voltar() => Navigation.NavigateTo("/portaria/controle-chave");
+}

@@ -75,6 +75,10 @@
     [Parameter] public bool IsVisibleOrNotBtn2 { get; set; } = true;
     [Parameter] public bool IsVisibleOrNotBtn3 { get; set; } = true;
     [Parameter] public bool IsVisibleOrNotBtn4 { get; set; } = true;
+    [Parameter] public bool IsDisabledBtn1 { get; set; }
+    [Parameter] public bool IsDisabledBtn2 { get; set; }
+    [Parameter] public bool IsDisabledBtn3 { get; set; }
+    [Parameter] public bool IsDisabledBtn4 { get; set; }
     [Parameter] public bool Processing { get; set; }
 
     [Parameter] public bool MudFab1 { get; set; }
@@ -163,20 +167,19 @@
 
     private bool TemPermissao(int nivelNecessario)
     {
-        return PermissionUserList?.Any(x =>
-            x.Modulo == (Modulo ?? ModuloEnum.Default) &&
-            x.Permission == (Permission ?? 0) &&
-            x.Level >= nivelNecessario) == true;
+        // A consulta da API já é filtrada pelo módulo e pelo código da permissão.
+        // Neste ponto precisamos validar somente se o nível retornado atende à ação.
+        return PermissionUserList?.Any(x => x.Level >= nivelNecessario) == true;
     }
 
     private List<BtnLayout> CriarListaCandidatos()
     {
         return new List<BtnLayout>
         {
-            new BtnLayout { IsDisabled = LevelBtn1.HasValue, Title = TextBtn1, Icon = IconBtn1, Color = ColorBtn1 ?? Color.Primary, IsVisibleBase = IsVisibleOrNotBtn1, Level = LevelBtn1, IsFab = MudFab1, OnClick = OnBtn1Click },
-            new BtnLayout { IsDisabled = LevelBtn2.HasValue, Title = TextBtn2, Icon = IconBtn2, Color = ColorBtn2 ?? Color.Secondary, IsVisibleBase = IsVisibleOrNotBtn2, Level = LevelBtn2, IsFab = MudFab2, OnClick = OnBtn2Click },
-            new BtnLayout { IsDisabled = LevelBtn3.HasValue, Title = TextBtn3, Icon = IconBtn3, Color = ColorBtn3 ?? Color.Tertiary, IsVisibleBase = IsVisibleOrNotBtn3, Level = LevelBtn3, IsFab = MudFab3, OnClick = OnBtn3Click },
-            new BtnLayout { IsDisabled = LevelBtn4.HasValue, Title = TextBtn4, Icon = IconBtn4, Color = ColorBtn4 ?? Color.Tertiary, IsVisibleBase = IsVisibleOrNotBtn4, Level = LevelBtn4, IsFab = MudFab4, OnClick = OnBtn4Click }
+            new BtnLayout { IsDisabled = LevelBtn1.HasValue || IsDisabledBtn1, IsDisabledBase = IsDisabledBtn1, Title = TextBtn1, Icon = IconBtn1, Color = ColorBtn1 ?? Color.Primary, IsVisibleBase = IsVisibleOrNotBtn1, Level = LevelBtn1, IsFab = MudFab1, OnClick = OnBtn1Click },
+            new BtnLayout { IsDisabled = LevelBtn2.HasValue || IsDisabledBtn2, IsDisabledBase = IsDisabledBtn2, Title = TextBtn2, Icon = IconBtn2, Color = ColorBtn2 ?? Color.Secondary, IsVisibleBase = IsVisibleOrNotBtn2, Level = LevelBtn2, IsFab = MudFab2, OnClick = OnBtn2Click },
+            new BtnLayout { IsDisabled = LevelBtn3.HasValue || IsDisabledBtn3, IsDisabledBase = IsDisabledBtn3, Title = TextBtn3, Icon = IconBtn3, Color = ColorBtn3 ?? Color.Tertiary, IsVisibleBase = IsVisibleOrNotBtn3, Level = LevelBtn3, IsFab = MudFab3, OnClick = OnBtn3Click },
+            new BtnLayout { IsDisabled = LevelBtn4.HasValue || IsDisabledBtn4, IsDisabledBase = IsDisabledBtn4, Title = TextBtn4, Icon = IconBtn4, Color = ColorBtn4 ?? Color.Tertiary, IsVisibleBase = IsVisibleOrNotBtn4, Level = LevelBtn4, IsFab = MudFab4, OnClick = OnBtn4Click }
         };
     }
 
@@ -198,10 +201,7 @@
 
                 bool temPermissao = TemPermissao(item.Level.Value);
 
-                if (temPermissao)
-                {
-                    item.IsDisabled = false;
-                }
+                item.IsDisabled = item.IsDisabledBase || !temPermissao;
             }
         }
     }
@@ -213,6 +213,7 @@
         public bool IsVisibleBase { get; set; } = true;
         public bool IsVisibleOrNot { get; set; } = true;
         public bool IsDisabled { get; set; } = false;
+        public bool IsDisabledBase { get; set; }
         public Size Size { get; } = Size.Small;
         public Variant Variant { get; } = Variant.Filled;
         public string Icon { get; set; } = Icons.Material.Filled.AccessAlarm;

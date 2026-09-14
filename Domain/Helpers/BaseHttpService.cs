@@ -4,6 +4,7 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Threading.Tasks;
+using Domain.Dtos.ApiErrors;
 
 namespace Domain.Helpers
 {
@@ -11,11 +12,45 @@ namespace Domain.Helpers
     {
         protected readonly HttpClient _httpClient;
         private readonly IDataSessionHelper _dataSession;
+        private readonly IApiErrorContext _apiErrorContext;
 
-        protected BaseHttpService(HttpClient httpClient, IDataSessionHelper dataSession)
+        protected BaseHttpService(HttpClient httpClient, IDataSessionHelper dataSession, IApiErrorContext apiErrorContext)
         {
             _httpClient = httpClient;
             _dataSession = dataSession;
+            _apiErrorContext = apiErrorContext;
+        }
+
+        private async Task<ApiDataService<T>> HandleResponseAsync<T>(HttpResponseMessage response, object? requestData = null)
+        {
+            var endpoint = response.RequestMessage?.RequestUri?.PathAndQuery ?? string.Empty;
+            return await ApiResponseHandler.HandleResponseAsync<T>(response,
+                errorLogger: (status, message) => RegistrarErroAsync(endpoint, status, message, requestData));
+        }
+
+        private async Task RegistrarErroAsync(string endpoint, int statusCode, string message, object? requestData)
+        {
+            var identificador = requestData?.GetType().GetProperty("Username")?.GetValue(requestData)?.ToString();
+            if (endpoint.Contains("api-errors", StringComparison.OrdinalIgnoreCase) ||
+                (_dataSession?.DataSession is null && string.IsNullOrWhiteSpace(identificador)) ||
+                string.IsNullOrWhiteSpace(message)) return;
+
+            try
+            {
+                SetAuthorizationHeader();
+                using var request = new HttpRequestMessage(HttpMethod.Post, "api-errors")
+                {
+                    Content = JsonContent.Create(new RegistrarApiErrorDto
+                    {
+                        Tela = _apiErrorContext.ObterTelaAtual(),
+                        Endpoint = endpoint,
+                        MensagemErro = $"HTTP {statusCode}: {message}",
+                        IdentificadorUsuario = identificador
+                    })
+                };
+                using var response = await _httpClient.SendAsync(request);
+            }
+            catch { }
         }
 
         #region [ Métodos Auxiliares Internos ]
@@ -61,7 +96,7 @@ namespace Domain.Helpers
             {
                 SetAuthorizationHeader();
                 var response = await _httpClient.GetAsync(url);
-                return await ApiResponseHandler.HandleResponseAsync<T>(response);
+                return await HandleResponseAsync<T>(response);
             }
             catch (ApiException) { throw; }
             catch (Exception) { throw; }
@@ -73,7 +108,7 @@ namespace Domain.Helpers
             {
                 SetAuthorizationHeader();
                 var response = await _httpClient.PostAsJsonAsync(url, data);
-                return await ApiResponseHandler.HandleResponseAsync<T>(response);
+                return await HandleResponseAsync<T>(response, data);
             }
             catch (ApiException) { throw; }
             catch (Exception) { throw; }
@@ -85,7 +120,7 @@ namespace Domain.Helpers
             {
                 SetAuthorizationHeader();
                 var response = await _httpClient.PutAsJsonAsync(url, data);
-                return await ApiResponseHandler.HandleResponseAsync<T>(response);
+                return await HandleResponseAsync<T>(response);
             }
             catch (ApiException) { throw; }
             catch (Exception) { throw; }
@@ -97,7 +132,7 @@ namespace Domain.Helpers
             {
                 SetAuthorizationHeader();
                 var response = await _httpClient.DeleteAsync(url);
-                return await ApiResponseHandler.HandleResponseAsync<T>(response);
+                return await HandleResponseAsync<T>(response);
             }
             catch (ApiException) { throw; }
             catch (Exception) { throw; }
@@ -115,7 +150,7 @@ namespace Domain.Helpers
                 };
 
                 var response = await _httpClient.SendAsync(request);
-                return await ApiResponseHandler.HandleResponseAsync<T>(response);
+                return await HandleResponseAsync<T>(response);
             }
             catch (ApiException) { throw; }
             catch (Exception) { throw; }
@@ -133,7 +168,7 @@ namespace Domain.Helpers
                 };
 
                 var response = await _httpClient.SendAsync(request);
-                return await ApiResponseHandler.HandleResponseAsync<T>(response);
+                return await HandleResponseAsync<T>(response);
             }
             catch (ApiException) { throw; }
             catch (Exception) { throw; }

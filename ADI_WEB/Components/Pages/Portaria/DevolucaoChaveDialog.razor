@@ -1,0 +1,18 @@
+@using Domain.Dtos.ControleChaves
+<MudDialog>
+    <DialogContent>
+        <MudAlert Severity="Severity.Warning" Class="mb-4">Chave: <b>@Chave.Identificacao</b><br />Em posse de @Chave.NomePessoaEmprestimo há @DiasEmAberto dia(s).</MudAlert>
+        <SolicitanteChaveAutocomplete @bind-Value="_pessoa" />
+    </DialogContent>
+    <DialogActions><MudButton OnClick="Cancelar">Cancelar</MudButton><MudButton Color="Color.Primary" Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.AssignmentReturn" OnClick="Confirmar" Disabled="@(_pessoa is null)">Registrar devolução</MudButton></DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter] public ControleChaveDto Chave { get; set; } = new();
+    [Parameter] public int PorteiroId { get; set; }
+    private PessoaChaveDto? _pessoa;
+    private int DiasEmAberto => Chave.DataEmprestimo is null ? 0 : Math.Max(0, (DateTime.Today-Chave.DataEmprestimo.Value.Date).Days);
+    private void Confirmar() => MudDialog.Close(DialogResult.Ok(new DevolverChaveDto { EmpFil=_pessoa!.EmpFil, Matricula=_pessoa.Matricula, PessoaId=_pessoa.PessoaId, Nome=_pessoa.Nome, PorteiroId=PorteiroId }));
+    private void Cancelar() => MudDialog.Cancel();
+}

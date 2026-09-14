@@ -7,8 +7,8 @@ namespace Domain.Services
 {
     public class GeradorTermoService : BaseHttpService, IGeradorTermoService
     {
-        public GeradorTermoService(HttpClient httpClient, IDataSessionHelper dataSession)
-            : base(httpClient, dataSession)
+        public GeradorTermoService(HttpClient httpClient, IDataSessionHelper dataSession, IApiErrorContext errorContext)
+            : base(httpClient, dataSession, errorContext)
         {
         }
 

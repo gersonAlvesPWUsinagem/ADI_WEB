@@ -1,8 +1,497 @@
-﻿@attribute [Authorize]
 @page "/portaria/controle-chave"
+@using Domain.Dtos.ControleChaves
+@attribute [Authorize]
+@rendermode InteractiveServer
+@inject IControleChaveService ControleChaveService
+@inject IPortariaService PortariaService
+@inject NavigationManager Navigation
+@inject OperadorPortariaState OperadorPortariaState
 
-<HeaderComponent Title="Controle de Chave" />
+<PageTitle>Controle de Chaves</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="my-6">
+    <FavoritosSkeleton @ref="_skeleton" @bind-Carregando="_carregandoInicial" />
+</MudContainer>
+
+@if (!_carregandoInicial)
+{
+    <HeaderComponent Title="Controle de Chaves" Modulo="ModuloEnum.Comercial" Permission="115"
+                     TextBtn1="Atualizar" IconBtn1="@Icons.Material.Filled.Refresh" ColorBtn1="Color.Primary" OnBtn1Click="CarregarAsync"
+                     LevelBtn1="1"
+                     TextBtn2="@TextoCadastro" IconBtn2="@IconeCadastro" ColorBtn2="@CorCadastro" OnBtn2Click="AbrirCadastroAsync"
+                     LevelBtn2="@NivelCadastro"
+                     TextBtn3="Emprestar chave" IconBtn3="@Icons.Material.Filled.Key" ColorBtn3="Color.Success"
+                     LevelBtn3="2" IsDisabledBtn3="@(_selecionada?.Disponivel != true)" OnBtn3Click="AbrirEmprestimoAsync"
+                     TextBtn4="Relatório" IconBtn4="@Icons.Material.Filled.Assessment" ColorBtn4="Color.Tertiary" OnBtn4Click="AbrirRelatorioAsync"
+                     LevelBtn4="5"
+                     Processing="@(_carregando || _processando)" />
+
+    <MudPaper Class="pa-4 mt-2" Elevation="1">
+        <MudDataGrid T="ControleChaveDto" Items="ChavesFiltradas" Hover="true" Dense="true" Striped="true"
+                     Bordered="_exibirBordas" Loading="_carregando" RowClassFunc="ClasseDaLinha">
+            <ToolBarContent>
+                <MudPaper Class="d-flex flex-wrap flex-grow-1 gap-4" Elevation="0">
+                    <MudTextField Value="@_operador?.Nome" Label="Operador da portaria"
+                                  Placeholder="Clique para identificar o operador" ReadOnly="true"
+                                  Variant="Variant.Outlined" Margin="Margin.Dense" Adornment="Adornment.End"
+                                  AdornmentIcon="@IconeOperador" OnAdornmentClick="AcaoOperadorAsync" />
+                    <MudTextField @bind-Value="_filtro" Label="Pesquisar chave"
+                                  Placeholder="Chave, descrição, local ou pessoa" Immediate="true"
+                                  Variant="Variant.Outlined" Margin="Margin.Dense" Adornment="Adornment.Start"
+                                  AdornmentIcon="@Icons.Material.Filled.Search" />
+                </MudPaper>
+            </ToolBarContent>
+
+            <Columns>
+                <TemplateColumn Title="SEL" Sortable="false" Filterable="false" CellClass="text-center">
+                    <HeaderTemplate>
+                        <MudTooltip Text="SELECIONAR"><span>SEL</span></MudTooltip>
+                    </HeaderTemplate>
+                    <CellTemplate>
+                        <MudCheckBox T="bool" Value="@RegistroSelecionado(context.Item)"
+                                     ValueChanged="@(valor => Selecionar(context.Item, valor))"
+                                     Color="Color.Warning" Size="Size.Small" />
+                    </CellTemplate>
+                </TemplateColumn>
+
+                <TemplateColumn Title="AÇÃO" Sortable="false" Filterable="false">
+                    <HeaderTemplate>
+                        <MudTooltip Text="AÇÃO"><span>AÇÃO</span></MudTooltip>
+                    </HeaderTemplate>
+                    <CellTemplate>
+                        <MudTooltip Text="Visualizar">
+                            <MudIconButton Icon="@Icons.Material.Filled.Visibility" Size="Size.Small"
+                                           Color="Color.Info"
+                                           OnClick="@(() => VisualizarAsync(context.Item))" />
+                        </MudTooltip>
+                        @if (!context.Item.Disponivel)
+                        {
+                            <MudTooltip Text="Devolver">
+                                <MudIconButton Icon="@Icons.Material.Filled.AssignmentReturn" Size="Size.Small"
+                                               Color="Color.Warning"
+                                               OnClick="@(() => AbrirDevolucaoAsync(context.Item))" />
+                            </MudTooltip>
+                        }
+                    </CellTemplate>
+                </TemplateColumn>
+
+                @* <PropertyColumn Property="x => x.PorteiroEmprestimoNome" Title="PORTEIRO" /> *@
+                <PropertyColumn Property="x => x.Identificacao" Title="CHAVE">
+                    <HeaderTemplate>
+                        <MudTooltip Text="CHAVE"><span>CHAVE</span></MudTooltip>
+                    </HeaderTemplate>
+                </PropertyColumn>
+                <TemplateColumn Title="RET POR">
+                    <HeaderTemplate>
+                        <MudTooltip Text="RETIRADO POR"><span>RET POR</span></MudTooltip>
+                    </HeaderTemplate>
+                    <CellTemplate>
+                        @(context.Item.NomePessoaEmprestimo is null
+                            ? "-"
+                            : $"{context.Item.NomePessoaEmprestimo.Split(' ')[0]} {(context.Item.MatriculaEmprestimo.HasValue ? $"({context.Item.MatriculaEmprestimo})" : "(EXTERNO)")}")
+                    </CellTemplate>
+                </TemplateColumn>
+                <TemplateColumn Title="HORA">
+                    <HeaderTemplate>
+                        <MudTooltip Text="HORA"><span>HORA</span></MudTooltip>
+                    </HeaderTemplate>
+                    <CellTemplate>@(context.Item.DataEmprestimo?.ToString("HH:mm") ?? "-")</CellTemplate>
+                </TemplateColumn>
+                <TemplateColumn Title="DATA">
+                    <HeaderTemplate>
+                        <MudTooltip Text="DATA"><span>DATA</span></MudTooltip>
+                    </HeaderTemplate>
+                    <CellTemplate>@(context.Item.DataEmprestimo?.ToString("dd/MM") ?? "-")</CellTemplate>
+                </TemplateColumn>
+@*                 <PropertyColumn Property="x => x.ObservacaoEmprestimo" Title="OBSERVAÇÃO" />
+ *@
+@*                 <PropertyColumn Property="x => x.PorteiroDevolucaoNome" Title="PORTEIRO RETORNO" />
+ *@                <TemplateColumn Title="DEVOLVIDO POR">
+                    <HeaderTemplate>
+                        <MudTooltip Text="DEVOLVIDO POR"><span>DEVOLVIDO POR</span></MudTooltip>
+                    </HeaderTemplate>
+                    <CellTemplate>@(context.Item.NomePessoaDevolucao?.Split(' ')[0] ?? "-")</CellTemplate>
+                </TemplateColumn>
+                <TemplateColumn Title="HR RET">
+                    <HeaderTemplate>
+                        <MudTooltip Text="HORA RETORNO"><span>HR RET</span></MudTooltip>
+                    </HeaderTemplate>
+                    <CellTemplate>@(context.Item.DataDevolucao?.ToString("HH:mm") ?? "-")</CellTemplate>
+                </TemplateColumn>
+                <TemplateColumn Title="DT RET">
+                    <HeaderTemplate>
+                        <MudTooltip Text="DATA RETORNO"><span>DT RET</span></MudTooltip>
+                    </HeaderTemplate>
+                    <CellTemplate>@(context.Item.DataDevolucao?.ToString("dd/MM") ?? "-")</CellTemplate>
+                </TemplateColumn>
+            </Columns>
+
+            <PagerContent>
+                <div class="d-flex align-center justify-space-between mt-2 px-2">
+                    <MudSwitch @bind-Value="_exibirBordas" Label="Exibir bordas na tabela"
+                               Color="Color.Primary" Size="Size.Small" />
+                    <MudDataGridPager T="ControleChaveDto" PageSizeOptions="new int[] { 25, 50, 100 }" />
+                </div>
+            </PagerContent>
+        </MudDataGrid>
+    </MudPaper>
+}
 
 @code {
+    private FavoritosSkeleton? _skeleton;
+    private List<ControleChaveDto> _chaves = [];
+    private ControleChaveDto? _selecionada;
+    private List<PorteiroOperadorDto> _porteiros = [];
+    private PorteiroOperadorDto? _operador;
+    private string? _filtro;
+    private bool _carregandoInicial = true;
+    private bool _carregando;
+    private bool _processando;
+    private bool _exibirBordas;
 
+    private string TextoCadastro => _selecionada == null ? "Cadastrar chave" : "Alterar chave";
+    private string IconeCadastro => _selecionada == null ? Icons.Material.Filled.Add : Icons.Material.Filled.Edit;
+    private string IconeOperador => _operador is null
+        ? Icons.Material.Filled.Person
+        : Icons.Material.Filled.Logout;
+    private Color CorCadastro => _selecionada == null ? Color.Success : Color.Warning;
+    private int NivelCadastro => _selecionada == null ? 2 : 3;
+
+    private IEnumerable<ControleChaveDto> ChavesFiltradas => string.IsNullOrWhiteSpace(_filtro)
+        ? _chaves
+        : _chaves.Where(x =>
+            Contem(x.Identificacao) || Contem(x.Descricao) || Contem(x.Localizacao) ||
+            Contem(x.NomePessoaEmprestimo) || Contem(x.NomePessoaDevolucao));
+
+    private bool Contem(string? valor) =>
+        valor?.Contains(_filtro!, StringComparison.OrdinalIgnoreCase) ?? false;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender || _skeleton is null)
+            return;
+
+        await _skeleton.IniciarAsync();
+        try
+        {
+            _operador = OperadorPortariaState.Operador;
+            await CarregarPorteirosAsync();
+            await CarregarAsync();
+        }
+        finally
+        {
+            await _skeleton.FinalizarAsync();
+        }
+    }
+
+    private async Task CarregarPorteirosAsync()
+    {
+        var resultado = await PortariaService.GetPorteiroOperadorCompAsync();
+        if (resultado.Success)
+            _porteiros = resultado.Value ?? [];
+        else
+            Mensagem(resultado.Message, false);
+    }
+
+    private async Task<bool> GarantirOperadorAsync()
+    {
+        if (_operador is not null)
+            return true;
+
+        await SelecionarOperadorAsync();
+        return _operador is not null;
+    }
+
+    private async Task AcaoOperadorAsync()
+    {
+        if (_operador is null)
+        {
+            await SelecionarOperadorAsync();
+            return;
+        }
+
+        OperadorPortariaState.Limpar();
+        _operador = null;
+        Mensagem("Operador da portaria desconectado.", true);
+    }
+
+    private async Task SelecionarOperadorAsync()
+    {
+        var parametros = new DialogParameters
+        {
+            { "ListPorteiroOperador", _porteiros },
+            { "OperadorAtual", _operador }
+        };
+
+        var dialogo = await DialogService.ShowAsync<LoginOperadorDialog>(
+            "Login do operador", parametros,
+            new DialogOptions { CloseButton = true, FullWidth = true, MaxWidth = MaxWidth.ExtraSmall });
+
+        var resultado = await dialogo.Result;
+        if (resultado is null || resultado.Canceled ||
+            resultado.Data is not OperadorLoginResultDto login || login.Operador is null)
+            return;
+
+        if (login.SolicitaAlteracaoSenha)
+        {
+            Mensagem("Utilize a tela Controle de Pessoas para alterar a senha do operador.", false);
+            return;
+        }
+
+        var validacao = await PortariaService.LoginPorteiroOperadorAsync(
+            login.Operador.PoreteiroID, login.Senha!);
+
+        if (!validacao.Success || validacao.Value is null)
+        {
+            Mensagem(validacao.Message, false);
+            return;
+        }
+
+        if (validacao.Value.ExigeAlteracaoSenha)
+        {
+            Mensagem("O operador deve alterar a senha antes de continuar.", false);
+            return;
+        }
+
+        _operador = validacao.Value;
+        OperadorPortariaState.Definir(_operador);
+        Mensagem($"Operador {_operador.Nome} autenticado com sucesso.", true);
+    }
+
+    private async Task CarregarAsync()
+    {
+        _carregando = true;
+        try
+        {
+            var resultado = await ControleChaveService.ListarAsync();
+            if (resultado.Success)
+            {
+                _chaves = resultado.Value ?? [];
+                if (_selecionada is not null)
+                    _selecionada = _chaves.FirstOrDefault(x => x.Id == _selecionada.Id);
+            }
+            else
+            {
+                Mensagem(resultado.Message, false);
+            }
+        }
+        finally
+        {
+            _carregando = false;
+        }
+    }
+
+    private bool RegistroSelecionado(ControleChaveDto chave) => _selecionada?.Id == chave.Id;
+
+    private void Selecionar(ControleChaveDto chave, bool valor) => _selecionada = valor ? chave : null;
+
+    private string ClasseDaLinha(ControleChaveDto chave, int _) =>
+        RegistroSelecionado(chave) ? "chave-selecionada" : string.Empty;
+
+    private static string TempoEmPosse(ControleChaveDto chave)
+    {
+        if (chave.Disponivel || chave.DataEmprestimo is null)
+            return "-";
+
+        var tempo = DateTime.Now - chave.DataEmprestimo.Value;
+        return $"{Math.Max(0, (int)tempo.TotalDays)} dia(s) e {Math.Max(0, tempo.Hours)} hora(s)";
+    }
+
+    private async Task AbrirCadastroAsync()
+    {
+        if (_selecionada is null && !await GarantirOperadorAsync())
+            return;
+
+        var modelo = _selecionada ?? new ControleChaveDto
+        {
+            PorteiroOperacaoId = _operador!.PoreteiroID
+        };
+        var parametros = new DialogParameters { { "Modelo", modelo } };
+        var dialogo = await DialogService.ShowAsync<ControleChaveDialog>(
+            TextoCadastro, parametros,
+            new DialogOptions
+            {
+                CloseButton = true,
+                FullWidth = true,
+                MaxWidth = MaxWidth.Large,
+                BackdropClick = false
+            });
+
+        var resultado = await dialogo.Result;
+        if (resultado is null || resultado.Canceled)
+            return;
+
+        if (resultado.Data is string acao && acao == "EXCLUIR")
+        {
+            await ExcluirAsync(modelo);
+            return;
+        }
+
+        if (resultado.Data is not ControleChaveDto dto)
+            return;
+
+        await ProcessarAsync(async () => dto.Id == 0
+            ? await ControleChaveService.AdicionarAsync(dto)
+            : await ControleChaveService.AtualizarAsync(dto.Id, dto));
+    }
+
+    private Task VisualizarAsync(ControleChaveDto chave)
+    {
+        Navigation.NavigateTo($"/portaria/controle-chave/{chave.Id}");
+        return Task.CompletedTask;
+    }
+
+    private async Task AbrirEmprestimoAsync()
+    {
+        var chave = _selecionada;
+        if (chave is null || !chave.Disponivel || !await GarantirOperadorAsync())
+            return;
+
+        var parametros = new DialogParameters
+        {
+            { "Chave", chave },
+            { "PorteiroId", _operador!.PoreteiroID }
+        };
+        var dialogo = await DialogService.ShowAsync<EmprestimoChaveDialog>(
+            "Empréstimo de chave", parametros,
+            new DialogOptions
+            {
+                CloseButton = true,
+                FullWidth = true,
+                MaxWidth = MaxWidth.Small,
+                BackdropClick = false
+            });
+
+        var resultado = await dialogo.Result;
+        if (resultado is null || resultado.Canceled || resultado.Data is not EmprestarChaveDto dto)
+            return;
+
+        await ProcessarAsync(() => ControleChaveService.EmprestarAsync(chave.Id, dto));
+    }
+
+    private async Task AbrirDevolucaoAsync(ControleChaveDto chave)
+    {
+        if (!await GarantirOperadorAsync())
+            return;
+
+        var parametros = new DialogParameters
+        {
+            { "Chave", chave },
+            { "PorteiroId", _operador!.PoreteiroID }
+        };
+        var dialogo = await DialogService.ShowAsync<DevolucaoChaveDialog>(
+            "Devolução de chave", parametros,
+            new DialogOptions
+            {
+                CloseButton = true,
+                FullWidth = true,
+                MaxWidth = MaxWidth.Small,
+                BackdropClick = false
+            });
+
+        var resultado = await dialogo.Result;
+        if (resultado is null || resultado.Canceled || resultado.Data is not DevolverChaveDto dto)
+            return;
+
+        await ProcessarAsync(() => ControleChaveService.DevolverAsync(chave.Id, dto));
+    }
+
+    private async Task ExcluirAsync(ControleChaveDto chave)
+    {
+        var confirmado = await DialogService.ShowMessageBoxAsync(
+            "Excluir chave",
+            $"Deseja realmente excluir a chave {chave.Identificacao}?",
+            yesText: "Excluir",
+            cancelText: "Cancelar");
+
+        if (confirmado != true)
+            return;
+
+        _processando = true;
+        Loading.Show();
+
+        try
+        {
+            var resultado = await ControleChaveService.ExcluirAsync(chave.Id);
+            Mensagem(resultado.Message, resultado.Success);
+
+            if (resultado.Success)
+            {
+                if (_selecionada?.Id == chave.Id)
+                    _selecionada = null;
+
+                await CarregarAsync();
+            }
+        }
+        finally
+        {
+            _processando = false;
+            Loading.Hide();
+        }
+    }
+
+    private async Task ProcessarAsync(Func<Task<Domain.Helpers.ApiDataService<ControleChaveDto>>> acao)
+    {
+        _processando = true;
+        Loading.Show();
+        try
+        {
+            var resultado = await acao();
+            Mensagem(resultado.Message, resultado.Success);
+            if (resultado.Success)
+            {
+                _selecionada = null;
+                await CarregarAsync();
+            }
+        }
+        finally
+        {
+            _processando = false;
+            Loading.Hide();
+        }
+    }
+
+    private async Task AbrirRelatorioAsync()
+    {
+        var dialogo = await DialogService.ShowAsync<RelatorioControleChavesDialog>(
+            "Relatório de chaves",
+            new DialogOptions { CloseButton = true, FullWidth = true, MaxWidth = MaxWidth.ExtraSmall });
+        var resultado = await dialogo.Result;
+        if (resultado is null || resultado.Canceled || resultado.Data is not string formato)
+            return;
+
+        Loading.Show();
+        try
+        {
+            var arquivo = await ControleChaveService.GerarRelatorioAsync(formato);
+            if (!arquivo.Success || arquivo.Value.Conteudo is null)
+            {
+                Mensagem(arquivo.Message, false);
+                return;
+            }
+
+            await JSRuntime.InvokeVoidAsync(
+                "downloadOrOpenPdf",
+                Convert.ToBase64String(arquivo.Value.Conteudo),
+                arquivo.Value.MimeType,
+                arquivo.Value.NomeArquivo,
+                formato == "PDF");
+        }
+        finally
+        {
+            Loading.Hide();
+        }
+    }
+
+    private void Mensagem(string? texto, bool sucesso) =>
+        _snackbarComp.Message(
+            texto ?? (sucesso ? "Operação concluída." : "Não foi possível concluir a operação."),
+            sucesso ? Severity.Success : Severity.Error,
+            sucesso ? Color.Success : Color.Error);
 }
+
+<style>
+    .chave-selecionada > td {
+        background-color: rgba(255, 152, 0, .12) !important;
+    }
+</style>

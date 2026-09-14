@@ -24,7 +24,8 @@ namespace Domain.Helpers
         public static async Task<ApiDataService<T>> HandleResponseAsync<T>(
             HttpResponseMessage response,
             string customErrorMessage = null!,
-            string customSuccessMessage = null!)
+            string customSuccessMessage = null!,
+            Func<int, string, Task>? errorLogger = null)
         {
             try
             {
@@ -103,6 +104,7 @@ namespace Domain.Helpers
             }
             catch (ApiException ex)
             {
+                await TryLogErrorAsync(errorLogger, ex.ErrorCode, ex.Message);
                 return new ApiDataService<T>(
                         default!,
                         false,
@@ -112,13 +114,22 @@ namespace Domain.Helpers
             }
             catch (Exception ex)
             {
+                var message = $"Erro técnico no processamento: {ex.Message}";
+                await TryLogErrorAsync(errorLogger, 500, message);
                 return new ApiDataService<T>(
                     default!,
                     false,
-                    $"Erro técnico no processamento: {ex.Message}",
+                    message,
                     500
                 );
             }
+        }
+
+        private static async Task TryLogErrorAsync(Func<int, string, Task>? errorLogger, int statusCode, string message)
+        {
+            if (errorLogger is null) return;
+            try { await errorLogger(statusCode, message); }
+            catch { }
         }
     }
 }

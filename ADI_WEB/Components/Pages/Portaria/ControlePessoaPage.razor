@@ -11,6 +11,7 @@
 @inject IJSRuntime JS
 @*implements IDisposable*@
 @inject AtualizacaoPortariaNotifier AtualizacaoPortariaNotifier
+@inject OperadorPortariaState OperadorPortariaState
 
         <HeaderComponent Title="Controle de Pessoas" Modulo="ModuloEnum.Comercial" Permission="189"
                          TextBtn1="Atualizar"
@@ -128,10 +129,10 @@
                                       Placeholder="Nenhum operador autenticado"
                                       Variant="Variant.Outlined"
                                       Margin="Margin.Dense"
-                                      ReadOnly="true"
-                                      Adornment="Adornment.End"
-                                      OnAdornmentClick="AlterarPorteiroAsync"
-                                      AdornmentIcon="@Icons.Material.Filled.Person" />
+                                       ReadOnly="true"
+                                       Adornment="Adornment.End"
+                                       OnAdornmentClick="AcaoOperadorAsync"
+                                       AdornmentIcon="@IconeOperador" />
 
                         <MudTextField Label="REF DIA"
                                       Value="@_dataTextoInput"
@@ -284,6 +285,9 @@
     private string _filtroStatusMovimentacao = "TODOS";
 
     private PorteiroOperadorDto? value2;
+    private string IconeOperador => value2 is null
+        ? Icons.Material.Filled.Person
+        : Icons.Material.Filled.Logout;
     private bool resetValueOnEmptyText = true;
     private bool coerceText = true;
     private bool coerceValue = true;
@@ -347,6 +351,9 @@
         try
         {
             _carregado = false;
+
+            value2 = OperadorPortariaState.Operador;
+            UserName = value2?.Nome;
 
             await CarregarListaDeControlados();
             await PegarListaPorteiros();
@@ -623,8 +630,27 @@
 
             value2 = validacao.Value;
             UserName = value2.Nome;
+            OperadorPortariaState.Definir(value2);
+            _snackbarComp.Message(
+                $"Operador {value2.Nome} autenticado com sucesso.",
+                Severity.Success,
+                Color.Success);
             StateHasChanged();
         }
+    }
+
+    private async Task AcaoOperadorAsync()
+    {
+        if (value2 is null)
+        {
+            await AlterarPorteiroAsync();
+            return;
+        }
+
+        OperadorPortariaState.Limpar();
+        value2 = null;
+        UserName = null;
+        _snackbarComp.Message("Operador da portaria desconectado.", Severity.Success, Color.Success);
     }
     private async Task AbrirAlteracaoSenhaAsync(PorteiroOperadorDto operador, string? senhaAtual = null)
     {
@@ -652,6 +678,7 @@
 
         value2 = resultado.Value;
         UserName = value2.Nome;
+        OperadorPortariaState.Definir(value2);
         _snackbarComp.Message("Senha alterada com sucesso.", Severity.Success, Color.Success);
         StateHasChanged();
     }

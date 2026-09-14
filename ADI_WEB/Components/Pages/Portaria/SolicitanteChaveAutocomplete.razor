@@ -1,0 +1,27 @@
+@using Domain.Dtos.ControleChaves
+@if (!_textoLivre)
+{
+    <MudAutocomplete T="PessoaChaveDto" Value="Value" ValueChanged="AlterarPessoaAsync" SearchFunc="PesquisarAsync" ToStringFunc="Formatar"
+                     Label="Colaborador" Placeholder="Digite ao menos 2 caracteres" Variant="Variant.Outlined" Margin="Margin.Dense"
+                     MinCharacters="2" DebounceInterval="300" ResetValueOnEmptyText="true" CoerceText="false" CoerceValue="false"
+                     Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.PersonSearch">
+        <NoItemsTemplate><MudButton Variant="Variant.Text" StartIcon="@Icons.Material.Filled.PersonAdd" OnClick="UsarTextoLivreAsync">Pessoa não encontrada — informar nome livre</MudButton></NoItemsTemplate>
+    </MudAutocomplete>
+}
+else
+{
+    <MudTextField T="string" Value="_nomeLivre" ValueChanged="AlterarNomeLivreAsync" Label="Solicitante não cadastrado" Required="true"
+                  Variant="Variant.Outlined" Margin="Margin.Dense" Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.Close" OnAdornmentClick="VoltarAsync" />
+}
+@code {
+    [Inject] private IControleChaveService Service { get; set; } = default!;
+    [Parameter] public PessoaChaveDto? Value { get; set; }
+    [Parameter] public EventCallback<PessoaChaveDto?> ValueChanged { get; set; }
+    private bool _textoLivre; private string? _nomeLivre; private string? _ultimaPesquisa;
+    private async Task<IEnumerable<PessoaChaveDto>> PesquisarAsync(string texto,CancellationToken token) { _ultimaPesquisa=texto.Trim(); if(_ultimaPesquisa.Length<2)return []; var r=await Service.PesquisarPessoasAsync(_ultimaPesquisa); token.ThrowIfCancellationRequested(); return r.Success?r.Value??[]:[]; }
+    private async Task AlterarPessoaAsync(PessoaChaveDto? pessoa) { Value=pessoa; await ValueChanged.InvokeAsync(pessoa); }
+    private async Task UsarTextoLivreAsync() { _textoLivre=true; _nomeLivre=_ultimaPesquisa?.ToUpperInvariant(); Value=new PessoaChaveDto{Nome=_nomeLivre??string.Empty,Departamento="EXTERNO"}; await ValueChanged.InvokeAsync(Value); }
+    private async Task AlterarNomeLivreAsync(string nome) { _nomeLivre=nome?.ToUpperInvariant(); Value=new PessoaChaveDto{Nome=_nomeLivre??string.Empty,Departamento="EXTERNO"}; await ValueChanged.InvokeAsync(Value); }
+    private async Task VoltarAsync() { _textoLivre=false; _nomeLivre=null; Value=null; await ValueChanged.InvokeAsync(null); }
+    private static string Formatar(PessoaChaveDto? x)=>x is null?string.Empty:$"{x.Nome.ToUpperInvariant()} - {x.Matricula}";
+}

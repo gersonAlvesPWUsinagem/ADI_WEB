@@ -8,8 +8,8 @@ namespace Domain.Services
     public class PortariaService : BaseHttpService, IPortariaService
     {
 
-        public PortariaService(HttpClient httpClient, IDataSessionHelper dataSession)
-        : base(httpClient, dataSession)
+        public PortariaService(HttpClient httpClient, IDataSessionHelper dataSession, IApiErrorContext errorContext)
+        : base(httpClient, dataSession, errorContext)
         {
         }
 

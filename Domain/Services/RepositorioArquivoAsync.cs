@@ -10,8 +10,8 @@ namespace Domain.Services
 
 
         // O HttpClient já vem configurado com a BaseURL correta graças ao Typed Client
-        public RepositorioArquivoAsync(HttpClient httpClient, IDataSessionHelper dataSession)
-            : base(httpClient, dataSession)
+        public RepositorioArquivoAsync(HttpClient httpClient, IDataSessionHelper dataSession, IApiErrorContext errorContext)
+            : base(httpClient, dataSession, errorContext)
         {
         }
 

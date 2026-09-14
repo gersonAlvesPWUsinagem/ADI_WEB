@@ -10,6 +10,7 @@
 @inject FavoritoPaginaState FavoritosState
 @inject IHttpContextAccessor HttpContextAccessor
 @inject SessionExpirationState SessionExpirationState
+@inject OperadorPortariaState OperadorPortariaState
 
 <MudThemeProvider Theme="@_theme" IsDarkMode="_isDarkMode" />
 <MudPopoverProvider />
@@ -332,6 +333,7 @@
 
     private Task OnSessionExpiredAsync(string returnUrl)
     {
+        OperadorPortariaState.Limpar();
         _returnUrlAposExpiracao = NormalizarReturnUrl(returnUrl);
         _exibirSessaoExpirada = true;
         return InvokeAsync(StateHasChanged);
@@ -354,6 +356,7 @@
         {
             await _jwtAuthenticationService.LogoutAsync();
             FavoritosState.Limpar();
+            OperadorPortariaState.Limpar();
 
             Snackbar.Add("Sessão encerrada com sucesso.", Severity.Info);
             Navigation.NavigateTo("/user/login", forceLoad: true);

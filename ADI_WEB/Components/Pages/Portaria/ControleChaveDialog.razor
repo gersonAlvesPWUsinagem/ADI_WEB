@@ -1,0 +1,72 @@
+@using Domain.Dtos.ControleChaves
+<MudDialog>
+    <DialogContent>
+        <MudForm @ref="_form">
+            <MudGrid Spacing="3">
+                <MudItem xs="12" md="4">
+                    <MudTextField @bind-Value="_modelo.Identificacao" Label="Identificação"
+                                  Required="true" MaxLength="50" Variant="Variant.Outlined" />
+                </MudItem>
+                <MudItem xs="12" md="8">
+                    <MudTextField @bind-Value="_modelo.Descricao" Label="Descrição"
+                                  Required="true" MaxLength="150" Variant="Variant.Outlined" />
+                </MudItem>
+                <MudItem xs="12" md="6">
+                    <MudTextField @bind-Value="_modelo.Localizacao" Label="Localização"
+                                  MaxLength="150" Variant="Variant.Outlined" />
+                </MudItem>
+                <MudItem xs="12">
+                    <MudTextField @bind-Value="_modelo.Observacao" Label="Observação"
+                                  Lines="3" MaxLength="500" Variant="Variant.Outlined" />
+                </MudItem>
+            </MudGrid>
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        @if (_modelo.Id > 0)
+        {
+            <MudButton Color="Color.Error" Variant="Variant.Filled"
+                       StartIcon="@Icons.Material.Filled.Delete" OnClick="Excluir">
+                Excluir
+            </MudButton>
+        }
+        <MudSpacer />
+        <MudButton OnClick="Cancelar">Cancelar</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled"
+                   StartIcon="@Icons.Material.Filled.Save" OnClick="SalvarAsync">
+            @(_modelo.Id == 0 ? "Cadastrar" : "Alterar")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter] public ControleChaveDto Modelo { get; set; } = new();
+    private MudForm? _form;
+    private ControleChaveDto _modelo = new();
+
+    protected override void OnInitialized()
+    {
+        _modelo = new ControleChaveDto
+        {
+            Id = Modelo.Id,
+            Identificacao = Modelo.Identificacao,
+            Descricao = Modelo.Descricao,
+            Localizacao = Modelo.Localizacao,
+            Observacao = Modelo.Observacao,
+            PorteiroOperacaoId = Modelo.PorteiroOperacaoId
+        };
+    }
+
+    private async Task SalvarAsync()
+    {
+        await _form!.ValidateAsync();
+
+        if (_form.IsValid)
+            MudDialog.Close(DialogResult.Ok(_modelo));
+    }
+
+    private void Excluir() => MudDialog.Close(DialogResult.Ok("EXCLUIR"));
+
+    private void Cancelar() => MudDialog.Cancel();
+}
