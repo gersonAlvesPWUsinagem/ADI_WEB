@@ -1,0 +1,357 @@
+@page "/portaria/movimentacoes-chave"
+@attribute [Authorize]
+@rendermode InteractiveServer
+@inject IControleChaveService ControleChaveService
+@using Domain.Dtos.ControleChaves
+
+<PageTitle>Movimentações de Chaves</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="my-6">
+    <FavoritosSkeleton @ref="_skeleton" @bind-Carregando="_carregandoInicial" />
+</MudContainer>
+
+@if (!_carregandoInicial)
+{
+    <HeaderComponent Title="Empréstimos de Chaves" Modulo="ModuloEnum.Comercial" Permission="115"
+                     TextBtn1="Voltar" IconBtn1="@Icons.Material.Filled.ArrowBack" ColorBtn1="@Color.Secondary"
+                     OnBtn1Click="VoltarAsync"
+                     TextBtn2="Atualizar" IconBtn2="@Icons.Material.Filled.Refresh" ColorBtn2="@Color.Primary"
+                     LevelBtn2="1" OnBtn2Click="AtualizarPaginaAsync"
+                     TextBtn3="Relatório" IconBtn3="@Icons.Material.Filled.Assessment" ColorBtn3="@Color.Tertiary"
+                     LevelBtn3="5" OnBtn3Click="AbrirRelatorioAsync"
+                     TextBtn4="Limpar filtros" IconBtn4="@Icons.Material.Filled.FilterAltOff" ColorBtn4="@Color.Warning"
+                     LevelBtn4="1" OnBtn4Click="LimparFiltrosAsync" IsDisabledBtn4="@(!TemFiltrosAplicados)"
+                     Processing="@_carregando" />
+
+    <MudItem xs="12" Class="mb-1">
+        <div class="d-flex flex-wrap align-center gap-4">
+            <MudChipSet T="int" Size="Size.Large" SelectedValue="_mesSelecionado"
+                        SelectedValueChanged="OnMesSelecionadoChanged" CheckMark
+                        SelectionMode="SelectionMode.SingleSelection" Variant="Variant.Text" Color="Color.Info">
+                @foreach (var mes in _mesesAbreviados)
+                {
+                    <MudChip Value="@mes.Key" Disabled="@(!MesExisteNaBase(mes.Key))"
+                             Color="@(MesExisteNaBase(mes.Key) ? Color.Primary : Color.Default)">
+                        @mes.Value
+                    </MudChip>
+                }
+            </MudChipSet>
+        </div>
+    </MudItem>
+
+    <MudPaper Class="pa-4 mb-4" Elevation="1">
+        <div class="d-flex align-center justify-space-between flex-wrap gap-4">
+            <MudChipSet T="string" Size="Size.Medium" SelectedValue="_filtroStatus"
+                        SelectedValueChanged="OnFiltroStatusChanged" CheckMark
+                        SelectionMode="SelectionMode.SingleSelection" Variant="Variant.Outlined" Color="Color.Primary">
+                <MudChip Value="@("TODOS")">Todos</MudChip>
+                <MudChip Value="@("EMPRESTADAS")">Chaves emprestadas</MudChip>
+                <MudChip Value="@("DEVOLVIDAS")">Chaves devolvidas</MudChip>
+            </MudChipSet>
+
+            <span class="mud-typography mud-typography-body1 font-weight-bold">
+                @GetFilteredItems().Count() visíveis
+            </span>
+        </div>
+    </MudPaper>
+
+    <MudPaper Class="pa-4" Elevation="1">
+        <MudDataGrid T="ControleChaveDto" @ref="_dataGrid" Items="@GetFilteredItems()"
+                     MultiSelection="false" SortMode="SortMode.Single" Filterable="false"
+                     QuickFilter="@_quickFilter" Hideable="false" Dense="true" Striped="true"
+                     Hover="true" Bordered="@_bordered" Loading="@_carregando">
+            <ToolBarContent>
+                <MudPaper Class="d-flex justify-space-between flex-grow-1 gap-4" Elevation="0">
+                    <MudDatePicker Label="Data inicial" @bind-Date="_dataInicial" DateFormat="dd/MM/yyyy"
+                                   Editable="true" Variant="Variant.Outlined" Margin="Margin.Dense" />
+
+                    <MudDatePicker Label="Data final" @bind-Date="_dataFinal" DateFormat="dd/MM/yyyy"
+                                   Editable="true" Variant="Variant.Outlined" Margin="Margin.Dense" />
+
+                    <SolicitanteChaveAutocomplete Value="@_pessoaSelecionada"
+                                                   ValueChanged="@OnPessoaSelecionadaChangedAsync" />
+
+                    <MudTextField @bind-Value="_searchString" Label="Pesquisar"
+                                  Placeholder="Porteiro, chave, pessoa ou observação..."
+                                  Variant="Variant.Outlined" Margin="Margin.Dense" Adornment="Adornment.End"
+                                  Immediate="true" AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium" />
+
+                    <MudIconButton Icon="@Icons.Material.Filled.Search" Color="Color.Primary"
+                                   OnClick="PesquisarAsync" Disabled="@_carregando" />
+                </MudPaper>
+            </ToolBarContent>
+
+            <Columns>
+                <PropertyColumn Property="x => x.PorteiroEmprestimoNome" Title="PORTEIRO" />
+                <PropertyColumn Property="x => x.Identificacao" Title="CHAVE" />
+                <PropertyColumn Property="x => x.NomePessoaEmprestimo" Title="RETIRADO POR" />
+                <TemplateColumn Title="HORA"><CellTemplate>@context.Item.DataEmprestimo?.ToString("HH:mm")</CellTemplate></TemplateColumn>
+                <TemplateColumn Title="DATA"><CellTemplate>@context.Item.DataEmprestimo?.ToString("dd/MM/yyyy")</CellTemplate></TemplateColumn>
+                <PropertyColumn Property="x => x.ObservacaoEmprestimo" Title="OBSERVAÇÃO" />
+                <PropertyColumn Property="x => x.PorteiroDevolucaoNome" Title="PORTEIRO." />
+                <PropertyColumn Property="x => x.NomePessoaDevolucao" Title="DEVOLVIDO POR" />
+                <TemplateColumn Title="HORA."><CellTemplate>@context.Item.DataDevolucao?.ToString("HH:mm")</CellTemplate></TemplateColumn>
+                <TemplateColumn Title="DATA."><CellTemplate>@context.Item.DataDevolucao?.ToString("dd/MM/yyyy")</CellTemplate></TemplateColumn>
+            </Columns>
+
+            <PagerContent>
+                <MudDataGridPager T="ControleChaveDto" PageSizeOptions="new int[] { 25, 45, 85, 100 }" />
+            </PagerContent>
+        </MudDataGrid>
+    </MudPaper>
+
+    <MudPaper Class="pa-4" Elevation="1">
+        <MudGrid Class="d-flex justify-start flex-grow-1 gap-4" Spacing="11">
+            <MudSwitch Class="ml-10" @bind-Value="_bordered" Color="Color.Warning">Exibir bordas na tabela</MudSwitch>
+        </MudGrid>
+    </MudPaper>
+}
+
+@code {
+    private MudDataGrid<ControleChaveDto> _dataGrid = default!;
+    private FavoritosSkeleton? _skeleton;
+    private List<ControleChaveDto> _movimentacoes = [];
+    private Dictionary<int, string> _mesesAbreviados = [];
+    private HashSet<int> _mesesDisponiveis = [];
+    private DateTime? _dataInicial = ObterInicioDaSemana(DateTime.Today);
+    private DateTime? _dataFinal = ObterInicioDaSemana(DateTime.Today).AddDays(6);
+    private PessoaChaveDto? _pessoaSelecionada;
+    private string _filtroStatus = "TODOS";
+    private string? _searchString;
+    private int _mesSelecionado = DateTime.Today.Month;
+    private bool _carregandoInicial = true;
+    private bool _carregando;
+    private bool _bordered;
+    private long? MatriculaPessoaSelecionada => _pessoaSelecionada is { Matricula: > 0 } pessoa
+        ? pessoa.Matricula
+        : null;
+
+    private bool TemFiltrosAplicados
+    {
+        get
+        {
+            var inicioDaSemana = ObterInicioDaSemana(DateTime.Today);
+            var fimDaSemana = inicioDaSemana.AddDays(6);
+
+            return _dataInicial?.Date != inicioDaSemana
+                || _dataFinal?.Date != fimDaSemana
+                || _pessoaSelecionada is not null
+                || !string.IsNullOrWhiteSpace(_searchString)
+                || _filtroStatus != "TODOS"
+                || _mesSelecionado != DateTime.Today.Month;
+        }
+    }
+
+    private Func<ControleChaveDto, bool> _quickFilter => item =>
+    {
+        if (string.IsNullOrWhiteSpace(_searchString))
+            return true;
+
+        return Contem(item.PorteiroEmprestimoNome, _searchString)
+            || Contem(item.Identificacao, _searchString)
+            || Contem(item.Descricao, _searchString)
+            || Contem(item.NomePessoaEmprestimo, _searchString)
+            || Contem(item.MatriculaEmprestimo?.ToString(), _searchString)
+            || Contem(item.ObservacaoEmprestimo, _searchString)
+            || Contem(item.PorteiroDevolucaoNome, _searchString)
+            || Contem(item.NomePessoaDevolucao, _searchString);
+    };
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender || _skeleton is null)
+            return;
+
+        await _skeleton.IniciarAsync();
+        try
+        {
+            MontarChipsDeMeses();
+            await CarregarMesesDisponiveisAsync();
+            await CarregarAsync();
+        }
+        finally
+        {
+            await _skeleton.FinalizarAsync();
+        }
+    }
+    private async Task AtualizarPaginaAsync()
+    {
+        await CarregarAsync();
+    }
+    private void VoltarAsync() => Navigation.NavigateTo("/portaria/controle-chave");
+    private async Task CarregarAsync()
+    {
+        if (_carregando)
+            return;
+
+        _carregando = true;
+        try
+        {
+            var inicio = _dataInicial?.Date ?? ObterInicioDaSemana(DateTime.Today);
+            var fim = _dataFinal?.Date ?? inicio.AddDays(6);
+
+            if (fim < inicio)
+            {
+                Snackbar.Add("A data final não pode ser anterior à data inicial.", Severity.Warning);
+                return;
+            }
+
+            var resultado = await ControleChaveService.ListarMovimentacoesAsync(
+                inicio, fim, MatriculaPessoaSelecionada);
+
+            if (resultado.Success)
+            {
+                _movimentacoes = resultado.Value ?? [];
+            }
+            else
+            {
+                _movimentacoes = [];
+                Snackbar.Add(resultado.Message ?? "Não foi possível consultar os empréstimos.", Severity.Error);
+            }
+        }
+        finally
+        {
+            _carregando = false;
+        }
+    }
+    private void MontarChipsDeMeses()
+    {
+        var cultura = new System.Globalization.CultureInfo("pt-BR");
+        var ano = (_dataInicial ?? DateTime.Today).Year;
+        var ultimoMes = ano == DateTime.Today.Year ? DateTime.Today.Month : 12;
+        _mesesAbreviados = Enumerable.Range(1, ultimoMes)
+            .ToDictionary(mes => mes, mes => cultura.DateTimeFormat.GetAbbreviatedMonthName(mes).ToUpper());
+    }
+    private async Task CarregarMesesDisponiveisAsync()
+    {
+        var ano = (_dataInicial ?? DateTime.Today).Year;
+        var resultado = await ControleChaveService.ListarMesesComMovimentacaoAsync(ano);
+        _mesesDisponiveis = resultado.Success ? (resultado.Value ?? []).ToHashSet() : [];
+    }
+    private bool MesExisteNaBase(int mes)
+    {
+        return _mesesDisponiveis.Contains(mes);
+    }
+    private async Task OnMesSelecionadoChanged(int mes)
+    {
+        if (mes != 13 && !MesExisteNaBase(mes))
+            return;
+
+        _mesSelecionado = mes;
+
+        if (mes != 13)
+        {
+            var ano = (_dataInicial ?? DateTime.Today).Year;
+            _dataInicial = new DateTime(ano, mes, 1);
+            _dataFinal = _dataInicial.Value.AddMonths(1).AddDays(-1);
+            await CarregarAsync();
+        }
+    }
+    private void OnFiltroStatusChanged(string status)
+    {
+        _filtroStatus = status;
+    }
+    private Task OnPessoaSelecionadaChangedAsync(PessoaChaveDto? pessoa)
+    {
+        _pessoaSelecionada = pessoa;
+        return Task.CompletedTask;
+    }
+    private IEnumerable<ControleChaveDto> GetFilteredItems()
+    {
+        IEnumerable<ControleChaveDto> query = _movimentacoes;
+
+        if (_mesSelecionado != 13)
+            query = query.Where(x => x.DataEmprestimo?.Month == _mesSelecionado);
+
+        if (_filtroStatus == "EMPRESTADAS")
+            query = query.Where(x => !x.DataDevolucao.HasValue);
+        else if (_filtroStatus == "DEVOLVIDAS")
+            query = query.Where(x => x.DataDevolucao.HasValue);
+
+        return query.OrderByDescending(x => x.DataEmprestimo);
+    }
+    private async Task PesquisarAsync()
+    {
+        _mesSelecionado = 13;
+        MontarChipsDeMeses();
+        await CarregarMesesDisponiveisAsync();
+        await CarregarAsync();
+    }
+    private async Task LimparFiltrosAsync()
+    {
+        var hoje = DateTime.Today;
+        var inicioDaSemana = ObterInicioDaSemana(hoje);
+
+        _dataInicial = inicioDaSemana;
+        _dataFinal = inicioDaSemana.AddDays(6);
+        _pessoaSelecionada = null;
+        _searchString = null;
+        _filtroStatus = "TODOS";
+        _mesSelecionado = hoje.Month;
+
+        MontarChipsDeMeses();
+        await CarregarMesesDisponiveisAsync();
+        await CarregarAsync();
+    }
+    private static DateTime ObterInicioDaSemana(DateTime data)
+    {
+        return data.Date.AddDays(-(int)data.DayOfWeek);
+    }
+    private static bool Contem(string? valor, string pesquisa)
+    {
+        return valor?.Contains(pesquisa, StringComparison.InvariantCultureIgnoreCase) == true;
+    }
+    private async Task AbrirRelatorioAsync()
+    {
+        var opcoes = new DialogOptions
+        {
+            CloseButton = true,
+            FullWidth = true,
+            MaxWidth = MaxWidth.ExtraSmall
+        };
+
+        var parametros = new DialogParameters<RelatorioControleChavesDialog>
+        {
+            { x => x.ExibirOpcaoFiltros, true }
+        };
+        var dialogo = await DialogService.ShowAsync<RelatorioControleChavesDialog>(
+            "Relatório de empréstimos", parametros, opcoes);
+        var resultado = await dialogo.Result;
+        if (resultado is null || resultado.Canceled ||
+            resultado.Data is not ValueTuple<string, bool> opcaoRelatorio)
+            return;
+
+        var (formato, usarFiltrosAtuais) = opcaoRelatorio;
+
+        Loading.Show();
+        try
+        {
+            var inicio = _dataInicial?.Date ?? ObterInicioDaSemana(DateTime.Today);
+            var fim = _dataFinal?.Date ?? inicio.AddDays(6);
+            var matricula = usarFiltrosAtuais ? MatriculaPessoaSelecionada : null;
+            IReadOnlyCollection<int>? ids = usarFiltrosAtuais
+                ? GetFilteredItems().Where(_quickFilter).Select(x => x.Id).ToList()
+                : null;
+
+            var arquivo = await ControleChaveService.GerarRelatorioMovimentacoesAsync(
+                formato, inicio, fim, matricula, ids);
+
+            if (!arquivo.Success || arquivo.Value.Conteudo is null || arquivo.Value.Conteudo.Length == 0)
+            {
+                Snackbar.Add(arquivo.Message ?? "Não foi possível gerar o relatório de chaves.", Severity.Error);
+                return;
+            }
+
+            await JSRuntime.InvokeVoidAsync("downloadOrOpenPdf", Convert.ToBase64String(arquivo.Value.Conteudo),
+                arquivo.Value.MimeType, arquivo.Value.NomeArquivo, formato == "PDF");
+            Snackbar.Add("Relatório de chaves gerado com sucesso.", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Erro ao gerar relatório: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            Loading.Hide();
+        }
+    }
+}

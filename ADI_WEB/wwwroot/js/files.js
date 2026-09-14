@@ -27,3 +27,30 @@
     // Libera a memória da URL do blob após o uso
     setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
 };
+
+window.safeBackOrFallback = function (fallbackPath, blockedPaths) {
+    const fallback = fallbackPath || '/portaria/controle-chave';
+    const blocked = (blockedPaths || []).map(path => path.toLowerCase());
+
+    if (!document.referrer) {
+        window.location.href = fallback;
+        return;
+    }
+
+    try {
+        const previousUrl = new URL(document.referrer);
+        const previousPath = previousUrl.pathname.toLowerCase().replace(/\/$/, '') || '/';
+        const isInternal = previousUrl.origin === window.location.origin;
+        const isBlocked = blocked.includes(previousPath);
+        const isCurrentPage = previousUrl.href === window.location.href;
+
+        if (isInternal && !isBlocked && !isCurrentPage) {
+            window.location.href = previousUrl.href;
+            return;
+        }
+    } catch {
+        // Se a origem não puder ser validada, utiliza o destino seguro.
+    }
+
+    window.location.href = fallback;
+};

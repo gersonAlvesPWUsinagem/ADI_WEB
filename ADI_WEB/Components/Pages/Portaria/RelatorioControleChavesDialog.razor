@@ -1,2 +1,52 @@
-<MudDialog><DialogContent><MudText Class="mb-4">Escolha o formato do relatório de chaves.</MudText><MudSelect T="string" @bind-Value="_formato" Label="Formato" Variant="Variant.Outlined"><MudSelectItem Value="@("PDF")">PDF</MudSelectItem><MudSelectItem Value="@("EXCEL")">Excel (.xlsx)</MudSelectItem></MudSelect></DialogContent><DialogActions><MudButton OnClick="@MudDialog.Cancel">Cancelar</MudButton><MudButton Color="Color.Primary" Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.Download" OnClick="@(() => MudDialog.Close(DialogResult.Ok(_formato)))">Gerar relatório</MudButton></DialogActions></MudDialog>
-@code { [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!; private string _formato="PDF"; }
+<MudDialog>
+    <DialogContent>
+        <MudText Class="mb-4">Escolha o formato do relatório de chaves.</MudText>
+
+        <MudSelect T="string" @bind-Value="_formato" Label="Formato" Variant="Variant.Outlined">
+            <MudSelectItem Value="@("PDF")">PDF</MudSelectItem>
+            <MudSelectItem Value="@("EXCEL")">Excel (.xlsx)</MudSelectItem>
+        </MudSelect>
+
+        @if (ExibirOpcaoFiltros)
+        {
+            <MudCheckBox T="bool" @bind-Value="_usarFiltrosAtuais"
+                         Label="Usar os filtros atuais da tela"
+                         Color="Color.Primary" Class="mt-4" />
+            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                Considera o período, mês, situação, pessoa e texto pesquisado.
+            </MudText>
+        }
+    </DialogContent>
+
+    <DialogActions>
+        <MudButton OnClick="Cancelar">Cancelar</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled"
+                   StartIcon="@Icons.Material.Filled.Download" OnClick="Gerar">
+            Gerar relatório
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter] public bool ExibirOpcaoFiltros { get; set; }
+
+    private string _formato = "PDF";
+    private bool _usarFiltrosAtuais;
+
+    private void Gerar()
+    {
+        if (ExibirOpcaoFiltros)
+        {
+            MudDialog.Close(DialogResult.Ok((_formato, _usarFiltrosAtuais)));
+            return;
+        }
+
+        MudDialog.Close(DialogResult.Ok(_formato));
+    }
+
+    private void Cancelar()
+    {
+        MudDialog.Cancel();
+    }
+}

@@ -22,8 +22,8 @@
                      LevelBtn2="@NivelCadastro"
                      TextBtn3="Emprestar chave" IconBtn3="@Icons.Material.Filled.Key" ColorBtn3="Color.Success"
                      LevelBtn3="2" IsDisabledBtn3="@(_selecionada?.Disponivel != true)" OnBtn3Click="AbrirEmprestimoAsync"
-                     TextBtn4="Relatório" IconBtn4="@Icons.Material.Filled.Assessment" ColorBtn4="Color.Tertiary" OnBtn4Click="AbrirRelatorioAsync"
-                     LevelBtn4="5"
+                     TextBtn4="Histórico" IconBtn4="@Icons.Material.Filled.History" ColorBtn4="Color.Tertiary" OnBtn4Click="AbrirHistorico"
+                     LevelBtn4="1"
                      Processing="@(_carregando || _processando)" />
 
     <MudPaper Class="pa-4 mt-2" Elevation="1">
@@ -162,10 +162,8 @@
         : _chaves.Where(x =>
             Contem(x.Identificacao) || Contem(x.Descricao) || Contem(x.Localizacao) ||
             Contem(x.NomePessoaEmprestimo) || Contem(x.NomePessoaDevolucao));
-
     private bool Contem(string? valor) =>
         valor?.Contains(_filtro!, StringComparison.OrdinalIgnoreCase) ?? false;
-
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (!firstRender || _skeleton is null)
@@ -183,7 +181,6 @@
             await _skeleton.FinalizarAsync();
         }
     }
-
     private async Task CarregarPorteirosAsync()
     {
         var resultado = await PortariaService.GetPorteiroOperadorCompAsync();
@@ -192,7 +189,6 @@
         else
             Mensagem(resultado.Message, false);
     }
-
     private async Task<bool> GarantirOperadorAsync()
     {
         if (_operador is not null)
@@ -201,7 +197,6 @@
         await SelecionarOperadorAsync();
         return _operador is not null;
     }
-
     private async Task AcaoOperadorAsync()
     {
         if (_operador is null)
@@ -214,7 +209,6 @@
         _operador = null;
         Mensagem("Operador da portaria desconectado.", true);
     }
-
     private async Task SelecionarOperadorAsync()
     {
         var parametros = new DialogParameters
@@ -257,7 +251,6 @@
         OperadorPortariaState.Definir(_operador);
         Mensagem($"Operador {_operador.Nome} autenticado com sucesso.", true);
     }
-
     private async Task CarregarAsync()
     {
         _carregando = true;
@@ -280,14 +273,10 @@
             _carregando = false;
         }
     }
-
     private bool RegistroSelecionado(ControleChaveDto chave) => _selecionada?.Id == chave.Id;
-
     private void Selecionar(ControleChaveDto chave, bool valor) => _selecionada = valor ? chave : null;
-
     private string ClasseDaLinha(ControleChaveDto chave, int _) =>
         RegistroSelecionado(chave) ? "chave-selecionada" : string.Empty;
-
     private static string TempoEmPosse(ControleChaveDto chave)
     {
         if (chave.Disponivel || chave.DataEmprestimo is null)
@@ -296,7 +285,6 @@
         var tempo = DateTime.Now - chave.DataEmprestimo.Value;
         return $"{Math.Max(0, (int)tempo.TotalDays)} dia(s) e {Math.Max(0, tempo.Hours)} hora(s)";
     }
-
     private async Task AbrirCadastroAsync()
     {
         if (_selecionada is null && !await GarantirOperadorAsync())
@@ -334,13 +322,12 @@
             ? await ControleChaveService.AdicionarAsync(dto)
             : await ControleChaveService.AtualizarAsync(dto.Id, dto));
     }
-
     private Task VisualizarAsync(ControleChaveDto chave)
     {
         Navigation.NavigateTo($"/portaria/controle-chave/{chave.Id}");
         return Task.CompletedTask;
     }
-
+    private void AbrirHistorico() => Navigation.NavigateTo("/portaria/movimentacoes-chave");
     private async Task AbrirEmprestimoAsync()
     {
         var chave = _selecionada;
@@ -368,7 +355,6 @@
 
         await ProcessarAsync(() => ControleChaveService.EmprestarAsync(chave.Id, dto));
     }
-
     private async Task AbrirDevolucaoAsync(ControleChaveDto chave)
     {
         if (!await GarantirOperadorAsync())
@@ -395,7 +381,6 @@
 
         await ProcessarAsync(() => ControleChaveService.DevolverAsync(chave.Id, dto));
     }
-
     private async Task ExcluirAsync(ControleChaveDto chave)
     {
         var confirmado = await DialogService.ShowMessageBoxAsync(
@@ -429,7 +414,6 @@
             Loading.Hide();
         }
     }
-
     private async Task ProcessarAsync(Func<Task<Domain.Helpers.ApiDataService<ControleChaveDto>>> acao)
     {
         _processando = true;
@@ -450,7 +434,6 @@
             Loading.Hide();
         }
     }
-
     private async Task AbrirRelatorioAsync()
     {
         var dialogo = await DialogService.ShowAsync<RelatorioControleChavesDialog>(
@@ -482,7 +465,6 @@
             Loading.Hide();
         }
     }
-
     private void Mensagem(string? texto, bool sucesso) =>
         _snackbarComp.Message(
             texto ?? (sucesso ? "Operação concluída." : "Não foi possível concluir a operação."),

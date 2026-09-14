@@ -13,20 +13,12 @@
 @if (!_carregandoInicial)
 {
     <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="my-6">
-        <MudText Typo="Typo.h4" GutterBottom="true">Logs de erros da API</MudText>
-        <MudPaper Class="pa-4 mb-4">
-            <MudStack Row="true" Spacing="3" AlignItems="AlignItems.End" Class="flex-wrap">
-                <MudDatePicker Label="Data" Date="@_dataAtual" DateFormat="dd/MM/yyyy"
-                               Editable="false" Disabled="true" />
-                <MudTextField T="string" Label="Nome do usuário ou matrícula"
-                              @bind-Value="_filtro" Immediate="true"
-                              Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search"
-                              OnKeyDown="PesquisarAoPressionarEnter" />
-                <MudButton Variant="Variant.Filled" Color="Color.Primary"
-                           StartIcon="@Icons.Material.Filled.Search" OnClick="CarregarAsync"
-                           Disabled="_carregando">Pesquisar</MudButton>
-            </MudStack>
-        </MudPaper>
+        <HeaderComponent Title="Logs de erros da API" Modulo="ModuloEnum.Comercial" Permission="116"
+            ColorBtn1="Color.Primary"
+            IconBtn1="@Icons.Material.Filled.Search"
+            LevelBtn1="0"
+            OnBtn1Click="CarregarAsync"
+            TextBtn1="Pesquisar" />
 
         @if (_carregando)
         {
@@ -34,6 +26,33 @@
         }
 
         <MudTable Items="_logs" Hover="true" Striped="true" Dense="true" Breakpoint="Breakpoint.Md">
+            <ToolBarContent>
+                <MudPaper Class="d-flex flex-wrap flex-grow-1 gap-4" Elevation="0">
+                        <MudAutocomplete T="ApiErrorPessoaDto"
+                                         Value="_pessoaSelecionada"
+                                         ValueChanged="SelecionarPessoaAsync"
+                                         SearchFunc="PesquisarPessoasAsync"
+                                         ToStringFunc="FormatarPessoa"
+                                         Label="Colaborador"
+                                         Placeholder="Digite ao menos 2 caracteres"
+                                         Variant="Variant.Outlined"
+                                         Margin="Margin.Dense"
+                                         MinCharacters="2"
+                                         DebounceInterval="300"
+                                         ResetValueOnEmptyText="true"
+                                         CoerceText="false"
+                                         CoerceValue="false"
+                                         Adornment="Adornment.Start"
+                                         AdornmentIcon="@Icons.Material.Filled.PersonSearch"
+                                         NoItemsTemplate="@NenhumaPessoa" />
+
+                        <MudDatePicker Variant="Variant.Outlined" Margin="Margin.Dense" Adornment="Adornment.Start" Label="Data inicial" @bind-Date="_dataInicial"
+                                       DateFormat="dd/MM/yyyy" Editable="true" />
+
+                        <MudDatePicker Variant="Variant.Outlined" Margin="Margin.Dense" Adornment="Adornment.Start" Label="Data final" @bind-Date="_dataFinal"
+                                       DateFormat="dd/MM/yyyy" Editable="true" />
+                </MudPaper>
+            </ToolBarContent>
             <HeaderContent>
                 <MudTh>Data</MudTh><MudTh>Tela</MudTh><MudTh>Nome do usuário</MudTh>
                 <MudTh>Matrícula TB_USER</MudTh><MudTh>Matrícula VIEW_PESSOAS</MudTh><MudTh>Mensagem de erro</MudTh>
@@ -47,7 +66,9 @@
                 <MudTd DataLabel="Mensagem de erro">@context.MensagemErro</MudTd>
             </RowTemplate>
             <NoRecordsContent>
-                <MudText Class="pa-4">Nenhum erro encontrado para @_dataAtual.ToString("dd/MM/yyyy").</MudText>
+                <MudText Class="pa-4">
+                    Nenhum erro encontrado entre @DataInicial.ToString("dd/MM/yyyy") e @DataFinal.ToString("dd/MM/yyyy").
+                </MudText>
             </NoRecordsContent>
             <PagerContent><MudTablePager RowsPerPageString="Registros por página" /></PagerContent>
         </MudTable>
@@ -55,13 +76,18 @@
 }
 
 @code {
-    private readonly DateTime _dataAtual = DateTime.Today;
+    private DateTime? _dataInicial = DateTime.Today;
+    private DateTime? _dataFinal = DateTime.Today;
     private List<ApiErrorLogDto> _logs = [];
-    private string? _filtro;
+    private ApiErrorPessoaDto? _pessoaSelecionada;
     private bool _carregandoInicial = true;
     private bool _carregando;
     private bool _acessoPermitido;
     private FavoritosSkeleton? _skeleton;
+    private DateTime DataInicial => _dataInicial?.Date ?? DateTime.Today;
+    private DateTime DataFinal => _dataFinal?.Date ?? DateTime.Today;
+    private RenderFragment NenhumaPessoa => builder =>
+        builder.AddContent(0, "Nenhum colaborador encontrado.");
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -101,18 +127,57 @@
     private async Task CarregarAsync()
     {
         if (_carregando) return;
+
+        if (DataFinal < DataInicial)
+        {
+            Snackbar.Add("A data final não pode ser anterior à data inicial.", Severity.Warning);
+            return;
+        }
+
         _carregando = true;
         try
         {
-            var resultado = await ApiErrorLogService.ListarAsync(_dataAtual, _filtro);
+            var matricula = _pessoaSelecionada?.Matricula.ToString();
+            var resultado = await ApiErrorLogService.ListarAsync(DataInicial, DataFinal, matricula);
             if (resultado.Success) _logs = resultado.Value ?? [];
             else Snackbar.Add(resultado.Message ?? "Não foi possível consultar os logs da API.", Severity.Error);
         }
         finally { _carregando = false; }
     }
 
-    private async Task PesquisarAoPressionarEnter(KeyboardEventArgs args)
+    private async Task<IEnumerable<ApiErrorPessoaDto>> PesquisarPessoasAsync(
+        string texto,
+        CancellationToken cancellationToken)
     {
-        if (args.Key == "Enter") await CarregarAsync();
+        if (string.IsNullOrWhiteSpace(texto) || texto.Trim().Length < 2)
+            return [];
+
+        cancellationToken.ThrowIfCancellationRequested();
+        var resultado = await ApiErrorLogService.PesquisarPessoasAsync(texto.Trim());
+        cancellationToken.ThrowIfCancellationRequested();
+
+        if (!resultado.Success)
+        {
+            Snackbar.Add(resultado.Message ?? "Não foi possível pesquisar os colaboradores.", Severity.Error);
+            return [];
+        }
+
+        return resultado.Value ?? [];
+    }
+
+    private Task SelecionarPessoaAsync(ApiErrorPessoaDto? pessoa)
+    {
+        _pessoaSelecionada = pessoa;
+        return Task.CompletedTask;
+    }
+
+    private static string FormatarPessoa(ApiErrorPessoaDto? pessoa)
+    {
+        if (pessoa is null)
+            return string.Empty;
+
+        return pessoa.Matricula == 0
+            ? pessoa.Nome.ToUpperInvariant()
+            : $"{pessoa.Nome.ToUpperInvariant()} - {pessoa.Matricula}";
     }
 }

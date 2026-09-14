@@ -1,6 +1,4 @@
 ﻿@attribute [Authorize]
-
-
 @page "/portaria/registrar-entrada-saida-colaborador"
 @using ADI_WEB.Components.Layout
 @using Microsoft.AspNetCore.Components.Authorization
@@ -13,86 +11,86 @@
 @inject AtualizacaoPortariaNotifier AtualizacaoPortariaNotifier
 @inject OperadorPortariaState OperadorPortariaState
 
-        <HeaderComponent Title="Controle de Pessoas" Modulo="ModuloEnum.Comercial" Permission="189"
-                         TextBtn1="Atualizar"
-                         IconBtn1="@Icons.Material.Filled.Refresh"
-                         ColorBtn1="@Color.Primary"
-                         LevelBtn1="1"
-                         OnBtn1Click="AtualizarPaginaAsync"
-                         TextBtn2="Nova lista"
-                         IconBtn2="@Icons.Material.Filled.Approval"
-                         ColorBtn2="@Color.Success"
-                         LevelBtn2="3"
-                         OnBtn2Click="GerarListaDeApontamentAsync"
-                         TextBtn3="Relatório"
-                         IconBtn3="@Icons.Material.Filled.Assessment"
-                         LevelBtn3="4"
-                         ColorBtn3="Color.Tertiary"
-                         OnBtn3Click="AbrirRelatorioAsync"
-                         TextBtn4="Limpar Filtro"
-                         IconBtn4="@Icons.Material.Filled.FilterAltOff"
-                         IsVisibleOrNotBtn4="@_isFiltradoPorData"
-                         ColorBtn4="Color.Error"
-                         MudFab4="true"
-                         LevelBtn4="1"
-                         OnBtn4Click="LimparFiltroDataAsync"
-                         Processing=@(!_carregado) />
+<HeaderComponent Title="Controle de Pessoas" Modulo="ModuloEnum.Comercial" Permission="189"
+                 TextBtn1="Atualizar"
+                 IconBtn1="@Icons.Material.Filled.Refresh"
+                 ColorBtn1="@Color.Primary"
+                 LevelBtn1="1"
+                 OnBtn1Click="AtualizarPaginaAsync"
+                 TextBtn2="Nova lista"
+                 IconBtn2="@Icons.Material.Filled.Approval"
+                 ColorBtn2="@Color.Primary"
+                 LevelBtn2="3"
+                 OnBtn2Click="GerarListaDeApontamentAsync"
+                 TextBtn3="Relatório"
+                 IconBtn3="@Icons.Material.Filled.Assessment"
+                 LevelBtn3="4"
+                 ColorBtn3="Color.Primary"
+                 OnBtn3Click="AbrirRelatorioAsync"
+                 TextBtn4="Limpar Filtro"
+                 IconBtn4="@Icons.Material.Filled.FilterAltOff"
+                 IsVisibleOrNotBtn4="@_isFiltradoPorData"
+                 ColorBtn4="Color.Error"
+                 MudFab4="true"
+                 LevelBtn4="1"
+                 OnBtn4Click="LimparFiltroDataAsync"
+                 Processing=@(!_carregado) />
 
-        <MudMessageBox @bind-Visible="_exibirAvisoSenhaProvisoria"
-                       Title="Senha provisória"
-                       Message="@_mensagemAvisoSenhaProvisoria">
-            <YesButton>
-                <MudButton Color="Color.Warning"
-                           Variant="Variant.Filled"
-                           OnClick="@(() => _exibirAvisoSenhaProvisoria = false)">
-                    Entendi
-                </MudButton>
-            </YesButton>
-        </MudMessageBox>
+<MudMessageBox @bind-Visible="_exibirAvisoSenhaProvisoria"
+               Title="Senha provisória"
+               Message="@_mensagemAvisoSenhaProvisoria">
+    <YesButton>
+        <MudButton Color="Color.Warning"
+                   Variant="Variant.Filled"
+                   OnClick="@(() => _exibirAvisoSenhaProvisoria = false)">
+            Entendi
+        </MudButton>
+    </YesButton>
+</MudMessageBox>
 
-        <!-- Filtro de Meses -->
-        <MudItem xs="12" Class="mb-1">
-            <div class="d-flex flex-wrap align-center gap-4">
-                <MudChipSet T="int" Size="Size.Large"
-                            SelectedValue="_mesSelecionado"
-                            SelectedValueChanged="OnMesSelecionadoChanged"
-                            CheckMark
-                            SelectionMode="SelectionMode.SingleSelection"
-                            Variant="Variant.Text" Color="Color.Info">
-                    <MudChip Value="13" Disabled="@(!(Elements != null && Elements.Any()))">Todos</MudChip>
-                    @foreach (var mes in MesesAbreviados)
-                    {
-                        <MudChip Value="@mes.Key" Color="@(MesExisteNaBase(mes.Key) ? Color.Primary : Color.Default)">@mes.Value</MudChip>
-                    }
-                </MudChipSet>
-            </div>
-        </MudItem>
+<!-- Filtro de Meses -->
+<MudItem xs="12" Class="mb-1">
+    <div class="d-flex flex-wrap align-center gap-4">
+        <MudChipSet T="int" Size="Size.Large"
+                    SelectedValue="_mesSelecionado"
+                    SelectedValueChanged="OnMesSelecionadoChanged"
+                    CheckMark
+                    SelectionMode="SelectionMode.SingleSelection"
+                    Variant="Variant.Outlined" Color="Color.Primary">
+@*             <MudChip Value="13" Disabled="@(!(Elements != null && Elements.Any()))">Todos</MudChip>
+ *@            @foreach (var mes in MesesAbreviados)
+            {
+                <MudChip Value="@mes.Key" Color="@(MesExisteNaBase(mes.Key) ? Color.Primary : Color.Default)">@mes.Value</MudChip>
+            }
+        </MudChipSet>
+    </div>
+</MudItem>
 
-        <!-- Filtros de Status de Movimentação -->
-        <MudPaper Class="pa-4 mb-4" Elevation="1">
-            <div class="d-flex align-center justify-space-between flex-wrap gap-4">
-                <MudChipSet T="string" Size="Size.Medium"
-                            SelectedValue="_filtroStatusMovimentacao"
-                            SelectedValueChanged="OnFiltroStatusMovimentacaoChanged"
-                            CheckMark
-                            SelectionMode="SelectionMode.SingleSelection"
-                            Variant="Variant.Outlined" Color="Color.Primary">
-                    <MudChip Value="@("TODOS")">Todos</MudChip>
-                    <MudChip Value="@("SOMENTE_ENTRADA")">C/Entrada</MudChip>
-                    <MudChip Value="@("SOMENTE_SAIDA")">C/Saída</MudChip>
-                    <MudChip Value="@("ENTRADA_SAIDA")">Concluídos</MudChip>
-                </MudChipSet>
+<!-- Filtros de Status de Movimentação -->
+<MudPaper Class="pa-4 mb-4" Elevation="1">
+    <div class="d-flex align-center justify-space-between flex-wrap gap-4">
+        <MudChipSet T="string" Size="Size.Medium"
+                    SelectedValue="_filtroStatusMovimentacao"
+                    SelectedValueChanged="OnFiltroStatusMovimentacaoChanged"
+                    CheckMark
+                    SelectionMode="SelectionMode.SingleSelection"
+                    Variant="Variant.Outlined" Color="Color.Primary">
+            <MudChip Value="@("TODOS")">Todos</MudChip>
+            <MudChip Value="@("SEM_ENTRA_SAIDA")">S/ENTRADA OU SAÍDA</MudChip>
+            <MudChip Value="@("SOMENTE_ENTRADA")">C/Entrada</MudChip>
+            <MudChip Value="@("SOMENTE_SAIDA")">C/Saída</MudChip>
+        </MudChipSet>
 
-                <div class="d-flex align-center gap-3">
-                    <span class="mud-typography mud-typography-body1 font-weight-bold">
-                        @GetFilteredItems().Count() visíveis
-                    </span>
-                    <MudAvatar Color="@(value2 is null ? Color.Error : Color.Success)">
-                        @(value2 is null ? "Of" : "On")
-                    </MudAvatar>
-                </div>
-            </div>
-        </MudPaper>
+        <div class="d-flex align-center gap-3">
+            <span class="mud-typography mud-typography-body1 font-weight-bold">
+                @GetFilteredItems().Count() visíveis
+            </span>
+            <MudAvatar Color="@(value2 is null ? Color.Error : Color.Success)">
+                @(value2 is null ? "Of" : "On")
+            </MudAvatar>
+        </div>
+    </div>
+</MudPaper>
 
 
     @if (!_carregado && _somenteAtualizarGrid== false)
@@ -638,7 +636,6 @@
             StateHasChanged();
         }
     }
-
     private async Task AcaoOperadorAsync()
     {
         if (value2 is null)
@@ -983,9 +980,9 @@
         {
             query = query.Where(x => string.IsNullOrEmpty(x.HoraEntrada) && !string.IsNullOrEmpty(x.HoraSaida));
         }
-        else if (_filtroStatusMovimentacao == "ENTRADA_SAIDA")
+        else if (_filtroStatusMovimentacao == "SEM_ENTRA_SAIDA")
         {
-            query = query.Where(x => !string.IsNullOrEmpty(x.HoraEntrada) && !string.IsNullOrEmpty(x.HoraSaida));
+            query = query.Where(x => string.IsNullOrEmpty(x.HoraEntrada) && string.IsNullOrEmpty(x.HoraSaida));
         }
 
         return query;

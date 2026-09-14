@@ -22,3 +22,12 @@ public class ApiErrorLogDto
     public long? MatriculaPessoa { get; set; }
     public string MensagemErro { get; set; } = string.Empty;
 }
+
+public class ApiErrorPessoaDto
+{
+    public long Matricula { get; set; }
+    public long PessoaId { get; set; }
+    public string Nome { get; set; } = string.Empty;
+    public string? Departamento { get; set; }
+    public string? CentroCusto { get; set; }
+}
