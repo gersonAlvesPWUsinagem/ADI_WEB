@@ -1,0 +1,152 @@
+@page "/portaria/controle-chave/estoques"
+@attribute [Authorize]
+@rendermode InteractiveServer
+@using Domain.Dtos.ControleChaves
+@inject IControleChaveService ControleChaveService
+
+<PageTitle>Acesso aos Estoques de Chaves</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="my-6">
+    <FavoritosSkeleton @ref="_skeleton" @bind-Carregando="_carregandoInicial" />
+</MudContainer>
+
+@if (!_carregandoInicial)
+{
+    <HeaderComponent Title="Acesso aos Estoques de Chaves" Modulo="ModuloEnum.Comercial" Permission="115"
+                     TextBtn1="Voltar" IconBtn1="@Icons.Material.Filled.ArrowBack" ColorBtn1="Color.Secondary"
+                     OnBtn1Click="Voltar"
+                     TextBtn2="Atualizar" IconBtn2="@Icons.Material.Filled.Refresh" ColorBtn2="Color.Primary"
+                     LevelBtn2="6" OnBtn2Click="PesquisarAsync"
+                     TextBtn3="Salvar" IconBtn3="@Icons.Material.Filled.Save" ColorBtn3="Color.Success"
+                     LevelBtn3="6" OnBtn3Click="SalvarAsync" IsDisabledBtn3="@(_selecionado is null || _salvando)"
+                     Processing="@(_carregando || _salvando)" />
+
+    <MudPaper Class="pa-4 mt-2" Elevation="1">
+        <MudTextField @bind-Value="_pesquisa" Label="Pesquisar usuário"
+                      Placeholder="Nome, login ou matrícula" Immediate="true"
+                      Variant="Variant.Outlined" Margin="Margin.Dense"
+                      Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.Search"
+                      OnAdornmentClick="PesquisarAsync" />
+
+        <MudDataGrid T="ControleChaveAcessoUsuarioDto" Items="_usuarios" Dense="true" Hover="true"
+                     Striped="true" Loading="_carregando" RowClassFunc="ClasseLinha">
+            <Columns>
+                <TemplateColumn Title="SEL" Sortable="false" Filterable="false">
+                    <CellTemplate>
+                        <MudCheckBox T="bool" Value="@(context.Item.UsuarioId == _selecionado?.UsuarioId)"
+                                     ValueChanged="@(valor => Selecionar(context.Item, valor))" Color="Color.Primary" />
+                    </CellTemplate>
+                </TemplateColumn>
+                <PropertyColumn Property="x => x.Nome" Title="NOME" />
+                <PropertyColumn Property="x => x.Login" Title="LOGIN" />
+                <PropertyColumn Property="x => x.Matricula" Title="MATRÍCULA" />
+                <TemplateColumn Title="ESTOQUES AUTORIZADOS">
+                    <CellTemplate>
+                        <MudStack Row="true" Spacing="1">
+                            @foreach (var estoque in _estoques)
+                            {
+                                <MudChip T="string" Size="Size.Small" Color="Color.Primary"
+                                         Variant="@(context.Item.EstoqueIds.Contains(estoque.Id) ? Variant.Filled : Variant.Outlined)">
+                                    @estoque.Nome
+                                </MudChip>
+                            }
+                        </MudStack>
+                    </CellTemplate>
+                </TemplateColumn>
+            </Columns>
+            <PagerContent><MudDataGridPager T="ControleChaveAcessoUsuarioDto" /></PagerContent>
+        </MudDataGrid>
+    </MudPaper>
+
+    @if (_selecionado is not null)
+    {
+        <MudPaper Class="pa-4 mt-4" Elevation="1">
+            <MudText Typo="Typo.h6">Estoques permitidos para @_selecionado.Nome</MudText>
+            <MudStack Row="true" Class="mt-3" Spacing="4">
+                @foreach (var estoque in _estoques)
+                {
+                    <MudCheckBox T="bool" Label="@estoque.Nome" Color="Color.Primary"
+                                 Value="@_estoquesSelecionados.Contains(estoque.Id)"
+                                 ValueChanged="@(valor => AlterarEstoque(estoque.Id, valor))" />
+                }
+            </MudStack>
+        </MudPaper>
+    }
+}
+
+@code {
+    private FavoritosSkeleton? _skeleton;
+    private List<ControleChaveEstoqueDto> _estoques = [];
+    private List<ControleChaveAcessoUsuarioDto> _usuarios = [];
+    private HashSet<int> _estoquesSelecionados = [];
+    private ControleChaveAcessoUsuarioDto? _selecionado;
+    private string? _pesquisa;
+    private bool _carregandoInicial = true;
+    private bool _carregando;
+    private bool _salvando;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender || _skeleton is null) return;
+        await _skeleton.IniciarAsync();
+        try
+        {
+            var estoques = await ControleChaveService.ListarEstoquesAsync();
+            if (!estoques.Success)
+            {
+                Snackbar.Add(estoques.Message ?? "Acesso não autorizado.", Severity.Error);
+                Navigation.NavigateTo("/portaria/controle-chave");
+                return;
+            }
+            _estoques = estoques.Value ?? [];
+            await PesquisarAsync();
+        }
+        finally { await _skeleton.FinalizarAsync(); }
+    }
+
+    private async Task PesquisarAsync()
+    {
+        if (_carregando) return;
+        _carregando = true;
+        try
+        {
+            var resultado = await ControleChaveService.ListarUsuariosAcessosAsync(_pesquisa);
+            if (resultado.Success) _usuarios = resultado.Value ?? [];
+            else Snackbar.Add(resultado.Message ?? "Não foi possível consultar os usuários.", Severity.Error);
+        }
+        finally { _carregando = false; }
+    }
+
+    private void Selecionar(ControleChaveAcessoUsuarioDto usuario, bool selecionado)
+    {
+        _selecionado = selecionado ? usuario : null;
+        _estoquesSelecionados = selecionado ? usuario.EstoqueIds.ToHashSet() : [];
+    }
+
+    private void AlterarEstoque(int estoqueId, bool selecionado)
+    {
+        if (selecionado) _estoquesSelecionados.Add(estoqueId);
+        else _estoquesSelecionados.Remove(estoqueId);
+    }
+
+    private async Task SalvarAsync()
+    {
+        if (_selecionado is null || _salvando) return;
+        _salvando = true;
+        try
+        {
+            var resultado = await ControleChaveService.DefinirEstoquesDoUsuarioAsync(_selecionado.UsuarioId, _estoquesSelecionados);
+            Snackbar.Add(resultado.Message ?? "Acessos atualizados.", resultado.Success ? Severity.Success : Severity.Error);
+            if (resultado.Success)
+            {
+                _selecionado.EstoqueIds = _estoquesSelecionados.ToList();
+                await PesquisarAsync();
+            }
+        }
+        finally { _salvando = false; }
+    }
+
+    private string ClasseLinha(ControleChaveAcessoUsuarioDto usuario, int _) =>
+        usuario.UsuarioId == _selecionado?.UsuarioId ? "mud-theme-primary" : string.Empty;
+    private void Voltar() => Navigation.NavigateTo("/portaria/controle-chave");
+}

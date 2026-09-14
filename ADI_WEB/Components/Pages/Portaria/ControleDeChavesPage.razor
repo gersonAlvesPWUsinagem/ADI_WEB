@@ -17,20 +17,52 @@
 {
     <HeaderComponent Title="Controle de Chaves" Modulo="ModuloEnum.Comercial" Permission="115"
                      TextBtn1="Atualizar" IconBtn1="@Icons.Material.Filled.Refresh" ColorBtn1="Color.Primary" OnBtn1Click="CarregarAsync"
-                     LevelBtn1="1"
+                     LevelBtn1="1" IsDisabledBtn1="@(_estoqueSelecionadoId <= 0)"
                      TextBtn2="@TextoCadastro" IconBtn2="@IconeCadastro" ColorBtn2="@CorCadastro" OnBtn2Click="AbrirCadastroAsync"
-                     LevelBtn2="@NivelCadastro"
+                     LevelBtn2="@NivelCadastro" IsDisabledBtn2="@(_estoqueSelecionadoId <= 0)"
                      TextBtn3="Emprestar chave" IconBtn3="@Icons.Material.Filled.Key" ColorBtn3="Color.Success"
                      LevelBtn3="2" IsDisabledBtn3="@(_selecionada?.Disponivel != true)" OnBtn3Click="AbrirEmprestimoAsync"
-                     TextBtn4="Histórico" IconBtn4="@Icons.Material.Filled.History" ColorBtn4="Color.Tertiary" OnBtn4Click="AbrirHistorico"
-                     LevelBtn4="1"
+                     TextBtn4="Histórico" IconBtn4="@Icons.Material.Filled.History" ColorBtn4="Color.Tertiary" OnBtn4Click="AbrirHistorico"                    
+                     LevelBtn4="1" IsDisabledBtn4="@(_estoqueSelecionadoId <= 0)"
+
+                     MudFab5=true
+                     IconBtn5="@Icons.Material.Filled.Settings"
+                     ColorBtn5="Color.Tertiary"
+                     OnBtn5Click="@(() => Navigation.NavigateTo("/portaria/controle-chave/estoques"))"
+                     LevelBtn5="6"
                      Processing="@(_carregando || _processando)" />
+
+    <MudPaper Class="pa-4 mb-4" Elevation="1">
+        <div class="d-flex align-center justify-space-between flex-wrap gap-4">
+            <MudChipSet T="string" Size="Size.Medium"
+                        SelectedValue="_filtroStatusChave"
+                        SelectedValueChanged="OnFiltroStatusChaveChanged"
+                        CheckMark
+                        SelectionMode="SelectionMode.SingleSelection"
+                        Variant="Variant.Outlined" Color="Color.Primary">
+                <MudChip Value="@("TODOS")">Todos</MudChip>
+                <MudChip Value="@("FORA")">Chaves fora da @NomeEstoqueSelecionado</MudChip>
+                <MudChip Value="@("NO_ESTOQUE")">Chaves na @NomeEstoqueSelecionado</MudChip>
+            </MudChipSet>
+
+            <span class="mud-typography mud-typography-body1 font-weight-bold">
+                @ChavesFiltradas.Count() visíveis
+            </span>
+        </div>
+    </MudPaper>
 
     <MudPaper Class="pa-4 mt-2" Elevation="1">
         <MudDataGrid T="ControleChaveDto" Items="ChavesFiltradas" Hover="true" Dense="true" Striped="true"
                      Bordered="_exibirBordas" Loading="_carregando" RowClassFunc="ClasseDaLinha">
             <ToolBarContent>
                 <MudPaper Class="d-flex flex-wrap flex-grow-1 gap-4" Elevation="0">
+                    <MudSelect T="int" Value="_estoqueSelecionadoId" ValueChanged="SelecionarEstoqueAsync"
+                               Label="Estoque de chaves" Variant="Variant.Outlined" Margin="Margin.Dense">
+                        @foreach (var estoque in _estoques)
+                        {
+                            <MudSelectItem Value="@estoque.Id">@estoque.Nome</MudSelectItem>
+                        }
+                    </MudSelect>
                     <MudTextField Value="@_operador?.Nome" Label="Operador da portaria"
                                   Placeholder="Clique para identificar o operador" ReadOnly="true"
                                   Variant="Variant.Outlined" Margin="Margin.Dense" Adornment="Adornment.End"
@@ -140,10 +172,13 @@
 @code {
     private FavoritosSkeleton? _skeleton;
     private List<ControleChaveDto> _chaves = [];
+    private List<ControleChaveEstoqueDto> _estoques = [];
+    private int _estoqueSelecionadoId;
     private ControleChaveDto? _selecionada;
     private List<PorteiroOperadorDto> _porteiros = [];
     private PorteiroOperadorDto? _operador;
     private string? _filtro;
+    private string _filtroStatusChave = "TODOS";
     private bool _carregandoInicial = true;
     private bool _carregando;
     private bool _processando;
@@ -157,11 +192,30 @@
     private Color CorCadastro => _selecionada == null ? Color.Success : Color.Warning;
     private int NivelCadastro => _selecionada == null ? 2 : 3;
 
-    private IEnumerable<ControleChaveDto> ChavesFiltradas => string.IsNullOrWhiteSpace(_filtro)
-        ? _chaves
-        : _chaves.Where(x =>
-            Contem(x.Identificacao) || Contem(x.Descricao) || Contem(x.Localizacao) ||
-            Contem(x.NomePessoaEmprestimo) || Contem(x.NomePessoaDevolucao));
+    private string NomeEstoqueSelecionado =>
+        _estoques.FirstOrDefault(x => x.Id == _estoqueSelecionadoId)?.Nome ?? "estoque";
+
+    private IEnumerable<ControleChaveDto> ChavesFiltradas
+    {
+        get
+        {
+            IEnumerable<ControleChaveDto> chaves = _chaves;
+
+            if (_filtroStatusChave == "FORA")
+                chaves = chaves.Where(x => !x.Disponivel);
+            else if (_filtroStatusChave == "NO_ESTOQUE")
+                chaves = chaves.Where(x => x.Disponivel);
+
+            if (!string.IsNullOrWhiteSpace(_filtro))
+            {
+                chaves = chaves.Where(x =>
+                    Contem(x.Identificacao) || Contem(x.Descricao) || Contem(x.Localizacao) ||
+                    Contem(x.NomePessoaEmprestimo) || Contem(x.NomePessoaDevolucao));
+            }
+
+            return chaves;
+        }
+    }
     private bool Contem(string? valor) =>
         valor?.Contains(_filtro!, StringComparison.OrdinalIgnoreCase) ?? false;
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -174,12 +228,45 @@
         {
             _operador = OperadorPortariaState.Operador;
             await CarregarPorteirosAsync();
-            await CarregarAsync();
+            await CarregarEstoquesAsync();
         }
         finally
         {
             await _skeleton.FinalizarAsync();
         }
+    }
+    private async Task CarregarEstoquesAsync()
+    {
+        var resultado = await ControleChaveService.ListarEstoquesDoUsuarioAsync();
+        if (!resultado.Success)
+        {
+            Mensagem(resultado.Message, false);
+            return;
+        }
+
+        _estoques = resultado.Value ?? [];
+        if (_estoques.Count == 0)
+        {
+            Mensagem("Seu usuário não está vinculado a nenhum estoque de chaves.", false);
+            return;
+        }
+
+        _estoqueSelecionadoId = _estoques[0].Id;
+        await CarregarAsync();
+    }
+
+    private async Task SelecionarEstoqueAsync(int estoqueId)
+    {
+        _estoqueSelecionadoId = estoqueId;
+        _selecionada = null;
+        _filtroStatusChave = "TODOS";
+        await CarregarAsync();
+    }
+
+    private void OnFiltroStatusChaveChanged(string status)
+    {
+        _filtroStatusChave = status;
+        _selecionada = null;
     }
     private async Task CarregarPorteirosAsync()
     {
@@ -256,7 +343,10 @@
         _carregando = true;
         try
         {
-            var resultado = await ControleChaveService.ListarAsync();
+            if (_estoqueSelecionadoId <= 0)
+                return;
+
+            var resultado = await ControleChaveService.ListarAsync(_estoqueSelecionadoId);
             if (resultado.Success)
             {
                 _chaves = resultado.Value ?? [];
@@ -319,7 +409,7 @@
             return;
 
         await ProcessarAsync(async () => dto.Id == 0
-            ? await ControleChaveService.AdicionarAsync(dto)
+            ? await ControleChaveService.AdicionarAsync(_estoqueSelecionadoId, dto)
             : await ControleChaveService.AtualizarAsync(dto.Id, dto));
     }
     private Task VisualizarAsync(ControleChaveDto chave)
@@ -327,7 +417,7 @@
         Navigation.NavigateTo($"/portaria/controle-chave/{chave.Id}");
         return Task.CompletedTask;
     }
-    private void AbrirHistorico() => Navigation.NavigateTo("/portaria/movimentacoes-chave");
+    private void AbrirHistorico() => Navigation.NavigateTo($"/portaria/movimentacoes-chave?estoqueId={_estoqueSelecionadoId}");
     private async Task AbrirEmprestimoAsync()
     {
         var chave = _selecionada;
@@ -446,7 +536,7 @@
         Loading.Show();
         try
         {
-            var arquivo = await ControleChaveService.GerarRelatorioAsync(formato);
+            var arquivo = await ControleChaveService.GerarRelatorioAsync(formato, _estoqueSelecionadoId);
             if (!arquivo.Success || arquivo.Value.Conteudo is null)
             {
                 Mensagem(arquivo.Message, false);

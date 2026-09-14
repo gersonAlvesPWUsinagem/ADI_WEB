@@ -70,41 +70,49 @@
     [Parameter] public string TextBtn2 { get; set; } = "None";
     [Parameter] public string TextBtn3 { get; set; } = "None";
     [Parameter] public string TextBtn4 { get; set; } = "None";
+    [Parameter] public string TextBtn5 { get; set; } = "None";
 
     [Parameter] public bool IsVisibleOrNotBtn1 { get; set; } = true;
     [Parameter] public bool IsVisibleOrNotBtn2 { get; set; } = true;
     [Parameter] public bool IsVisibleOrNotBtn3 { get; set; } = true;
     [Parameter] public bool IsVisibleOrNotBtn4 { get; set; } = true;
+    [Parameter] public bool IsVisibleOrNotBtn5 { get; set; } = true;
     [Parameter] public bool IsDisabledBtn1 { get; set; }
     [Parameter] public bool IsDisabledBtn2 { get; set; }
     [Parameter] public bool IsDisabledBtn3 { get; set; }
     [Parameter] public bool IsDisabledBtn4 { get; set; }
+    [Parameter] public bool IsDisabledBtn5 { get; set; }
     [Parameter] public bool Processing { get; set; }
 
     [Parameter] public bool MudFab1 { get; set; }
     [Parameter] public bool MudFab2 { get; set; }
     [Parameter] public bool MudFab3 { get; set; }
     [Parameter] public bool MudFab4 { get; set; }
+    [Parameter] public bool MudFab5 { get; set; }
 
     [Parameter] public string IconBtn1 { get; set; } = string.Empty;
     [Parameter] public string IconBtn2 { get; set; } = string.Empty;
     [Parameter] public string IconBtn3 { get; set; } = string.Empty;
     [Parameter] public string IconBtn4 { get; set; } = string.Empty;
+    [Parameter] public string IconBtn5 { get; set; } = string.Empty;
 
     [Parameter] public Color? ColorBtn1 { get; set; } = Color.Default;
     [Parameter] public Color? ColorBtn2 { get; set; } = Color.Default;
     [Parameter] public Color? ColorBtn3 { get; set; } = Color.Default;
     [Parameter] public Color? ColorBtn4 { get; set; } = Color.Default;
+    [Parameter] public Color? ColorBtn5 { get; set; } = Color.Default;
 
     [Parameter] public int? LevelBtn1 { get; set; }
     [Parameter] public int? LevelBtn2 { get; set; }
     [Parameter] public int? LevelBtn3 { get; set; }
     [Parameter] public int? LevelBtn4 { get; set; }
+    [Parameter] public int? LevelBtn5 { get; set; }
 
     [Parameter] public EventCallback OnBtn1Click { get; set; }
     [Parameter] public EventCallback OnBtn2Click { get; set; }
     [Parameter] public EventCallback OnBtn3Click { get; set; }
     [Parameter] public EventCallback OnBtn4Click { get; set; }
+    [Parameter] public EventCallback OnBtn5Click { get; set; }
 
     private List<BtnLayout> ListBtnDaTela { get; } = new List<BtnLayout>();
     private List<PermissionUserDto>? PermissionUserList { get; set; }
@@ -179,7 +187,8 @@
             new BtnLayout { IsDisabled = LevelBtn1.HasValue || IsDisabledBtn1, IsDisabledBase = IsDisabledBtn1, Title = TextBtn1, Icon = IconBtn1, Color = ColorBtn1 ?? Color.Primary, IsVisibleBase = IsVisibleOrNotBtn1, Level = LevelBtn1, IsFab = MudFab1, OnClick = OnBtn1Click },
             new BtnLayout { IsDisabled = LevelBtn2.HasValue || IsDisabledBtn2, IsDisabledBase = IsDisabledBtn2, Title = TextBtn2, Icon = IconBtn2, Color = ColorBtn2 ?? Color.Secondary, IsVisibleBase = IsVisibleOrNotBtn2, Level = LevelBtn2, IsFab = MudFab2, OnClick = OnBtn2Click },
             new BtnLayout { IsDisabled = LevelBtn3.HasValue || IsDisabledBtn3, IsDisabledBase = IsDisabledBtn3, Title = TextBtn3, Icon = IconBtn3, Color = ColorBtn3 ?? Color.Tertiary, IsVisibleBase = IsVisibleOrNotBtn3, Level = LevelBtn3, IsFab = MudFab3, OnClick = OnBtn3Click },
-            new BtnLayout { IsDisabled = LevelBtn4.HasValue || IsDisabledBtn4, IsDisabledBase = IsDisabledBtn4, Title = TextBtn4, Icon = IconBtn4, Color = ColorBtn4 ?? Color.Tertiary, IsVisibleBase = IsVisibleOrNotBtn4, Level = LevelBtn4, IsFab = MudFab4, OnClick = OnBtn4Click }
+            new BtnLayout { IsDisabled = LevelBtn4.HasValue || IsDisabledBtn4, IsDisabledBase = IsDisabledBtn4, Title = TextBtn4, Icon = IconBtn4, Color = ColorBtn4 ?? Color.Tertiary, IsVisibleBase = IsVisibleOrNotBtn4, Level = LevelBtn4, IsFab = MudFab4, OnClick = OnBtn4Click },
+            new BtnLayout { IsDisabled = LevelBtn5.HasValue || IsDisabledBtn5, IsDisabledBase = IsDisabledBtn5, Title = TextBtn5, Icon = IconBtn5, Color = ColorBtn5 ?? Color.Tertiary, IsVisibleBase = IsVisibleOrNotBtn5, Level = LevelBtn5, IsFab = MudFab5, OnClick = OnBtn5Click }
         };
     }
 
@@ -187,10 +196,11 @@
     {
         foreach (var item in botoesCandidatos)
         {
-            if (string.Equals(item.Title, "None", StringComparison.OrdinalIgnoreCase) || string.IsNullOrWhiteSpace(item.Title))
-                item.IsVisibleOrNot = false;
-            else
-                item.IsVisibleOrNot = item.IsVisibleBase;
+            var possuiTexto = !string.Equals(item.Title, "None", StringComparison.OrdinalIgnoreCase)
+                && !string.IsNullOrWhiteSpace(item.Title);
+            var possuiConteudoFab = item.IsFab && !string.IsNullOrWhiteSpace(item.Icon);
+
+            item.IsVisibleOrNot = item.IsVisibleBase && (possuiTexto || possuiConteudoFab);
         }
 
         if (PermissionUserList is not null && PermissionUserList.Count > 0)

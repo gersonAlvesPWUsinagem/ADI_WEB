@@ -62,6 +62,13 @@
                      Hover="true" Bordered="@_bordered" Loading="@_carregando">
             <ToolBarContent>
                 <MudPaper Class="d-flex justify-space-between flex-grow-1 gap-4" Elevation="0">
+                    <MudSelect T="int" Value="_estoqueSelecionadoId" ValueChanged="SelecionarEstoqueAsync"
+                               Label="Estoque" Variant="Variant.Outlined" Margin="Margin.Dense">
+                        @foreach (var estoque in _estoques)
+                        {
+                            <MudSelectItem Value="@estoque.Id">@estoque.Nome</MudSelectItem>
+                        }
+                    </MudSelect>
                     <MudDatePicker Label="Data inicial" @bind-Date="_dataInicial" DateFormat="dd/MM/yyyy"
                                    Editable="true" Variant="Variant.Outlined" Margin="Margin.Dense" />
 
@@ -111,6 +118,10 @@
     private MudDataGrid<ControleChaveDto> _dataGrid = default!;
     private FavoritosSkeleton? _skeleton;
     private List<ControleChaveDto> _movimentacoes = [];
+    private List<ControleChaveEstoqueDto> _estoques = [];
+    private int _estoqueSelecionadoId;
+    [SupplyParameterFromQuery(Name = "estoqueId")]
+    public int? EstoqueId { get; set; }
     private Dictionary<int, string> _mesesAbreviados = [];
     private HashSet<int> _mesesDisponiveis = [];
     private DateTime? _dataInicial = ObterInicioDaSemana(DateTime.Today);
@@ -165,13 +176,33 @@
         try
         {
             MontarChipsDeMeses();
-            await CarregarMesesDisponiveisAsync();
-            await CarregarAsync();
+            await CarregarEstoquesAsync();
         }
         finally
         {
             await _skeleton.FinalizarAsync();
         }
+    }
+    private async Task CarregarEstoquesAsync()
+    {
+        var resultado = await ControleChaveService.ListarEstoquesDoUsuarioAsync();
+        _estoques = resultado.Success ? resultado.Value ?? [] : [];
+        if (_estoques.Count == 0)
+        {
+            Snackbar.Add(resultado.Message ?? "Seu usuário não está vinculado a nenhum estoque de chaves.", Severity.Error);
+            return;
+        }
+
+        _estoqueSelecionadoId = _estoques.Any(x => x.Id == EstoqueId) ? EstoqueId!.Value : _estoques[0].Id;
+        await CarregarMesesDisponiveisAsync();
+        await CarregarAsync();
+    }
+
+    private async Task SelecionarEstoqueAsync(int estoqueId)
+    {
+        _estoqueSelecionadoId = estoqueId;
+        await CarregarMesesDisponiveisAsync();
+        await CarregarAsync();
     }
     private async Task AtualizarPaginaAsync()
     {
@@ -196,7 +227,7 @@
             }
 
             var resultado = await ControleChaveService.ListarMovimentacoesAsync(
-                inicio, fim, MatriculaPessoaSelecionada);
+                _estoqueSelecionadoId, inicio, fim, MatriculaPessoaSelecionada);
 
             if (resultado.Success)
             {
@@ -224,7 +255,7 @@
     private async Task CarregarMesesDisponiveisAsync()
     {
         var ano = (_dataInicial ?? DateTime.Today).Year;
-        var resultado = await ControleChaveService.ListarMesesComMovimentacaoAsync(ano);
+        var resultado = await ControleChaveService.ListarMesesComMovimentacaoAsync(_estoqueSelecionadoId, ano);
         _mesesDisponiveis = resultado.Success ? (resultado.Value ?? []).ToHashSet() : [];
     }
     private bool MesExisteNaBase(int mes)
@@ -333,7 +364,7 @@
                 : null;
 
             var arquivo = await ControleChaveService.GerarRelatorioMovimentacoesAsync(
-                formato, inicio, fim, matricula, ids);
+                formato, _estoqueSelecionadoId, inicio, fim, matricula, ids);
 
             if (!arquivo.Success || arquivo.Value.Conteudo is null || arquivo.Value.Conteudo.Length == 0)
             {
