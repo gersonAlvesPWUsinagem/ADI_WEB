@@ -8,13 +8,29 @@
 
     @if (item.EhGrupo)
     {
-        <MudNavGroup Title="@nome" Icon="@item.Icone" Expanded="false">
-            <NavMenuTree Menu="@filhos" />
+        <MudNavGroup Title="@nome" Icon="@(item.EhImagem ? null : item.Icone)" Expanded="false"
+                     Class="@ClasseItem(item)">
+            <TitleContent>
+                @if (item.EhImagem)
+                {
+                    <span class="adi-nav-image-title">
+                        <img src="@item.Icone" alt="" class="adi-nav-image-icon" />
+                        <span>@nome</span>
+                    </span>
+                }
+                else
+                {
+                    @nome
+                }
+            </TitleContent>
+            <ChildContent>
+                <NavMenuTree Menu="@filhos" />
+            </ChildContent>
         </MudNavGroup>
     }
     else
     {
-        <MudNavLink Href="@item.Rota" Match="NavLinkMatch.Prefix" Icon="@item.Icone">
+        <MudNavLink Href="@item.Rota" Match="NavLinkMatch.Prefix" Icon="@item.Icone" Class="adi-nav-item">
             @nome
         </MudNavLink>
     }
@@ -23,4 +39,9 @@
 @code {
     [Parameter, EditorRequired]
     public IReadOnlyDictionary<string, NavMenuItem> Menu { get; set; } = new Dictionary<string, NavMenuItem>();
+
+    private static string ClasseItem(NavMenuItem item) => item.EhImagem
+        ? "adi-nav-item adi-nav-image"
+        : "adi-nav-item";
+
 }

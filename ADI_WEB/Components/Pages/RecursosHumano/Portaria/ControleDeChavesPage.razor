@@ -1,4 +1,4 @@
-@page "/portaria/controle-chave"
+@page "/recursos-humanos/portaria/controle-chave"
 @using Domain.Dtos.ControleChaves
 @attribute [Authorize]
 @rendermode InteractiveServer
@@ -28,7 +28,7 @@
                      MudFab5=true
                      IconBtn5="@Icons.Material.Filled.Settings"
                      ColorBtn5="Color.Tertiary"
-                     OnBtn5Click="@(() => Navigation.NavigateTo("/portaria/controle-chave/estoques"))"
+                     OnBtn5Click="@(() => Navigation.NavigateTo("/recursos-humanos/portaria/controle-chave/estoques"))"
                      LevelBtn5="6"
                      Processing="@(_carregando || _processando)" />
 
@@ -414,10 +414,10 @@
     }
     private Task VisualizarAsync(ControleChaveDto chave)
     {
-        Navigation.NavigateTo($"/portaria/controle-chave/{chave.Id}");
+        Navigation.NavigateTo($"/recursos-humanos/portaria/controle-chave/{chave.Id}");
         return Task.CompletedTask;
     }
-    private void AbrirHistorico() => Navigation.NavigateTo($"/portaria/movimentacoes-chave?estoqueId={_estoqueSelecionadoId}");
+    private void AbrirHistorico() => Navigation.NavigateTo($"/recursos-humanos/portaria/movimentacoes-chave?estoqueId={_estoqueSelecionadoId}");
     private async Task AbrirEmprestimoAsync()
     {
         var chave = _selecionada;

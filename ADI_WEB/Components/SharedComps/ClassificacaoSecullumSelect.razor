@@ -1,0 +1,36 @@
+@using Domain.Dtos.Catracas
+
+<MudSelect T="string" Label="@Label" Value="@Value" ValueChanged="AlterarValorAsync"
+           Variant="Variant.Outlined" Margin="Margin.Dense" Disabled="@(Disabled || _carregando)">
+    <MudSelectItem T="string" Value="@string.Empty">Todos</MudSelectItem>
+    @foreach (var classificacao in _classificacoes)
+    {
+        <MudSelectItem T="string" Value="@classificacao.Descricao">@classificacao.Descricao</MudSelectItem>
+    }
+</MudSelect>
+
+@code {
+    [Inject] private ICatracaService Service { get; set; } = default!;
+    [Parameter] public string Label { get; set; } = "Classificação";
+    [Parameter] public string Value { get; set; } = string.Empty;
+    [Parameter] public EventCallback<string> ValueChanged { get; set; }
+    [Parameter] public bool Disabled { get; set; }
+    private List<SecullumClassificacaoDto> _classificacoes = [];
+    private bool _carregando;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _carregando = true;
+        try
+        {
+            var resposta = await Service.ListarClassificacoesAsync();
+            if (resposta.Success)
+                _classificacoes = (resposta.Value ?? []).Where(x => !string.IsNullOrWhiteSpace(x.Descricao)).ToList();
+            else
+                Snackbar.Add(resposta.Message ?? "Não foi possível carregar as classificações.", Severity.Error);
+        }
+        finally { _carregando = false; }
+    }
+
+    private Task AlterarValorAsync(string valor) => ValueChanged.InvokeAsync(valor ?? string.Empty);
+}

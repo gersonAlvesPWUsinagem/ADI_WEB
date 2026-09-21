@@ -1,0 +1,11 @@
+<MudChip T="string" Size="Size.Small" Color="@(Ativo ? Color.Success : Color.Warning)"
+         Variant="@(Ativo ? Variant.Filled : Variant.Outlined)"
+         Icon="@(Ativo ? Icons.Material.Filled.CheckCircle : Icons.Material.Filled.Schedule)">
+    @(Ativo ? TextoAtivo : TextoInativo)
+</MudChip>
+
+@code {
+    [Parameter] public bool Ativo { get; set; }
+    [Parameter] public string TextoAtivo { get; set; } = "Sim";
+    [Parameter] public string TextoInativo { get; set; } = "Não";
+}

@@ -1,0 +1,22 @@
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="3">
+            <MudAlert Severity="Severity.Success" Variant="Variant.Filled">
+                A comunicação foi recuperada automaticamente.
+            </MudAlert>
+            <MudText Typo="Typo.body1" Style="white-space: pre-line">@Mensagem</MudText>
+            <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">
+                Não é necessário repetir a operação. A lista exibida já corresponde ao carregamento concluído.
+            </MudAlert>
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Fechar">Entendi</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter] public string Mensagem { get; set; } = string.Empty;
+    private void Fechar() => MudDialog.Close();
+}

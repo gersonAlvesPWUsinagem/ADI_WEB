@@ -1,0 +1,30 @@
+::deep .adi-nav-item .mud-nav-link-text {
+    min-width: 0;
+    overflow: hidden;
+    font-size: 0.75rem;
+    line-height: 1.2;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+::deep .adi-nav-item .mud-nav-link-icon {
+    width: 1.125rem;
+    min-width: 1.125rem;
+    height: 1.125rem;
+    font-size: 1.125rem;
+}
+
+.adi-nav-image-title {
+    display: inline-flex;
+    align-items: center;
+    min-width: 0;
+    gap: 12px;
+}
+
+.adi-nav-image-icon {
+    display: block;
+    width: 1.125rem;
+    min-width: 1.125rem;
+    height: 1.125rem;
+    object-fit: contain;
+}

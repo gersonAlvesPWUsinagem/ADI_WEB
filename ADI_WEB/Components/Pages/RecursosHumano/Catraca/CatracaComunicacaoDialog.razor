@@ -1,0 +1,22 @@
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="3">
+            <MudAlert Severity="Severity.Error" Variant="Variant.Filled">
+                A operação com a catraca não foi concluída.
+            </MudAlert>
+            <MudText Typo="Typo.body1" Style="white-space: pre-line">@Mensagem</MudText>
+            <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">
+                Nenhum dado deve ser reenviado até que a comunicação esteja disponível. Feche este aviso e tente novamente após verificar o equipamento.
+            </MudAlert>
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Fechar">Entendi</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter] public string Mensagem { get; set; } = string.Empty;
+    private void Fechar() => MudDialog.Close();
+}

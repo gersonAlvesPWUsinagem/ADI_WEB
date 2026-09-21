@@ -1,6 +1,7 @@
 @inherits LayoutComponentBase
 @implements IDisposable
 @using Microsoft.AspNetCore.Components.Authorization
+@using ADI_WEB.Components.Pages.RecursosHumano.Catraca
 @inject NavigationManager Navigation
 @inject IJSRuntime JS
 @inject AuthenticationStateProvider AuthenticationStateProvider
@@ -11,6 +12,7 @@
 @inject IHttpContextAccessor HttpContextAccessor
 @inject SessionExpirationState SessionExpirationState
 @inject OperadorPortariaState OperadorPortariaState
+@inject ICatracaService CatracaService
 
 <MudThemeProvider Theme="@_theme" IsDarkMode="_isDarkMode" />
 <MudPopoverProvider />
@@ -294,6 +296,8 @@
     private string? _environment;
     private bool _exibirSessaoExpirada;
     private string _returnUrlAposExpiracao = "/main";
+    private CancellationTokenSource? _notificacaoBiometriaCts;
+    private long _ultimaNotificacaoBiometriaId;
 
     private bool IsLoginPage => _currentPath?.StartsWith("user/login", StringComparison.OrdinalIgnoreCase) == true;
     private bool IsPublicHome => string.IsNullOrEmpty(_currentPath) || _currentPath.Equals("home", StringComparison.OrdinalIgnoreCase) || _currentPath.Equals("/", StringComparison.OrdinalIgnoreCase);
@@ -324,6 +328,64 @@
         Loading.OnChange += OnLoadingChanged;
 
         await LoadAuthenticationStateAsync();
+        if (_isAuthenticated && !IsLoginPage)
+            await InicializarMonitorBiometriaAsync();
+    }
+
+    private async Task InicializarMonitorBiometriaAsync()
+    {
+        if (!_isAuthenticated || IsLoginPage || _notificacaoBiometriaCts is not null) return;
+        _notificacaoBiometriaCts = new CancellationTokenSource();
+        try
+        {
+            var resposta = await CatracaService.ListarNotificacoesBiometriaAsync(0);
+            _ultimaNotificacaoBiometriaId = resposta.Value?.MaxBy(x => x.Id)?.Id ?? 0;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogDebug(ex, "Não foi possível inicializar o monitor global de biometrias.");
+        }
+
+        _ = MonitorarBiometriasAsync(_notificacaoBiometriaCts.Token);
+    }
+
+    private async Task MonitorarBiometriasAsync(CancellationToken token)
+    {
+        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(5));
+        try
+        {
+            while (await timer.WaitForNextTickAsync(token))
+            {
+                if (!_isAuthenticated || IsLoginPage) break;
+                var resposta = await CatracaService.ListarNotificacoesBiometriaAsync(_ultimaNotificacaoBiometriaId);
+                foreach (var notificacao in (resposta.Value ?? []).OrderBy(x => x.Id))
+                {
+                    _ultimaNotificacaoBiometriaId = Math.Max(_ultimaNotificacaoBiometriaId, notificacao.Id);
+                    if (notificacao.Sucesso)
+                    {
+                        await InvokeAsync(() => Snackbar.Add(notificacao.Mensagem, Severity.Success,
+                            opcoes => { opcoes.VisibleStateDuration = 10000; opcoes.ShowCloseIcon = true; }));
+                    }
+                    else
+                    {
+                        await InvokeAsync(async () =>
+                        {
+                            var parametros = new DialogParameters<CatracaComunicacaoDialog>
+                            {
+                                { x => x.Mensagem, notificacao.Mensagem }
+                            };
+                            await DialogService.ShowAsync<CatracaComunicacaoDialog>("Falha na comunicação com a catraca", parametros,
+                                new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true, CloseButton = true, BackdropClick = false });
+                        });
+                    }
+                }
+            }
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception ex)
+        {
+            Logger.LogDebug(ex, "O monitor global de biometrias foi interrompido.");
+        }
     }
 
     private async void OnLoadingChanged()
@@ -333,6 +395,8 @@
 
     private Task OnSessionExpiredAsync(string returnUrl)
     {
+        _isAuthenticated = false;
+        PararMonitorBiometria();
         OperadorPortariaState.Limpar();
         _returnUrlAposExpiracao = NormalizarReturnUrl(returnUrl);
         _exibirSessaoExpirada = true;
@@ -426,13 +490,31 @@
         _level = user.Claims.FirstOrDefault(x => x.Type == "Level")?.Value;
         _environment = FormatEnvironment(user.Claims.FirstOrDefault(x => x.Type == "Environment")?.Value);
 
+        if (_isAuthenticated && !IsLoginPage)
+            await InicializarMonitorBiometriaAsync();
+        else
+            PararMonitorBiometria();
+
         await InvokeAsync(StateHasChanged);
     }
 
     private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
     {
         UpdateCurrentPath();
+        if (IsLoginPage)
+            PararMonitorBiometria();
+        else if (_isAuthenticated)
+            _ = InicializarMonitorBiometriaAsync();
         StateHasChanged();
+    }
+
+    private void PararMonitorBiometria()
+    {
+        var cancelamento = _notificacaoBiometriaCts;
+        _notificacaoBiometriaCts = null;
+        if (cancelamento is null) return;
+        cancelamento.Cancel();
+        cancelamento.Dispose();
     }
 
     private void UpdateCurrentPath()
@@ -458,6 +540,7 @@
 
     public void Dispose()
     {
+        PararMonitorBiometria();
         Navigation.LocationChanged -= OnLocationChanged;
         AuthenticationStateProvider.AuthenticationStateChanged -= OnAuthenticationStateChanged;
         Loading.OnChange -= OnLoadingChanged;

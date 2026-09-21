@@ -62,10 +62,12 @@ builder.Services.AddScoped<IFavoritoPaginaService, FavoritoPaginaService>();
 builder.Services.AddScoped<IApiErrorLogService, ApiErrorLogService>();
 builder.Services.AddScoped<IApiErrorContext, ApiErrorContext>();
 builder.Services.AddScoped<IControleChaveService, ControleChaveService>();
+builder.Services.AddScoped<ICatracaService, CatracaService>();
 builder.Services.AddScoped<IRepositorioArquivoAsync, RepositorioArquivoAsync>();
 builder.Services.AddScoped<FavoritoPaginaState>();
 builder.Services.AddScoped<OperadorPortariaState>();
 builder.Services.AddScoped<SessionExpirationState>();
+builder.Services.AddScoped<CatracaNavegacaoState>();
 builder.Services.AddScoped<ApiAuthenticationFailureHandler>();
 
 builder.Services.AddScoped<SnackbarComp>();

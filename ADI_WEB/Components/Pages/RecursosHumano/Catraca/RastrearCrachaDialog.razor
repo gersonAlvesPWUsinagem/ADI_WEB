@@ -1,0 +1,255 @@
+@using Domain.Dtos.Catracas
+
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="3">
+            <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">
+                A pesquisa consulta o Secullum e os snapshots SQLite. Nenhuma catraca será consultada neste rastreamento.
+            </MudAlert>
+
+            <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
+                <MudTextField T="string" @bind-Value="_numero" Label="Número do crachá" Placeholder="Matrícula, referência 1 ou referência 2"
+                              Variant="Variant.Outlined" Immediate Clearable FullWidth
+                              Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Badge" />
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Search"
+                           Disabled="@(_carregando || string.IsNullOrWhiteSpace(_numero))" OnClick="PesquisarAsync">
+                    Pesquisar
+                </MudButton>
+            </MudStack>
+
+            @if (_liberandoSecullum)
+            {
+                <MudAlert Severity="Severity.Warning" Variant="Variant.Filled" Icon="@Icons.Material.Filled.Sync">
+                    <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
+                        <MudProgressCircular Indeterminate Size="Size.Small" Color="Color.Inherit" />
+                        <MudText><b>Liberando no Secullum.</b> @_etapaLiberacao</MudText>
+                    </MudStack>
+                </MudAlert>
+            }
+            @if (_liberandoCatraca)
+            {
+                <MudAlert Severity="Severity.Warning" Variant="Variant.Filled" Icon="@Icons.Material.Filled.Sync">
+                    <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
+                        <MudProgressCircular Indeterminate Size="Size.Small" Color="Color.Inherit" />
+                        <MudText>
+                            <b>Liberando na catraca.</b> @_etapaLiberacao<br />
+                            Esta operação possui duas etapas: exclusão no equipamento físico e atualização do snapshot SQLite.
+                            Não feche esta janela.
+                        </MudText>
+                    </MudStack>
+                </MudAlert>
+            }
+
+            @if (_carregando)
+            {
+                <div class="d-flex align-center justify-center pa-6">
+                    <MudProgressCircular Indeterminate Color="Color.Primary" Class="mr-3" />
+                    <MudText>Rastreando crachá...</MudText>
+                </div>
+            }
+            else if (_resultado is not null)
+            {
+                @if (!string.IsNullOrWhiteSpace(_mensagemLiberacao))
+                {
+                    <MudAlert Severity="Severity.Success" Variant="Variant.Filled">@_mensagemLiberacao</MudAlert>
+                }
+                @if (_errosLiberacao.Count > 0)
+                {
+                    <MudAlert Severity="Severity.Error" Variant="Variant.Filled">
+                        @foreach (var erro in _errosLiberacao)
+                        {
+                            <div>@erro</div>
+                        }
+                    </MudAlert>
+                }
+                @if (_resultado.SnapshotsNaoDisponiveis.Count > 0)
+                {
+                    <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined">
+                        Não existe snapshot para: <b>@string.Join(", ", _resultado.SnapshotsNaoDisponiveis)</b>.
+                        Selecione cada equipamento na tela de integração e clique em Carregar catraca antes de fazer o rastreamento.
+                    </MudAlert>
+                }
+                @if (_resultado.Secullum.Count == 0 && _resultado.Catracas.Count == 0 && _resultado.SnapshotsNaoDisponiveis.Count == 0)
+                {
+                    <MudAlert Severity="Severity.Success" Variant="Variant.Filled" Icon="@Icons.Material.Filled.CheckCircle">
+                        Número de crachá livre.
+                    </MudAlert>
+                }
+                else if (_resultado.Secullum.Count == 0 && _resultado.Catracas.Count == 0)
+                {
+                    <MudAlert Severity="Severity.Warning" Variant="Variant.Filled">
+                        Não é possível afirmar que o crachá está livre enquanto houver catraca sem snapshot.
+                    </MudAlert>
+                }
+                @foreach (var pessoa in _resultado.Secullum.Where(x => x.ProvisorioInicio.HasValue || x.ProvisorioFim.HasValue))
+                {
+                    <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined">
+                        <b>@pessoa.Nome</b> possui período provisório informado:
+                        início @(pessoa.ProvisorioInicio?.ToString("dd/MM/yyyy HH:mm") ?? "não informado") e
+                        fim @(pessoa.ProvisorioFim?.ToString("dd/MM/yyyy HH:mm") ?? "não informado").
+                    </MudAlert>
+                }
+                <MudText Typo="Typo.h6">Secullum</MudText>
+                <MudTable T="RastreamentoCrachaSecullumDto" Items="_resultado.Secullum" Dense Hover Striped Breakpoint="Breakpoint.Sm">
+                    <HeaderContent>
+                        <MudTh>NOME</MudTh><MudTh>CÓD. PESSOA</MudTh><MudTh>CRACHÁ</MudTh>
+                        <MudTh>CLASSIFICAÇÃO</MudTh><MudTh>ORIGEM</MudTh><MudTh>ERRO</MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd DataLabel="Nome">@context.Nome</MudTd>
+                        <MudTd DataLabel="Código">@context.CodigoPessoa</MudTd>
+                        <MudTd DataLabel="Crachá">@(context.NumeroCracha ?? "—")</MudTd>
+                        <MudTd DataLabel="Classificação">@context.Classificacao</MudTd>
+                        <MudTd DataLabel="Origem">@context.OrigemNumero</MudTd>
+                        <MudTd DataLabel="Erro"><MudChip T="string" Size="Size.Small" Color="@(context.CodigoErro == 0 ? Color.Success : Color.Warning)">@context.CodigoErro</MudChip></MudTd>
+                    </RowTemplate>
+                    <NoRecordsContent><MudText Class="pa-3">Não localizado no Secullum.</MudText></NoRecordsContent>
+                </MudTable>
+
+                <MudText Typo="Typo.h6" Class="mt-2">Snapshots das catracas</MudText>
+                <MudTable T="RastreamentoCrachaSnapshotDto" Items="_resultado.Catracas" Dense Hover Striped Breakpoint="Breakpoint.Sm">
+                    <HeaderContent>
+                        <MudTh>CATRACA</MudTh><MudTh>ÍNDICE</MudTh><MudTh>NOME</MudTh>
+                        <MudTh>CAMPO</MudTh><MudTh>MATRÍCULA</MudTh><MudTh>REFERÊNCIA 1</MudTh><MudTh>REFERÊNCIA 2</MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd DataLabel="Catraca"><MudTooltip Text="@context.Ip"><span>@context.Equipamento</span></MudTooltip></MudTd>
+                        <MudTd DataLabel="Índice">@context.Indice</MudTd>
+                        <MudTd DataLabel="Nome">@context.Nome</MudTd>
+                        <MudTd DataLabel="Campo"><MudChip T="string" Size="Size.Small" Color="Color.Info">@context.CampoEncontrado</MudChip></MudTd>
+                        <MudTd DataLabel="Matrícula">@context.Matricula</MudTd>
+                        <MudTd DataLabel="Referência 1">@(context.Referencia1 ?? "—")</MudTd>
+                        <MudTd DataLabel="Referência 2">@(context.Referencia2 ?? "—")</MudTd>
+                    </RowTemplate>
+                    <NoRecordsContent><MudText Class="pa-3">Não localizado nos snapshots das catracas.</MudText></NoRecordsContent>
+                </MudTable>
+            }
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Fechar" Variant="Variant.Text">Fechar</MudButton>
+        <MudButton OnClick="LiberarNoSecullumAsync" Variant="Variant.Filled" Color="Color.Warning"
+                   StartIcon="@Icons.Material.Filled.DeleteSweep"
+                   Disabled="@(_carregando || _liberando || _resultado?.Secullum.Count is null or 0)">
+            @if (_liberandoSecullum)
+            {
+                <MudProgressCircular Indeterminate Size="Size.Small" Color="Color.Inherit" Class="mr-2" />
+                <span>Liberando...</span>
+            }
+            else
+            {
+                <span>Liberar no Secullum</span>
+            }
+        </MudButton>
+        <MudButton OnClick="LiberarNaCatracaAsync" Variant="Variant.Filled" Color="Color.Warning"
+                   StartIcon="@Icons.Material.Filled.DeleteSweep"
+                   Disabled="@(_carregando || _liberando || _resultado?.Catracas.Count is null or 0)">
+            @if (_liberandoCatraca)
+            {
+                <MudProgressCircular Indeterminate Size="Size.Small" Color="Color.Inherit" Class="mr-2" />
+                <span>Liberando...</span>
+            }
+            else
+            {
+                <span>Liberar na catraca</span>
+            }
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+    [Inject] private ICatracaService Service { get; set; } = default!;
+    private string? _numero;
+    private bool _carregando, _liberandoSecullum, _liberandoCatraca;
+    private bool _liberando => _liberandoSecullum || _liberandoCatraca;
+    private string _etapaLiberacao = string.Empty;
+    private string? _mensagemLiberacao;
+    private List<string> _errosLiberacao = [];
+    private RastreamentoCrachaDto? _resultado;
+
+    private async Task PesquisarAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_numero)) return;
+        _carregando = true;
+        try
+        {
+            var resposta = await Service.RastrearCrachaAsync(_numero);
+            if (!resposta.Success) { _snackbarComp.Message(resposta.Message ?? "Não foi possível rastrear o crachá.", Severity.Error, Color.Error); return; }
+            _resultado = resposta.Value;
+            _snackbarComp.Message(resposta.Message ?? "Rastreamento concluído.", Severity.Success, Color.Success);
+        }
+        finally { _carregando = false; }
+    }
+
+    private void Fechar() => MudDialog.Close();
+
+    private async Task LiberarNoSecullumAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_numero) || _resultado?.Secullum.Count is null or 0) return;
+        var confirmado = await DialogService.ShowMessageBoxAsync(
+            "Liberar crachá no Secullum",
+            $"Confirma a liberação do crachá {_numero} somente no Secullum? O identificador ou provisório correspondente será anulado, " +
+            "as datas provisórias serão limpas e os registros em vários números serão excluídos. Nenhuma catraca será alterada.",
+            yesText: "Sim, liberar", cancelText: "Cancelar") ?? false;
+        if (!confirmado) return;
+
+        _liberandoSecullum = true;
+        _etapaLiberacao = "Atualizando os registros do crachá e limpando os vínculos encontrados.";
+        try
+        {
+            var resposta = await Service.LiberarCrachaSecullumAsync(_numero);
+            if (!resposta.Success)
+            {
+                _snackbarComp.Message(resposta.Message ?? "Não foi possível liberar o crachá no Secullum.", Severity.Error, Color.Error);
+                return;
+            }
+            _etapaLiberacao = "Alteração concluída. Atualizando o resultado da pesquisa.";
+            await PesquisarAsync();
+            _mensagemLiberacao = resposta.Message;
+            _errosLiberacao.Clear();
+            _snackbarComp.Message(_mensagemLiberacao ?? "Crachá liberado no Secullum.", Severity.Success, Color.Success);
+        }
+        finally
+        {
+            _liberandoSecullum = false;
+            _etapaLiberacao = string.Empty;
+        }
+    }
+
+    private async Task LiberarNaCatracaAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_numero) || _resultado?.Catracas.Count is null or 0) return;
+        var confirmado = await DialogService.ShowMessageBoxAsync(
+            "Liberar crachá na catraca",
+            $"Confirma a liberação do crachá {_numero}? O cartão completo será excluído somente das catracas em que for encontrado " +
+            "por matrícula, referência 1 ou referência 2, e os snapshots serão reconstruídos. Nenhum dado do Secullum será alterado.",
+            yesText: "Sim, excluir", cancelText: "Cancelar") ?? false;
+        if (!confirmado) return;
+
+        _liberandoCatraca = true;
+        _etapaLiberacao = "Excluindo o registro no equipamento físico. Em seguida, o snapshot será reconstruído.";
+        try
+        {
+            var resposta = await Service.LiberarCrachaCatracaAsync(_numero);
+            if (!resposta.Success)
+            {
+                _snackbarComp.Message(resposta.Message ?? "Não foi possível liberar o crachá.", Severity.Error, Color.Error);
+                return;
+            }
+            _etapaLiberacao = "Equipamento e snapshot processados. Atualizando o resultado da pesquisa.";
+            await PesquisarAsync();
+            _mensagemLiberacao = resposta.Message ?? $"Crachá {_numero} liberado na catraca.";
+            _errosLiberacao = resposta.Value?.ErrosCatracas ?? [];
+            _snackbarComp.Message(_mensagemLiberacao,
+                _errosLiberacao.Count == 0 ? Severity.Success : Severity.Warning,
+                _errosLiberacao.Count == 0 ? Color.Success : Color.Warning);
+        }
+        finally
+        {
+            _liberandoCatraca = false;
+            _etapaLiberacao = string.Empty;
+        }
+    }
+
+}

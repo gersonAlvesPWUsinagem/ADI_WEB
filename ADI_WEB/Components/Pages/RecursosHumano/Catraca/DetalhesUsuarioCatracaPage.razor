@@ -1,0 +1,194 @@
+@page "/recursos-humanos/catraca/integracao/{EquipamentoId:int}/{Indice:int}/{PessoaId:int}"
+@attribute [Authorize]
+@rendermode InteractiveServer
+@using Domain.Dtos.Catracas
+@using ADI_WEB.Components.Pages.RecursosHumano.Portaria
+
+<PageTitle>Detalhes do Usuário da Catraca</PageTitle>
+<NavigationLock ConfirmExternalNavigation="@_alterado" OnBeforeInternalNavigation="ConfirmarSaidaAsync" />
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="my-6">
+    <FavoritosSkeleton @ref="_skeleton" @bind-Carregando="_carregando" />
+</MudContainer>
+
+@if (!_carregando && _usuario is not null)
+{
+    <MudContainer MaxWidth="MaxWidth.Large" Class="my-6">
+        <HeaderComponent Title="Painel do Usuário da Catraca"
+                         TextBtn1="Voltar" IconBtn1="@Icons.Material.Filled.ArrowBack" ColorBtn1="Color.Primary" OnBtn1Click="Voltar"
+                         TextBtn2="Enviar para catraca" IconBtn2="@Icons.Material.Filled.Send" ColorBtn2="Color.Success"
+                         IsVisibleOrNotBtn2="@PodeEnviar" IsDisabledBtn2="_processando" OnBtn2Click="EnviarAsync" Processing="_processando" />
+
+        <MudGrid Spacing="4" Class="mt-2">
+            <MudItem xs="12">
+                <MudPaper Elevation="2" Class="pa-5">
+                    <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Wrap="Wrap.Wrap">
+                        <div>
+                            <MudText Typo="Typo.subtitle2" Color="Color.Secondary">IDENTIFICADOR</MudText>
+                            <MudText Typo="Typo.h4" Class="fw-bold">@_usuario.Codigo</MudText>
+                            <MudText Typo="Typo.body1" Class="mt-1">@_usuario.Nome</MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">@_equipamento?.Descricao (@_equipamento?.Ip)</MudText>
+                        </div>
+                        <MudStack Row="true" Spacing="2">
+                            <StatusChip Ativo="_usuario.CadastradoSecullum" TextoAtivo="Integrado no Secullum" TextoInativo="Fora do Secullum" />
+                            <StatusChip Ativo="_usuario.CadastradoCatraca" TextoAtivo="Enviado à catraca" TextoInativo="Pendente na catraca" />
+                        </MudStack>
+                    </MudStack>
+                </MudPaper>
+            </MudItem>
+
+            <MudItem xs="12" md="6">
+                <MudPaper Elevation="2" Class="pa-5 h-100">
+                    <MudText Typo="Typo.h6" Color="Color.Primary" Class="mb-3"><MudIcon Icon="@Icons.Material.Filled.Storage" Class="mr-2" />Cadastro Secullum</MudText>
+                    <MudDivider Class="mb-3" />
+                    <MudStack Spacing="2">
+                        <Campo Label="ID DA PESSOA" Valor="@(_pessoa?.Id.ToString())" />
+                        <Campo Label="N_IDENTIFICADOR" Valor="@_pessoa?.NIdentificador" />
+                        <Campo Label="NOME" Valor="@_pessoa?.Nome" />
+                        <Campo Label="EMPRESA" Valor="@ValorOuNaoInformado(_pessoa?.Empresa)" />
+                        <Campo Label="CLASSIFICAÇÃO" Valor="@ValorOuNaoInformado(_pessoa?.Classificacao)" />
+                        <Campo Label="ESTADO" Valor="@DescricaoEstado(_pessoa?.Estado)" />
+                    </MudStack>
+                </MudPaper>
+            </MudItem>
+
+            <MudItem xs="12" md="6">
+                <MudPaper Elevation="2" Class="pa-5 h-100">
+                    <MudText Typo="Typo.h6" Color="Color.Primary" Class="mb-3"><MudIcon Icon="@Icons.Material.Filled.Badge" Class="mr-2" />Cadastro na Catraca</MudText>
+                    <MudDivider Class="mb-3" />
+                    @if (_detalhe is null)
+                    { <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined">Este usuário ainda não está cadastrado na catraca selecionada.</MudAlert> }
+                    else
+                    {
+                        <MudStack Spacing="2">
+                            <MudTextField T="string" Label="MENSAGEM AO USUÁRIO" Value="_nomeEdicao" ValueChanged="AlterarNome"
+                                          Required="true" RequiredError="A mensagem ao usuário é obrigatória." Variant="Variant.Outlined" Margin="Margin.Dense" />
+                            <Campo Label="MATRÍCULA" Valor="@_detalhe.Codigo" />
+                            <MudTextField T="string" Label="REFERÊNCIA 1" Value="_referencia1Edicao" ValueChanged="AlterarReferencia1"
+                                          HelperText="Opcional — pode ficar em branco para limpar na catraca." Variant="Variant.Outlined" Margin="Margin.Dense" />
+                            <MudTextField T="string" Label="REFERÊNCIA 2" Value="_referencia2Edicao" ValueChanged="AlterarReferencia2"
+                                          HelperText="Opcional — pode ficar em branco." Variant="Variant.Outlined" Margin="Margin.Dense" />
+                            <Campo Label="TIPO DE USUÁRIO" Valor="@_detalhe.TipoUsuario" />
+                            <Campo Label="NÍVEL DE CONTROLE" Valor="@_detalhe.NivelControle" />
+                        </MudStack>
+                    }
+                </MudPaper>
+            </MudItem>
+
+            @if (_detalhe is not null)
+            {
+                <MudItem xs="12">
+                    <MudPaper Elevation="2" Class="pa-5">
+                        <MudText Typo="Typo.h6" Color="Color.Primary" Class="mb-3"><MudIcon Icon="@Icons.Material.Filled.Fingerprint" Class="mr-2" />Controle e biometria</MudText>
+                        <MudDivider Class="mb-3" />
+                        <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Dense="true" Class="mb-4">
+                            A catraca armazena templates biométricos codificados, e não imagens da impressão digital. Por segurança, esses templates não podem ser convertidos novamente em imagem.
+                        </MudAlert>
+                        <MudGrid>
+                            <MudItem xs="12" sm="4"><Campo Label="VERIFICAR VALIDADE" Valor="@SimNao(_detalhe.VerificarValidade)" /></MudItem>
+                            <MudItem xs="12" sm="4"><Campo Label="VALIDADE INICIAL" Valor="@_detalhe.ValidadeInicial" /></MudItem>
+                            <MudItem xs="12" sm="4"><Campo Label="VALIDADE FINAL" Valor="@_detalhe.ValidadeFinal" /></MudItem>
+                            <MudItem xs="12" sm="4"><Campo Label="VERIFICAR HORÁRIO" Valor="@SimNao(_detalhe.VerificarHorario)" /></MudItem>
+                            <MudItem xs="12" sm="4"><Campo Label="HORÁRIOS" Valor="@_detalhe.Horarios" /></MudItem>
+                            <MudItem xs="12" sm="4"><Campo Label="EXIGE DIGITAL PARA LIBERAR ACESSO" Valor="@SimNao(_detalhe.VerificarDigital)" /></MudItem>
+                            <MudItem xs="12" sm="4"><Campo Label="BIOMETRIA NA CATRACA" Valor="@DescricaoBiometria(_detalhe.QuantidadeBiometrias)" /></MudItem>
+                            <MudItem xs="12" sm="4"><Campo Label="RELÉS" Valor="@Lista(_detalhe.Reles, "Relé ")" /></MudItem>
+                            <MudItem xs="12" sm="4"><Campo Label="DEDOS DE PÂNICO" Valor="@Lista(_detalhe.DedosPanico)" /></MudItem>
+                        </MudGrid>
+                    </MudPaper>
+                </MudItem>
+            }
+        </MudGrid>
+    </MudContainer>
+}
+
+@code {
+    [Parameter] public int EquipamentoId { get; set; }
+    [Parameter] public int Indice { get; set; }
+    [Parameter] public int PessoaId { get; set; }
+    [Inject] private ICatracaService Service { get; set; } = default!;
+    private FavoritosSkeleton? _skeleton;
+    private CatracaEquipamentoDto? _equipamento;
+    private CatracaCartaoDto? _usuario;
+    private CatracaCartaoDetalheDto? _detalhe;
+    private SecullumPessoaIntegracaoDto? _pessoa;
+    private bool _carregando = true, _processando;
+    private bool _alterado;
+    private string _nomeEdicao = string.Empty;
+    private string _referencia1Edicao = string.Empty;
+    private string? _referencia2Edicao;
+    private bool PodeEnviar => _usuario is { CadastradoSecullum: true, CadastradoCatraca: true } && PessoaId > 0;
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender || _skeleton is null) return;
+        Loading.Show();
+        await _skeleton.IniciarAsync();
+        try
+        {
+            var equipamentos = await Service.ListarEquipamentosAsync();
+            _equipamento = equipamentos.Value?.FirstOrDefault(x => x.Id == EquipamentoId);
+            var usuarios = await Service.ListarSnapshotAsync(EquipamentoId);
+            _usuario = usuarios.Value?.FirstOrDefault(x => x.Indice == Indice && (PessoaId == 0 || x.PessoaId == PessoaId));
+            if (PessoaId > 0) { var pessoas = await Service.ListarPessoasAsync(); _pessoa = pessoas.Value?.FirstOrDefault(x => x.Id == PessoaId); }
+            if (Indice >= 0)
+            {
+                var detalhe = await Service.ObterDetalheAsync(EquipamentoId, Indice);
+                if (detalhe.Success)
+                {
+                    _detalhe = detalhe.Value;
+                    if (_usuario is not null && _detalhe is not null)
+                    {
+                        _nomeEdicao = _detalhe.Nome;
+                        _referencia1Edicao = _detalhe.Referencia1 ?? string.Empty;
+                        _referencia2Edicao = _detalhe.Referencia2;
+                        _usuario.QuantidadeBiometriasCatraca = _detalhe.QuantidadeBiometrias;
+                        _usuario.BiometriaCatracaCarregada = true;
+                    }
+                }
+            }
+            if (_usuario is null) Snackbar.Add("Usuário não localizado.", Severity.Error);
+        }
+        finally
+        {
+            await _skeleton.FinalizarAsync();
+            Loading.Hide();
+        }
+    }
+    private async Task EnviarAsync()
+    {
+        if (!PodeEnviar || _detalhe is null) return;
+        if (string.IsNullOrWhiteSpace(_nomeEdicao)) { Snackbar.Add("A mensagem ao usuário é obrigatória.", Severity.Warning); return; }
+        _processando = true;
+        try
+        {
+            var r = await Service.AlterarUsuarioAsync(new()
+            {
+                EquipamentoId = EquipamentoId, Indice = Indice, PessoaId = PessoaId,
+                Codigo = _detalhe.Codigo, Nome = _nomeEdicao,
+                Referencia1 = string.IsNullOrWhiteSpace(_referencia1Edicao) ? null : _referencia1Edicao.Trim(),
+                Referencia2 = _referencia2Edicao, TipoUsuario = _detalhe.TipoUsuario,
+                NivelControle = _detalhe.NivelControle, VerificarDigital = _detalhe.VerificarDigital
+            });
+            Snackbar.Add(r.Message ?? "Operação concluída.", r.Success ? Severity.Success : Severity.Error);
+            if (r.Success) { _alterado = false; Voltar(); }
+        }
+        finally { _processando = false; }
+    }
+    private void AlterarNome(string valor) { _nomeEdicao = valor; _alterado = true; }
+    private void AlterarReferencia1(string valor) { _referencia1Edicao = valor; _alterado = true; }
+    private void AlterarReferencia2(string? valor) { _referencia2Edicao = valor; _alterado = true; }
+    private async Task ConfirmarSaidaAsync(LocationChangingContext contexto)
+    {
+        if (!_alterado) return;
+        var sair = await JSRuntime.InvokeAsync<bool>("confirm", "Existem alterações que ainda não foram enviadas para a catraca. Ao sair, elas não serão salvas. Deseja continuar?");
+        if (!sair) contexto.PreventNavigation();
+    }
+    private void Voltar() => Navigation.NavigateTo("/recursos-humanos/catraca/integracao");
+    private static string SimNao(bool valor) => valor ? "Sim" : "Não";
+    private static string DescricaoBiometria(int quantidade) => quantidade > 0
+        ? $"Sim ({quantidade} template(s))"
+        : "Não cadastrada";
+    private static string Lista(IEnumerable<int> itens, string prefixo = "") => itens.Any() ? string.Join(", ", itens.Select(x => $"{prefixo}{x}")) : "Nenhum";
+    private static string ValorOuNaoInformado(string? valor) => string.IsNullOrWhiteSpace(valor) ? "Não informado" : valor;
+    private static string DescricaoEstado(int? estado) => estado switch { 0 => "Ativo", 1 => "Bloqueado", 3 => "Inativo", _ => "Não informado" };
+}

@@ -1,0 +1,212 @@
+@attribute [Authorize]
+@page "/recursos-humanos/catraca/biometria"
+@rendermode InteractiveServer
+@implements IDisposable
+@using Domain.Dtos.Catracas
+@using ADI_WEB.Components.Pages.RecursosHumano.Portaria
+
+<PageTitle>Biometria das Catracas</PageTitle>
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="my-6">
+    <HeaderComponent Title="Biometria das Catracas" Modulo="ModuloEnum.Comercial" Permission="189"
+        TextBtn1="Atualizar" TooltipBtn1="Iniciar atualização das biometrias em segundo plano"
+        IconBtn1="@Icons.Material.Filled.Fingerprint" ColorBtn1="Color.Tertiary"
+        IsDisabledBtn1="@(!_equipamentoId.HasValue || _emProcessamento)" OnBtn1Click="IniciarAtualizacaoAsync" />
+
+    @if (_emProcessamento)
+    {
+        <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Class="mb-4">
+            <MudProgressCircular Indeterminate Size="Size.Small" Class="mr-2" />
+            Esta busca pode levar muito tempo. Você pode continuar usando o sistema; avisaremos quando estiver pronta.
+        </MudAlert>
+    }
+    @if (_secullumAlterado)
+    {
+        <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Class="mb-4">
+            O monitor registrou eventos de biometria por CRUD ainda não confirmados como enviados pelo Secullum. Sincronize com a catraca e aguarde “ENV. SEC.” ficar como Sim.
+        </MudAlert>
+    }
+
+    <div class="d-flex justify-end mb-2">
+        <MudTooltip Text="Data e hora em que as biometrias foram consultadas diretamente na catraca e gravadas no snapshot.">
+            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                Última sincronização com a catraca: @(_atualizadoEm?.ToLocalTime().ToString("dd/MM/yyyy HH:mm:ss") ?? "ainda não realizada")
+            </MudText>
+        </MudTooltip>
+    </div>
+
+    <MudPaper Class="pa-4" Elevation="1">
+        <MudGrid Spacing="2" Class="mb-3">
+            <MudItem xs="12" md="4">
+                <MudText Typo="Typo.caption">CAD. SEC.</MudText>
+                <MudChipSet T="string" SelectedValue="_filtroCadastro" SelectedValueChanged="OnFiltroCadastroChanged" SelectionMode="SelectionMode.SingleSelection" CheckMark Color="Color.Primary" Variant="Variant.Outlined">
+                    <MudChip Value="@("TODOS")">Todos</MudChip>
+                    @foreach (var ano in AnosCadastro) { <MudChip Value="@ano.ToString()">@ano</MudChip> }
+                    <MudChip Value="@("SEM")">Sem data</MudChip>
+                </MudChipSet>
+            </MudItem>
+            <MudItem xs="12" md="4">
+                <MudText Typo="Typo.caption">ALT. SEC.</MudText>
+                <MudChipSet T="string" SelectedValue="_filtroAlteracao" SelectedValueChanged="OnFiltroAlteracaoChanged" SelectionMode="SelectionMode.SingleSelection" CheckMark Color="Color.Primary" Variant="Variant.Outlined">
+                    <MudChip Value="@("TODOS")">Todos</MudChip>
+                    @foreach (var ano in AnosAlteracao) { <MudChip Value="@ano.ToString()">@ano</MudChip> }
+                    <MudChip Value="@("SEM")">Sem data</MudChip>
+                </MudChipSet>
+            </MudItem>
+            <MudItem xs="12" md="4">
+                <MudText Typo="Typo.caption">ÚLT. ENTR.</MudText>
+                <MudChipSet T="string" SelectedValue="_filtroUltimaEntrada" SelectedValueChanged="OnFiltroUltimaEntradaChanged" SelectionMode="SelectionMode.SingleSelection" CheckMark Color="Color.Primary" Variant="Variant.Outlined">
+                    <MudChip Value="@("TODOS")">Todos</MudChip>
+                    @foreach (var ano in AnosUltimaEntrada) { <MudChip Value="@ano.ToString()">@ano</MudChip> }
+                    <MudChip Value="@("SEM")">Sem entrada</MudChip>
+                </MudChipSet>
+            </MudItem>
+        </MudGrid>
+        <MudDataGrid T="CatracaBiometriaStatusDto" Items="ItensFiltrados" Dense Hover Striped Bordered="_exibirBordas"
+                     Loading="@(_carregandoEquipamentos || _carregandoSnapshot)"
+                     Filterable FilterMode="DataGridFilterMode.ColumnFilterMenu">
+            <ToolBarContent>
+                <MudGrid Class="flex-grow-1" Spacing="2">
+                    <MudItem xs="12" md="5"><MudTextField @bind-Value="_filtro" Label="Pesquisar usuário" Placeholder="Código ou nome" Immediate Variant="Variant.Outlined" Margin="Margin.Dense" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" /></MudItem>
+                    <MudItem xs="12" md="5">
+                        <MudSelect T="int?" Label="Equipamento" Value="_equipamentoId" ValueChanged="SelecionarEquipamentoAsync" Variant="Variant.Outlined" Margin="Margin.Dense" Disabled="_carregandoEquipamentos">
+                            @foreach (var equipamento in _equipamentos) { <MudSelectItem T="int?" Value="@((int?)equipamento.Id)">@equipamento.Descricao (@equipamento.Ip)</MudSelectItem> }
+                        </MudSelect>
+                    </MudItem>
+                    <MudItem xs="12" md="2"><ClassificacaoSecullumSelect @bind-Value="_classificacaoFiltro" /></MudItem>
+                </MudGrid>
+            </ToolBarContent>
+            <Columns>
+                <PropertyColumn Property="x => x.Codigo" Title="CÓDIGO" Filterable="false" />
+                <PropertyColumn Property="x => x.Nome" Title="NOME" Filterable="false" />
+                <PropertyColumn Property="x => x.Empresa" Title="EMPRESA" Filterable="false" />
+                <PropertyColumn Property="x => x.Classificacao" Title="CLASSIFICAÇÃO" Filterable="false" />
+                <TemplateColumn SortBy="x => x.DataCadastroSecullum"><HeaderTemplate><MudTooltip Text="Cadastro no Secullum"><span>CAD. SEC.</span></MudTooltip></HeaderTemplate><CellTemplate><MudTooltip Text="@FormatarData(context.Item.DataCadastroSecullum)"><span>@FormatarAno(context.Item.DataCadastroSecullum)</span></MudTooltip></CellTemplate></TemplateColumn>
+                <TemplateColumn SortBy="x => x.DataAlteracaoSecullum"><HeaderTemplate><MudTooltip Text="Última alteração no Secullum"><span>ALT. SEC.</span></MudTooltip></HeaderTemplate><CellTemplate><MudTooltip Text="@FormatarData(context.Item.DataAlteracaoSecullum)"><span>@FormatarAno(context.Item.DataAlteracaoSecullum)</span></MudTooltip></CellTemplate></TemplateColumn>
+                <TemplateColumn SortBy="x => x.UltimaEntrada"><HeaderTemplate><MudTooltip Text="Última entrada na empresa"><span>ÚLT. ENTR.</span></MudTooltip></HeaderTemplate><CellTemplate><MudTooltip Text="@FormatarData(context.Item.UltimaEntrada)"><span>@FormatarAno(context.Item.UltimaEntrada)</span></MudTooltip></CellTemplate></TemplateColumn>
+                <PropertyColumn Property="x => x.PossuiNoSecullum" Title="BIOM. SEC." Filterable="true">
+                    <HeaderTemplate><MudTooltip Text="Biometria cadastrada no Secullum"><span>BIOM. SEC.</span></MudTooltip></HeaderTemplate>
+                    <CellTemplate><StatusChip Ativo="context.Item.PossuiNoSecullum" TextoAtivo="@($"Sim ({context.Item.QuantidadeSecullum})")" TextoInativo="Não cadastrada" /></CellTemplate>
+                </PropertyColumn>
+                <PropertyColumn Property="x => x.EnviadoPeloSecullum" Title="ENV. SEC." Filterable="true">
+                    <HeaderTemplate><MudTooltip Text="Biometria enviada pelo Secullum"><span>ENV. SEC.</span></MudTooltip></HeaderTemplate>
+                    <CellTemplate><StatusChip Ativo="context.Item.EnviadoPeloSecullum" TextoAtivo="Enviada" TextoInativo="Não enviada" /></CellTemplate>
+                </PropertyColumn>
+                <PropertyColumn Property="x => x.PossuiNaCatraca" Title="BIOM. CATR." Filterable="true">
+                    <HeaderTemplate><MudTooltip Text="Biometria existente na catraca no último snapshot"><span>BIOM. CATR.</span></MudTooltip></HeaderTemplate>
+                    <CellTemplate><StatusChip Ativo="context.Item.PossuiNaCatraca" TextoAtivo="@($"Sim ({context.Item.QuantidadeCatraca})")" TextoInativo="Não cadastrada" /></CellTemplate>
+                </PropertyColumn>
+            </Columns>
+            <LoadingContent>
+                <div class="d-flex align-center justify-center pa-6">
+                    <MudProgressCircular Indeterminate Color="Color.Primary" Size="Size.Medium" Class="mr-3" />
+                    <MudText>Carregando dados de biometria...</MudText>
+                </div>
+            </LoadingContent>
+            <NoRecordsContent><MudText Class="pa-4">Nenhum snapshot disponível. Clique em Atualizar para iniciar a consulta.</MudText></NoRecordsContent>
+            <PagerContent><div class="d-flex align-center justify-space-between mt-2 px-2"><MudSwitch @bind-Value="_exibirBordas" Label="Exibir bordas na tabela" Color="Color.Primary" Size="Size.Small" /><MudDataGridPager T="CatracaBiometriaStatusDto" PageSizeOptions="new int[] { 25, 50, 100 }" /></div></PagerContent>
+        </MudDataGrid>
+    </MudPaper>
+</MudContainer>
+
+@code {
+    [Inject] private ICatracaService Service { get; set; } = default!;
+    private readonly CancellationTokenSource _cancelamento = new();
+    private List<CatracaEquipamentoDto> _equipamentos = [];
+    private List<CatracaBiometriaStatusDto> _itens = [];
+    private int? _equipamentoId;
+    private string? _filtro;
+    private string _classificacaoFiltro = string.Empty;
+    private string _filtroCadastro = "TODOS", _filtroAlteracao = "TODOS", _filtroUltimaEntrada = "TODOS";
+    private bool _carregandoEquipamentos, _carregandoSnapshot, _emProcessamento, _exibirBordas, _secullumAlterado;
+    private DateTime? _atualizadoEm;
+    private IEnumerable<CatracaBiometriaStatusDto> ItensFiltrados => _itens.Where(x =>
+        (string.IsNullOrWhiteSpace(_classificacaoFiltro) || string.Equals(x.Classificacao, _classificacaoFiltro, StringComparison.OrdinalIgnoreCase)) &&
+        CorrespondeAno(x.DataCadastroSecullum, _filtroCadastro) &&
+        CorrespondeAno(x.DataAlteracaoSecullum, _filtroAlteracao) &&
+        CorrespondeAno(x.UltimaEntrada, _filtroUltimaEntrada) &&
+        (string.IsNullOrWhiteSpace(_filtro) || x.Codigo.Contains(_filtro, StringComparison.OrdinalIgnoreCase) || x.Nome.Contains(_filtro, StringComparison.OrdinalIgnoreCase)));
+    private IEnumerable<int> AnosCadastro => AnosDisponiveis(x => x.DataCadastroSecullum);
+    private IEnumerable<int> AnosAlteracao => AnosDisponiveis(x => x.DataAlteracaoSecullum);
+    private IEnumerable<int> AnosUltimaEntrada => AnosDisponiveis(x => x.UltimaEntrada);
+
+    private void OnFiltroCadastroChanged(string valor)
+    {
+        _filtroCadastro = valor ?? "TODOS";
+        _filtroAlteracao = "TODOS";
+        _filtroUltimaEntrada = "TODOS";
+    }
+
+    private void OnFiltroAlteracaoChanged(string valor)
+    {
+        _filtroCadastro = "TODOS";
+        _filtroAlteracao = valor ?? "TODOS";
+        _filtroUltimaEntrada = "TODOS";
+    }
+
+    private void OnFiltroUltimaEntradaChanged(string valor)
+    {
+        _filtroCadastro = "TODOS";
+        _filtroAlteracao = "TODOS";
+        _filtroUltimaEntrada = valor ?? "TODOS";
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        _carregandoEquipamentos = true;
+        try
+        {
+            var resposta = await Service.ListarEquipamentosAsync();
+            if (!resposta.Success) { Mensagem(resposta.Message, false); return; }
+            _equipamentos = resposta.Value ?? [];
+            _equipamentoId = _equipamentos.FirstOrDefault()?.Id;
+            await CarregarSnapshotAsync();
+            _ = MonitorarAsync(_cancelamento.Token);
+        }
+        finally { _carregandoEquipamentos = false; }
+    }
+
+    private async Task SelecionarEquipamentoAsync(int? id) { _equipamentoId = id; await CarregarSnapshotAsync(); }
+    private async Task IniciarAtualizacaoAsync()
+    {
+        if (!_equipamentoId.HasValue) return;
+        var resposta = await Service.IniciarCarregamentoBiometriasAsync(_equipamentoId.Value);
+        Mensagem(resposta.Message, resposta.Success);
+        await CarregarSnapshotAsync();
+    }
+    private async Task CarregarSnapshotAsync(bool exibirLoading = true)
+    {
+        if (!_equipamentoId.HasValue) return;
+        if (exibirLoading) _carregandoSnapshot = true;
+        try
+        {
+            var resposta = await Service.ObterSnapshotBiometriaAsync(_equipamentoId.Value);
+            if (!resposta.Success || resposta.Value is null) return;
+            _itens = resposta.Value.Itens;
+            _atualizadoEm = resposta.Value.AtualizadoEm;
+            _secullumAlterado = resposta.Value.SecullumAlterado;
+            _emProcessamento = resposta.Value.EmProcessamento;
+        }
+        finally
+        {
+            if (exibirLoading) _carregandoSnapshot = false;
+        }
+    }
+    private async Task MonitorarAsync(CancellationToken token)
+    {
+        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(5));
+        try { while (await timer.WaitForNextTickAsync(token)) await InvokeAsync(async () => { await CarregarSnapshotAsync(false); StateHasChanged(); }); }
+        catch (OperationCanceledException) { }
+    }
+    private static string FormatarData(DateTime? data) => data?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? "—";
+    private static string FormatarAno(DateTime? data) => data?.ToLocalTime().ToString("yyyy") ?? "—";
+    private IEnumerable<int> AnosDisponiveis(Func<CatracaBiometriaStatusDto, DateTime?> seletor) => _itens
+        .Select(seletor).Where(x => x.HasValue).Select(x => x!.Value.Year).Distinct().OrderByDescending(x => x);
+    private static bool CorrespondeAno(DateTime? data, string filtro) => filtro switch
+    {
+        "TODOS" => true,
+        "SEM" => !data.HasValue,
+        _ => int.TryParse(filtro, out var ano) && data?.Year == ano
+    };
+    private void Mensagem(string? texto, bool sucesso) => _snackbarComp.Message(texto ?? "Operação não concluída.", sucesso ? Severity.Success : Severity.Error, sucesso ? Color.Success : Color.Error);
+    public void Dispose() { _cancelamento.Cancel(); _cancelamento.Dispose(); }
+}

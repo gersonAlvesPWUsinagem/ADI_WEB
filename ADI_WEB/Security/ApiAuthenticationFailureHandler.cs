@@ -24,7 +24,9 @@ public sealed class ApiAuthenticationFailureHandler : DelegatingHandler
     {
         var response = await base.SendAsync(request, cancellationToken);
 
-        if (!IsOperatorLoginRequest(request) && await IsExpiredSessionAsync(response, cancellationToken))
+        var paginaAtual = _navigation.ToBaseRelativePath(_navigation.Uri).Split('?', '#')[0].Trim('/');
+        var estaNoLogin = paginaAtual.StartsWith("user/login", StringComparison.OrdinalIgnoreCase);
+        if (!estaNoLogin && !IsOperatorLoginRequest(request) && await IsExpiredSessionAsync(response, cancellationToken))
         {
             var returnUrl = _navigation.ToBaseRelativePath(_navigation.Uri);
             await _sessionExpirationState.NotifyAsync(returnUrl);
@@ -36,7 +38,7 @@ public sealed class ApiAuthenticationFailureHandler : DelegatingHandler
     private static bool IsOperatorLoginRequest(HttpRequestMessage request)
     {
         return request.RequestUri?.AbsolutePath.EndsWith(
-            "/portaria/login-porteiro-operador",
+            "/recursos-humanos/portaria/login-porteiro-operador",
             StringComparison.OrdinalIgnoreCase) == true;
     }
 

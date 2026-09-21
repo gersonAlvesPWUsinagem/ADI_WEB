@@ -1,0 +1,497 @@
+@attribute [Authorize]
+@page "/recursos-humanos/catraca/integracao"
+@rendermode InteractiveServer
+@implements IDisposable
+@using Domain.Dtos.Catracas
+@using ADI_WEB.Components.Pages.RecursosHumano.Portaria
+@using ADI_WEB.Services
+
+<PageTitle>Usuários das Catracas</PageTitle>
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="my-6">
+    <HeaderComponent Title="Usuários das Catracas" Modulo="ModuloEnum.Comercial" Permission="189"
+                     TextBtn1="Carregar catraca" TooltipBtn1="Carregar dados da catraca selecionada" IconBtn1="@Icons.Material.Filled.Download" ColorBtn1="Color.Primary" IsVisibleOrNotBtn1="true"
+                     IsLoadingBtn1="@_carregando" IsDisabledBtn1="@(_biometriaEmProcessamento || _processando)" OnBtn1Click="CarregarCatracaAsync"
+                     TextBtn2="Sincronizar" TooltipBtn2="Sincronizar selecionados com a catraca atual" IconBtn2="@Icons.Material.Filled.Sync" ColorBtn2="Color.Success" IsVisibleOrNotBtn2="true"
+                     IsLoadingBtn2="@_sincronizando" IsDisabledBtn2="@(!_catracaCarregada || _selecionados.Count == 0 || _processando)" OnBtn2Click="EnviarSelecionadosAsync"
+                     TextBtn3="Copiar"  TooltipBtn3="Copiar lista para outra catraca" IconBtn3="@Icons.Material.Filled.CompareArrows" ColorBtn3="Color.Secondary" IsVisibleOrNotBtn3="true"
+                     IsLoadingBtn3="@_copiando" IsDisabledBtn3="@(!_catracaCarregada || _selecionados.Count == 0 || _processando)" OnBtn3Click="CopiarParaOutraCatracaAsync"
+                     TextBtn4="Rastrear" TooltipBtn4="Rastrear crachá no Secullum e nos snapshots das catracas" IconBtn4="@Icons.Material.Filled.Badge" ColorBtn4="Color.Info" IsVisibleOrNotBtn4="true"
+                     IsDisabledBtn4="@_processando" OnBtn4Click="AbrirRastreamentoCrachaAsync"
+                     TextBtn5="Sincronizar exclusões" TooltipBtn5="Excluir da catraca os registros marcados" IconBtn5="@Icons.Material.Filled.DeleteSweep" ColorBtn5="Color.Error" IsVisibleOrNotBtn5="@(_catracaCarregada && _filtroStatus == "FORA_SECULLUM" && _indicesParaRemocao.Count > 0)"
+                     IsLoadingBtn5="@_sincronizandoExclusoes" IsDisabledBtn5="@(!_catracaCarregada || _indicesParaRemocao.Count == 0 || _processando)" OnBtn5Click="SincronizarExclusoesAsync" />
+    
+@*     <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mr-4">
+        <MudIcon Icon="@Icons.Material.Filled.Schedule" Size="Size.Small" Class="mr-1" />
+        Última sincronização: @TextoUltimaSincronizacao
+    </MudText> *@
+    <div class="d-flex justify-end mb-2">
+        <MudTooltip Text="Data e hora em que à os usuários foram consultados diretamente na catraca e gravadas no snapshot.">
+            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                Última sincronização com a catraca: @(TextoUltimaSincronizacao ?? "ainda não realizada")
+            </MudText>
+        </MudTooltip>
+    </div>
+
+    <MudPaper Class="pa-4 mb-4" Elevation="1">
+        <MudGrid>       
+            <MudItem xs="12" md="7">
+                <MudChipSet T="string" SelectedValue="_filtroStatus" SelectedValueChanged="OnFiltroStatusChanged" SelectionMode="SelectionMode.SingleSelection" CheckMark Variant="Variant.Outlined" Color="Color.Primary">
+                    <MudChip Value="@("TODOS")">Todos (@_usuarios.Count)</MudChip>
+                    <MudChip Value="@("PENDENTES")">Pendentes (@TotalPendentes)</MudChip>
+                    <MudChip Value="@("CATRACA")">Na catraca (@TotalNaCatraca)</MudChip>
+                    <MudChip Value="@("FORA_SECULLUM")">Somente catraca (@TotalSomenteCatraca)</MudChip>
+                </MudChipSet>
+            </MudItem>
+            <MudItem xs="12" md="5" Class="d-flex align-center">
+                <MudSpacer />
+    
+                <MudChip T="string" Color="Color.Info" Variant="Variant.Outlined">@TotalSelecionados selecionado(s)</MudChip>
+                @if (_filtroStatus == "FORA_SECULLUM")
+                {
+                    <MudChip T="string" Color="Color.Error" Variant="Variant.Outlined">@_indicesParaRemocao.Count para excluir</MudChip>
+                }
+            </MudItem>
+        </MudGrid>
+    </MudPaper>
+
+    <MudPaper Class="pa-4" Elevation="1">
+        <MudDataGrid T="CatracaCartaoDto" Items="UsuariosFiltrados" Dense="true" Hover="true" Striped="true" Bordered="_exibirBordas" Loading="_carregando" RowClassFunc="ClasseDaLinha">
+            <ToolBarContent>
+                <MudGrid Class="flex-grow-1" Spacing="2">
+                    <MudItem xs="12" md="5">
+                        <MudTextField @bind-Value="_filtro" Label="Pesquisar usuário" Placeholder="Código ou nome" Immediate="true" Variant="Variant.Outlined"
+                                      Margin="Margin.Dense" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" />
+                    </MudItem>
+                    <MudItem xs="12" md="5">
+                        <MudSelect T="int?" Label="Equipamento" Value="_equipamentoId" ValueChanged="SelecionarEquipamentoAsync" Variant="Variant.Outlined" Margin="Margin.Dense" Disabled="_carregandoEquipamentos">
+                            @foreach (var equipamento in _equipamentos)
+                            {
+                                <MudSelectItem T="int?" Value="@((int?)equipamento.Id)">@equipamento.Descricao (@equipamento.Ip)</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
+                    <MudItem xs="12" md="2">
+                        <ClassificacaoSecullumSelect @bind-Value="_classificacaoFiltro" Disabled="_carregando" />
+                    </MudItem>
+                </MudGrid>
+            </ToolBarContent>
+      
+            <Columns>
+                <TemplateColumn Title="SEL" Sortable="false" Filterable="false" CellClass="text-center">
+                    <HeaderTemplate><MudTooltip Text="Selecionar para enviar"><span>SEL</span></MudTooltip></HeaderTemplate>
+                    <CellTemplate>
+                        <MudTooltip Text="@(!_catracaCarregada ? "Carregue a catraca para alterar a seleção." : MotivoSelecao(context.Item))">
+                            <span class="d-inline-flex">
+                                <MudCheckBox T="bool" Value="@Selecionado(context.Item)" ValueChanged="@(valor => Selecionar(context.Item, valor))"
+                                             Disabled="@(!_catracaCarregada || !PodeSincronizar(context.Item) || _processando)" Color="Color.Warning" Size="Size.Small" />
+                            </span>
+                        </MudTooltip>
+                    </CellTemplate>
+                </TemplateColumn>
+                @if (_filtroStatus == "FORA_SECULLUM")
+                {
+                    <TemplateColumn Title="EXCLUIR" Sortable="false" Filterable="false" CellClass="text-center">
+                        <HeaderTemplate>
+                            <MudTooltip Text="Selecionar registros para excluir da catraca"><span>EXCLUIR</span></MudTooltip>
+                        </HeaderTemplate>
+                        <CellTemplate>
+                            <MudTooltip Text="Marcar este registro para exclusão na próxima sincronização de exclusões">
+                                <span class="d-inline-flex">
+                                    <MudCheckBox T="bool" Value="@SelecionadoParaRemocao(context.Item)"
+                                                 ValueChanged="@(valor => SelecionarRemocao(context.Item, valor))"
+                                                 Disabled="@(!_catracaCarregada || !PodeRemover(context.Item) || _processando)"
+                                                 Color="Color.Error" Size="Size.Small" />
+                                </span>
+                            </MudTooltip>
+                        </CellTemplate>
+                    </TemplateColumn>
+                }
+                <TemplateColumn Title="AÇÃO" Sortable="false" Filterable="false">
+                    <CellTemplate>
+                        <MudTooltip Text="@(_catracaCarregada ? "Visualizar" : "Carregue a catraca para visualizar")">
+                            <span class="d-inline-flex">
+                                <MudIconButton Icon="@Icons.Material.Filled.Visibility" Size="Size.Small" Color="Color.Info"
+                                               Disabled="@(!_catracaCarregada || _carregando)" OnClick="@(() => Visualizar(context.Item))" />
+                            </span>
+                        </MudTooltip>
+                    </CellTemplate>
+                </TemplateColumn>
+                <TemplateColumn Title="ALTERADO" SortBy="x => x.Alterado">
+                    <CellTemplate>
+                        <StatusChip Ativo="context.Item.Alterado" TextoAtivo="Sim" TextoInativo="Não" />
+                    </CellTemplate>
+                </TemplateColumn>
+                <PropertyColumn Property="x => x.Codigo" Title="CÓDIGO" />
+                <PropertyColumn Property="x => x.Nome" Title="NOME" />
+                <PropertyColumn Property="x => x.Empresa" Title="EMPRESA" />
+                <PropertyColumn Property="x => x.Classificacao" Title="CLASSIFICAÇÃO" />
+                <TemplateColumn Title="ESTADO SECULLUM" SortBy="x => x.EstadoSecullum ?? int.MaxValue">
+                    <CellTemplate>
+                        @if (!context.Item.CadastradoSecullum)
+                        { <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Default">Não cadastrado</MudChip> }
+                        else
+                        { <StatusChip Ativo="@(context.Item.EstadoSecullum == 0)" TextoAtivo="Ativo" TextoInativo="@DescricaoEstado(context.Item.EstadoSecullum)" /> }
+                    </CellTemplate>
+                </TemplateColumn>
+                <TemplateColumn Title="CATRACA" SortBy="x => x.CadastradoCatraca"><CellTemplate><StatusChip Ativo="context.Item.CadastradoCatraca" TextoAtivo="Enviado" TextoInativo="Pendente" /></CellTemplate></TemplateColumn>
+            </Columns>
+            <NoRecordsContent><MudText Class="pa-4">Nenhum usuário encontrado.</MudText></NoRecordsContent>
+            <PagerContent><div class="d-flex align-center justify-space-between mt-2 px-2">
+                <MudSwitch @bind-Value="_exibirBordas" Label="Exibir bordas na tabela" Color="Color.Primary" Size="Size.Small" />
+                <MudDataGridPager T="CatracaCartaoDto" PageSizeOptions="new int[] { 25, 50, 100 }" />
+            </div></PagerContent>
+        </MudDataGrid>
+    </MudPaper>
+</MudContainer>
+
+@code {
+    [Inject] private ICatracaService Service { get; set; } = default!;
+    [Inject] private CatracaNavegacaoState NavegacaoCatraca { get; set; } = default!;
+    private List<CatracaEquipamentoDto> _equipamentos = [];
+    private List<SecullumPessoaIntegracaoDto> _pessoasSecullum = [];
+    private List<CatracaCartaoDto> _usuarios = [];
+    private readonly HashSet<int> _selecionados = [];
+    private readonly HashSet<int> _indicesParaRemocao = [];
+    private int? _equipamentoId;
+    private int? _equipamentoDestinoId;
+    private string? _filtro;
+    private string _classificacaoFiltro = string.Empty;
+    private string _filtroStatus = "TODOS";
+    private string _tipoCopia = "TODOS";
+    private bool _removerAnteriores;
+    private DateTime? _ultimaSincronizacao;
+    private bool _carregandoEquipamentos, _carregando, _processando, _sincronizando, _copiando,
+        _sincronizandoExclusoes, _exibirBordas, _catracaCarregada, _biometriaEmProcessamento;
+    private readonly CancellationTokenSource _monitorBiometriaCts = new();
+    private int TotalSelecionados => _selecionados.Count;
+    private int TotalPendentes => _usuarios.Count(x => x.CadastradoSecullum && !x.CadastradoCatraca);
+    private int TotalNaCatraca => _usuarios.Count(x => x.CadastradoCatraca);
+    private int TotalSomenteCatraca => _usuarios.Count(x => !x.CadastradoSecullum && x.CadastradoCatraca);
+    private string TextoUltimaSincronizacao => _ultimaSincronizacao?.ToLocalTime().ToString("dd/MM/yyyy HH:mm:ss") ?? "Não realizada";
+    private IEnumerable<CatracaCartaoDto> UsuariosFiltrados => _usuarios.Where(x =>
+        (_filtroStatus == "TODOS" || _filtroStatus == "PENDENTES" && x.CadastradoSecullum && !x.CadastradoCatraca || _filtroStatus == "CATRACA" && x.CadastradoCatraca || _filtroStatus == "FORA_SECULLUM" && !x.CadastradoSecullum) &&
+        (string.IsNullOrWhiteSpace(_classificacaoFiltro) || string.Equals(x.Classificacao, _classificacaoFiltro, StringComparison.OrdinalIgnoreCase)) &&
+        (string.IsNullOrWhiteSpace(_filtro) || x.Codigo.Contains(_filtro, StringComparison.OrdinalIgnoreCase) || x.Nome.Contains(_filtro, StringComparison.OrdinalIgnoreCase)));
+    protected override async Task OnInitializedAsync()
+    {
+        Loading.Show();
+        _carregandoEquipamentos = true;
+        _carregando = true;
+        await AbrirDialogProgressoAsync();
+        try
+        {
+            var equipamentos = await Service.ListarEquipamentosAsync();
+            if (!equipamentos.Success) { Mensagem(equipamentos.Message, false); return; }
+            var pessoas = await Service.ListarPessoasAsync();
+            if (!pessoas.Success) { Mensagem(pessoas.Message, false); return; }
+            var retornoDetalhe = NavegacaoCatraca.ConsumirRetorno();
+            _equipamentos = equipamentos.Value ?? [];
+            _pessoasSecullum = pessoas.Value ?? [];
+            _equipamentoId = retornoDetalhe is not null && _equipamentos.Any(x => x.Id == retornoDetalhe.EquipamentoId)
+                ? retornoDetalhe.EquipamentoId
+                : _equipamentos.FirstOrDefault()?.Id;
+            _equipamentoDestinoId = _equipamentos.FirstOrDefault(x => x.Id != _equipamentoId)?.Id;
+            if (retornoDetalhe?.CatracaCarregada == true)
+                await CarregarSnapshotAsync();
+            else
+                ExibirSomenteSecullum();
+            await AtualizarUltimaSincronizacaoAsync();
+            _catracaCarregada = retornoDetalhe?.CatracaCarregada == true;
+            await AtualizarEstadoBiometriaAsync();
+            _ = MonitorarBiometriaAsync(_monitorBiometriaCts.Token);
+        }
+        finally { _carregandoEquipamentos = false; _carregando = false; Loading.Hide(); }
+    }
+    private async Task SelecionarEquipamentoAsync(int? id)
+    {
+        _equipamentoId = id;
+        _catracaCarregada = false;
+        _selecionados.Clear();
+        _indicesParaRemocao.Clear();
+        if (_equipamentoDestinoId == id)
+            _equipamentoDestinoId = _equipamentos.FirstOrDefault(x => x.Id != id)?.Id;
+        ExibirSomenteSecullum();
+        await AtualizarUltimaSincronizacaoAsync();
+        await AtualizarEstadoBiometriaAsync();
+        await InvokeAsync(StateHasChanged);
+    }
+    private async Task CarregarCatracaAsync() { _catracaCarregada = false; await CarregarAsync(true); }
+    private void ExibirSomenteSecullum()
+    {
+        var equipamentoId = _equipamentoId ?? 0;
+        _usuarios = _pessoasSecullum.Select(p => new CatracaCartaoDto
+        {
+            EquipamentoId = equipamentoId, Indice = -1, PessoaId = p.Id, Codigo = p.NIdentificador,
+            Nome = p.Nome, CadastradoSecullum = true, CadastradoCatraca = false,
+            EstadoSecullum = p.Estado, Empresa = p.Empresa, Classificacao = p.Classificacao
+        }).ToList();
+    }
+    private async Task CarregarSnapshotAsync()
+    {
+        if (!_equipamentoId.HasValue) { ExibirSomenteSecullum(); return; }
+        var resposta = await Service.ListarSnapshotAsync(_equipamentoId.Value);
+        var snapshot = resposta.Success ? resposta.Value ?? [] : [];
+        if (snapshot.Count == 0) { ExibirSomenteSecullum(); return; }
+
+        var pessoasPorCodigo = _pessoasSecullum
+            .GroupBy(x => x.NIdentificador, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(x => x.Key, x => x.First(), StringComparer.OrdinalIgnoreCase);
+        foreach (var item in snapshot)
+        {
+            if (!pessoasPorCodigo.TryGetValue(item.Codigo, out var pessoa)) continue;
+            item.PessoaId = pessoa.Id;
+            item.Nome = pessoa.Nome;
+            item.CadastradoSecullum = true;
+            item.EstadoSecullum = pessoa.Estado;
+            item.Empresa = pessoa.Empresa;
+            item.Classificacao = pessoa.Classificacao;
+        }
+        var codigosSnapshot = snapshot.Select(x => x.Codigo).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        snapshot.AddRange(_pessoasSecullum.Where(x => !codigosSnapshot.Contains(x.NIdentificador)).Select(p => new CatracaCartaoDto
+        {
+            EquipamentoId = _equipamentoId.Value, Indice = -1, PessoaId = p.Id, Codigo = p.NIdentificador,
+            Nome = p.Nome, CadastradoSecullum = true, CadastradoCatraca = false,
+            EstadoSecullum = p.Estado, Empresa = p.Empresa, Classificacao = p.Classificacao
+        }));
+        _usuarios = snapshot.OrderBy(x => x.Nome).ThenBy(x => x.Codigo).ToList();
+        AplicarSelecaoTipo();
+    }
+    private async Task CarregarAsync(bool atualizar = false)
+    {
+        if (!_equipamentoId.HasValue) return;
+        _carregando = true;
+        try
+        {
+            var r = await Service.ListarCartoesAsync(_equipamentoId.Value, atualizar);
+            if (r.Success)
+            {
+                _usuarios = r.Value ?? [];
+                AplicarSelecaoTipo();
+                _catracaCarregada = true;
+                await AtualizarUltimaSincronizacaoAsync();
+            }
+        }
+        finally { _carregando = false; }
+    }
+    private static bool PodeSincronizar(CatracaCartaoDto item) => item.PessoaId.HasValue && item.CadastradoSecullum;
+    private static bool PodeRemover(CatracaCartaoDto item) => !item.CadastradoSecullum && item.CadastradoCatraca && item.Indice >= 0;
+    private bool SelecionadoParaRemocao(CatracaCartaoDto item) => _indicesParaRemocao.Contains(item.Indice);
+    private bool Selecionado(CatracaCartaoDto item) => item.PessoaId.HasValue && _selecionados.Contains(item.PessoaId.Value);
+    private void Selecionar(CatracaCartaoDto item, bool valor)
+    {
+        if (!PodeSincronizar(item)) return;
+        if (!item.PessoaId.HasValue) return;
+        if (valor) _selecionados.Add(item.PessoaId.Value); else _selecionados.Remove(item.PessoaId.Value);
+    }
+    private void SelecionarRemocao(CatracaCartaoDto item, bool valor)
+    {
+        if (!PodeRemover(item)) return;
+        if (valor) _indicesParaRemocao.Add(item.Indice); else _indicesParaRemocao.Remove(item.Indice);
+    }
+    private string MotivoSelecao(CatracaCartaoDto item)
+    {
+        if (!item.CadastradoSecullum && !item.CadastradoCatraca) return "Usuário não localizado no Secullum nem na catraca.";
+        if (!item.CadastradoSecullum && item.CadastradoCatraca) return "Use a coluna EXCLUIR no filtro Somente catraca.";
+        if (!item.CadastradoSecullum) return "Usuário não localizado no Secullum.";
+        if (!item.CadastradoCatraca) return "Marque para incluir este usuário na catraca.";
+        return "Usuário disponível para sincronização.";
+    }
+    private string ClasseDaLinha(CatracaCartaoDto item, int _) => Selecionado(item) || SelecionadoParaRemocao(item) ? "chave-selecionada" : string.Empty;
+    private void OnFiltroStatusChanged(string status)
+    {
+        _filtroStatus = status;
+        if (status != "FORA_SECULLUM") _indicesParaRemocao.Clear();
+    }
+    private void AplicarSelecaoTipo()
+    {
+        _selecionados.Clear();
+        _indicesParaRemocao.Clear();
+        var candidatos = _usuarios
+            .Where(x => x.PessoaId.HasValue && x.CadastradoSecullum && x.CadastradoCatraca)
+            .Where(x => _tipoCopia switch
+        {
+            "FUNCIONARIOS" => x.Classificacao.Contains("FUNCION", StringComparison.OrdinalIgnoreCase),
+            "TERCEIROS" => x.Classificacao.Contains("TERCEIR", StringComparison.OrdinalIgnoreCase),
+            _ => true
+        });
+        foreach (var pessoaId in candidatos.Select(x => x.PessoaId.GetValueOrDefault()).Distinct())
+            _selecionados.Add(pessoaId);
+    }
+    private List<int> ObterSelecionadosParaCopia()
+    {
+        var pessoasPermitidas = _usuarios.Where(x => x.PessoaId.HasValue).Where(x => _tipoCopia switch
+        {
+            "FUNCIONARIOS" => x.Classificacao.Contains("FUNCION", StringComparison.OrdinalIgnoreCase),
+            "TERCEIROS" => x.Classificacao.Contains("TERCEIR", StringComparison.OrdinalIgnoreCase),
+            _ => true
+        }).Select(x => x.PessoaId!.Value).ToHashSet();
+        return _selecionados.Where(pessoasPermitidas.Contains).ToList();
+    }
+    private void Visualizar(CatracaCartaoDto item)
+    {
+        NavegacaoCatraca.RegistrarIdaParaDetalhe(item.EquipamentoId, _catracaCarregada);
+        Navigation.NavigateTo($"/recursos-humanos/catraca/integracao/{item.EquipamentoId}/{item.Indice}/{item.PessoaId ?? 0}");
+    }
+    private async Task EnviarSelecionadosAsync()
+    {
+        if (!_equipamentoId.HasValue || !_catracaCarregada) return;
+        _processando = true;
+        _sincronizando = true;
+        Loading.Show();
+        await AbrirDialogProgressoAsync();
+        try
+        {
+            var r = await Service.EnviarUsuariosAsync(new()
+            {
+                EquipamentoId = _equipamentoId.Value,
+                PessoasIds = _selecionados.ToList(),
+                IndicesRemover = []
+            });
+            if (r.Success)
+            {
+                await CarregarSnapshotAsync();
+                await AtualizarUltimaSincronizacaoAsync();
+            }
+        }
+        finally { _sincronizando = false; _processando = false; Loading.Hide(); }
+    }
+    private async Task SincronizarExclusoesAsync()
+    {
+        if (!_equipamentoId.HasValue || !_catracaCarregada || _indicesParaRemocao.Count == 0) return;
+        var confirmado = await DialogService.ShowMessageBoxAsync(
+            "Sincronizar exclusões",
+            $"Confirma a exclusão de {_indicesParaRemocao.Count} registro(s) da catraca selecionada? O equipamento físico e o snapshot serão atualizados.",
+            yesText: "Sim, excluir", cancelText: "Cancelar") ?? false;
+        if (!confirmado) return;
+
+        _processando = true;
+        _sincronizandoExclusoes = true;
+        Loading.Show();
+        await AbrirDialogProgressoAsync();
+        try
+        {
+            var r = await Service.EnviarUsuariosAsync(new()
+            {
+                EquipamentoId = _equipamentoId.Value,
+                PessoasIds = [],
+                IndicesRemover = _indicesParaRemocao.OrderByDescending(x => x).ToList(),
+                ExcluirSomenteIndicesInformados = true
+            });
+            if (r.Success)
+            {
+                _indicesParaRemocao.Clear();
+                await CarregarSnapshotAsync();
+                await AtualizarUltimaSincronizacaoAsync();
+            }
+        }
+        finally
+        {
+            _sincronizandoExclusoes = false;
+            _processando = false;
+            Loading.Hide();
+        }
+    }
+    private async Task CopiarParaOutraCatracaAsync()
+    {
+        if (!_equipamentoId.HasValue || !_catracaCarregada || _selecionados.Count == 0) return;
+        var parametros = new DialogParameters<SincronizarCatracasDialog>
+        {
+            { x => x.Equipamentos, _equipamentos },
+            { x => x.EquipamentoOrigemId, _equipamentoId.Value },
+            { x => x.EquipamentoDestinoId, _equipamentoDestinoId },
+            { x => x.TipoCopia, _tipoCopia },
+            { x => x.RemoverAnteriores, _removerAnteriores },
+            { x => x.TotalSelecionados, _selecionados.Count }
+        };
+        var opcoes = new DialogOptions { FullWidth = true, MaxWidth = MaxWidth.Medium, CloseButton = true };
+        var dialogo = await DialogService.ShowAsync<SincronizarCatracasDialog>("Sincronizar catracas", parametros, opcoes);
+        var retorno = await dialogo.Result;
+        if (retorno is null || retorno.Canceled || retorno.Data is not SincronizarCatracasDialogResultado configuracao) return;
+
+        _equipamentoDestinoId = configuracao.EquipamentoDestinoId;
+        _tipoCopia = configuracao.TipoCopia;
+        _removerAnteriores = configuracao.RemoverAnteriores;
+        var selecionadosParaCopia = ObterSelecionadosParaCopia();
+        if (selecionadosParaCopia.Count == 0)
+        {
+            Mensagem("Nenhum usuário da classificação escolhida está disponível para copiar.", false);
+            return;
+        }
+        _processando = true;
+        _copiando = true;
+        Loading.Show();
+        try
+        {
+            var r = await Service.SincronizarCatracasAsync(new()
+            {
+                EquipamentoOrigemId = _equipamentoId.Value,
+                EquipamentoDestinoId = _equipamentoDestinoId.Value,
+                PessoasIds = selecionadosParaCopia,
+                RemoverAnteriores = _removerAnteriores
+            });
+            Mensagem(r.Message, r.Success);
+            if (r.Value?.Erros.Count > 0) Snackbar.Add(string.Join(" | ", r.Value.Erros.Take(3)), Severity.Warning);
+        }
+        finally { _copiando = false; _processando = false; Loading.Hide(); }
+    }
+    private async Task AbrirRastreamentoCrachaAsync()
+    {
+        var opcoes = new DialogOptions { FullWidth = true, MaxWidth = MaxWidth.Large, CloseButton = true };
+        var dialogo = await DialogService.ShowAsync<RastrearCrachaDialog>("Rastreamento de crachá", options: opcoes);
+        await dialogo.Result;
+    }
+    private async Task AbrirDialogProgressoAsync()
+    {
+        if (!_equipamentoId.HasValue) return;
+        var parametros = new DialogParameters<CatracaComunicacaoProgressoDialog>
+        {
+            { x => x.EquipamentoId, _equipamentoId.Value }
+        };
+        await DialogService.ShowAsync<CatracaComunicacaoProgressoDialog>(
+            "Comunicação com a catraca",
+            parametros,
+            new DialogOptions
+            {
+                MaxWidth = MaxWidth.Small,
+                FullWidth = true,
+                CloseButton = false,
+                BackdropClick = false
+            });
+    }
+    private void Mensagem(string? texto, bool sucesso) => _snackbarComp.Message(texto ?? "Operação não concluída.", sucesso ? Severity.Success : Severity.Error, sucesso ? Color.Success : Color.Error);
+    private async Task AtualizarEstadoBiometriaAsync()
+    {
+        if (!_equipamentoId.HasValue) { _biometriaEmProcessamento = false; return; }
+        var resposta = await Service.ObterSnapshotBiometriaAsync(_equipamentoId.Value);
+        _biometriaEmProcessamento = resposta.Success && resposta.Value?.EmProcessamento == true;
+    }
+    private async Task AtualizarUltimaSincronizacaoAsync()
+    {
+        _ultimaSincronizacao = null;
+        if (!_equipamentoId.HasValue) return;
+        var resposta = await Service.ObterAtualizacaoSnapshotAsync(_equipamentoId.Value);
+        if (resposta.Success) _ultimaSincronizacao = resposta.Value;
+    }
+    private async Task MonitorarBiometriaAsync(CancellationToken token)
+    {
+        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(5));
+        try
+        {
+            while (await timer.WaitForNextTickAsync(token))
+                await InvokeAsync(async () => { await AtualizarEstadoBiometriaAsync(); StateHasChanged(); });
+        }
+        catch (OperationCanceledException) { }
+    }
+    public void Dispose()
+    {
+        _monitorBiometriaCts.Cancel();
+        _monitorBiometriaCts.Dispose();
+    }
+    private static string DescricaoEstado(int? estado) => estado switch
+    {
+        0 => "Ativo",
+        1 => "Bloqueado",
+        3 => "Inativo",
+        _ => "Não informado"
+    };
+}

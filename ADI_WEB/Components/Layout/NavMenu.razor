@@ -65,15 +65,23 @@
         {
             ["PORTARIA"] = NavMenuItem.Grupo(Icons.Material.Filled.Security, new Dictionary<string, NavMenuItem>
             {
-                ["APT. COLABORADORES"] = NavMenuItem.Pagina(Icons.Material.Filled.Login, "/portaria/registrar-entrada-saida-colaborador"),
-                ["CTR. VEÍCULOS"] = NavMenuItem.Pagina(Icons.Material.Filled.DirectionsCar, "/portaria/contro-leveiculo"),
-                ["CTR. CRACHÁS"] = NavMenuItem.Pagina(Icons.Material.Filled.Badge, "/portaria/controle-cracha"),
-                ["CTR. CHAVES"] = NavMenuItem.Pagina(Icons.Material.Filled.VpnKey, "/portaria/controle-chave"),
-                // ["ACESSO CHAVES"] = NavMenuItem.Pagina(Icons.Material.Filled.AdminPanelSettings, "/portaria/controle-chave/estoques"),
-               // ["MOV. CHAVES"] = NavMenuItem.Pagina(Icons.Material.Filled.History, "/portaria/movimentacoes-chave"),
-                ["CTR. OPERADORES"] = NavMenuItem.Pagina(Icons.Material.Filled.ManageAccounts, "/portaria/gerenciamento-operadores"),
-                ["PESSOAS"] = NavMenuItem.Pagina(Icons.Material.Filled.Groups, "/portaria/gerenciamento-pessoas")
-            })
+                ["APT. COLABORADORES"] = NavMenuItem.Pagina(Icons.Material.Filled.Login, "/recursos-humanos/portaria/registrar-entrada-saida-colaborador"),
+                ["CTR. VEÍCULOS"] = NavMenuItem.Pagina(Icons.Material.Filled.DirectionsCar, "/recursos-humanos/portaria/contro-leveiculo"),
+                ["CTR. CRACHÁS"] = NavMenuItem.Pagina(Icons.Material.Filled.Badge, "/recursos-humanos/portaria/controle-cracha"),
+                ["CTR. CHAVES"] = NavMenuItem.Pagina(Icons.Material.Filled.VpnKey, "/recursos-humanos/portaria/controle-chave"),
+                // ["ACESSO CHAVES"] = NavMenuItem.Pagina(Icons.Material.Filled.AdminPanelSettings, "/recursos-humanos/portaria/controle-chave/estoques"),
+               // ["MOV. CHAVES"] = NavMenuItem.Pagina(Icons.Material.Filled.History, "/recursos-humanos/portaria/movimentacoes-chave"),
+                ["CTR. OPERADORES"] = NavMenuItem.Pagina(Icons.Material.Filled.ManageAccounts, "/recursos-humanos/portaria/gerenciamento-operadores"),
+                ["PESSOAS"] = NavMenuItem.Pagina(Icons.Material.Filled.Groups, "/recursos-humanos/portaria/gerenciamento-pessoas")
+            }),
+            ["CATRACA"] = NavMenuItem.Grupo(
+                Icons.Material.Filled.Toll,
+                new Dictionary<string, NavMenuItem>
+                {
+                    ["INTEGRAÇÃO"] = NavMenuItem.Pagina(Icons.Material.Filled.SyncAlt, "/recursos-humanos/catraca/integracao"),
+                    ["BIOMETRIA"] = NavMenuItem.Pagina(Icons.Material.Filled.Fingerprint, "/recursos-humanos/catraca/biometria")
+                }
+            )
         })
     };
 

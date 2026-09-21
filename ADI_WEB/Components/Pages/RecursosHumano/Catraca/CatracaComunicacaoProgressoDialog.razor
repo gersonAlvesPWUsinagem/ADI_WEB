@@ -1,0 +1,82 @@
+@implements IDisposable
+
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="3">
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                @if (!_concluido)
+                {
+                    <MudProgressCircular Indeterminate="true" Color="Color.Primary" Size="Size.Medium" />
+                }
+                else
+                {
+                    <MudIcon Icon="@(_sucesso ? Icons.Material.Filled.CheckCircle : Icons.Material.Filled.Error)"
+                             Color="@(_sucesso ? Color.Success : Color.Error)" Size="Size.Large" />
+                }
+                <MudText Typo="Typo.h6">@(_concluido ? (_sucesso ? "Operação concluída" : "Operação não concluída") : "Comunicação em andamento")</MudText>
+            </MudStack>
+
+            <MudAlert Severity="@(_concluido ? (_sucesso ? Severity.Success : Severity.Error) : Severity.Info)"
+                      Variant="Variant.Outlined">
+                @_mensagem
+            </MudAlert>
+
+            @if (!_concluido)
+            {
+                <MudText Typo="Typo.caption">Acompanhe esta janela. Ela será atualizada automaticamente durante as tentativas.</MudText>
+            }
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" Disabled="@(!_concluido)" OnClick="Fechar">Fechar</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+    [Inject] private ICatracaService Service { get; set; } = default!;
+    [Parameter] public int EquipamentoId { get; set; }
+
+    private readonly CancellationTokenSource _cancelamento = new();
+    private string _mensagem = "Estamos iniciando a sincronização com a catraca. Aguarde.";
+    private bool _concluido;
+    private bool _sucesso;
+    private readonly DateTime _abertoEm = DateTime.UtcNow;
+
+    protected override Task OnInitializedAsync()
+    {
+        _ = MonitorarAsync(_cancelamento.Token);
+        return Task.CompletedTask;
+    }
+
+    private async Task MonitorarAsync(CancellationToken token)
+    {
+        using var timer = new PeriodicTimer(TimeSpan.FromMilliseconds(500));
+        try
+        {
+            while (await timer.WaitForNextTickAsync(token))
+            {
+                var resposta = await Service.ObterProgressoComunicacaoAsync(EquipamentoId);
+                if (!resposta.Success || resposta.Value is null) continue;
+                if (resposta.Value.AtualizadoEm < _abertoEm) continue;
+                await InvokeAsync(() =>
+                {
+                    _mensagem = resposta.Value.Mensagem;
+                    _concluido = resposta.Value.Concluido;
+                    _sucesso = resposta.Value.Sucesso;
+                    StateHasChanged();
+                });
+                if (_concluido) break;
+            }
+        }
+        catch (OperationCanceledException) { }
+    }
+
+    private void Fechar() => MudDialog.Close();
+
+    public void Dispose()
+    {
+        _cancelamento.Cancel();
+        _cancelamento.Dispose();
+    }
+}

@@ -1,0 +1,70 @@
+@using Domain.Dtos.Catracas
+
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="3">
+            <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">
+                Serão copiados somente os usuários marcados na grade que pertençam à seleção escolhida.
+            </MudAlert>
+
+            <MudSelect T="int?" Label="Catraca de destino" @bind-Value="EquipamentoDestinoId"
+                       Variant="Variant.Outlined" Required="true" RequiredError="Selecione a catraca de destino.">
+                @foreach (var equipamento in Equipamentos.Where(x => x.Id != EquipamentoOrigemId))
+                {
+                    <MudSelectItem T="int?" Value="@((int?)equipamento.Id)">@equipamento.Descricao (@equipamento.Ip)</MudSelectItem>
+                }
+            </MudSelect>
+
+            <MudSelect T="string" Label="Seleção para copiar" @bind-Value="TipoCopia" Variant="Variant.Outlined">
+                <MudSelectItem Value="@("TODOS")">Todos</MudSelectItem>
+                <MudSelectItem Value="@("FUNCIONARIOS")">Funcionários</MudSelectItem>
+                <MudSelectItem Value="@("TERCEIROS")">Terceiros</MudSelectItem>
+            </MudSelect>
+
+            <div>
+                <MudText Typo="Typo.caption">REMOVER REGISTROS ANTERIORES DO DESTINO?</MudText>
+                <MudRadioGroup T="bool" @bind-Value="RemoverAnteriores">
+                    <MudStack Row="true">
+                        <MudRadio T="bool" Value="true" Color="Color.Warning">Sim</MudRadio>
+                        <MudRadio T="bool" Value="false" Color="Color.Primary">Não, apenas enviar a lista</MudRadio>
+                    </MudStack>
+                </MudRadioGroup>
+            </div>
+
+            <MudChip T="string" Color="Color.Info" Variant="Variant.Outlined">@TotalSelecionados usuário(s) marcado(s) na grade</MudChip>
+
+            @if (RemoverAnteriores)
+            {
+                <MudAlert Severity="Severity.Warning" Variant="Variant.Filled">
+                    Os usuários existentes na catraca de destino serão removidos antes do envio da nova lista.
+                </MudAlert>
+            }
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancelar" Variant="Variant.Text">Cancelar</MudButton>
+        <MudButton OnClick="Confirmar" Variant="Variant.Filled" Color="Color.Success"
+                   StartIcon="@Icons.Material.Filled.Sync" Disabled="@(!EquipamentoDestinoId.HasValue)">
+            Sincronizar
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter] public List<CatracaEquipamentoDto> Equipamentos { get; set; } = [];
+    [Parameter] public int EquipamentoOrigemId { get; set; }
+    [Parameter] public int? EquipamentoDestinoId { get; set; }
+    [Parameter] public string TipoCopia { get; set; } = "TODOS";
+    [Parameter] public bool RemoverAnteriores { get; set; }
+    [Parameter] public int TotalSelecionados { get; set; }
+
+    private void Cancelar() => MudDialog.Cancel();
+
+    private void Confirmar()
+    {
+        if (!EquipamentoDestinoId.HasValue) return;
+        MudDialog.Close(DialogResult.Ok(new SincronizarCatracasDialogResultado(
+            EquipamentoDestinoId.Value, TipoCopia, RemoverAnteriores)));
+    }
+}

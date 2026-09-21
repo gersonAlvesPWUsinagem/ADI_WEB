@@ -22,6 +22,7 @@
                     {
                         @if (item.IsVisibleOrNot)
                     {
+                        <MudTooltip Text="@item.Tooltip">
                             @if (item.IsFab)
                         {
                                 <MudFab Color="@item.Color"
@@ -34,13 +35,13 @@
                             else
                             {
                                 <MudButton Variant="@item.Variant"
-                                           Disabled="@(Processing || item.IsDisabled)"
+                                           Disabled="@(Processing || item.IsLoading || item.IsDisabled)"
                                            Size="@item.Size"
                                            Color="@item.Color"
                                            StartIcon="@item.Icon"
                                            OnClick="@(() => ExecutarCliqueAsync(item))"
                                            Style="@item.IsVisibleOrNotCss">
-                                    @if (Processing)
+                                    @if (Processing || item.IsLoading)
                                     {
                                         <MudProgressCircular Size="Size.Small" Indeterminate="true" />
                                         <span style="margin-left: 8px;">Carregando...</span>
@@ -51,6 +52,7 @@
                                     }
                                 </MudButton>
                             }
+                        </MudTooltip>
                         }
                     }
                 </MudStack>
@@ -71,6 +73,11 @@
     [Parameter] public string TextBtn3 { get; set; } = "None";
     [Parameter] public string TextBtn4 { get; set; } = "None";
     [Parameter] public string TextBtn5 { get; set; } = "None";
+    [Parameter] public string? TooltipBtn1 { get; set; }
+    [Parameter] public string? TooltipBtn2 { get; set; }
+    [Parameter] public string? TooltipBtn3 { get; set; }
+    [Parameter] public string? TooltipBtn4 { get; set; }
+    [Parameter] public string? TooltipBtn5 { get; set; }
 
     [Parameter] public bool IsVisibleOrNotBtn1 { get; set; } = true;
     [Parameter] public bool IsVisibleOrNotBtn2 { get; set; } = true;
@@ -83,6 +90,11 @@
     [Parameter] public bool IsDisabledBtn4 { get; set; }
     [Parameter] public bool IsDisabledBtn5 { get; set; }
     [Parameter] public bool Processing { get; set; }
+    [Parameter] public bool IsLoadingBtn1 { get; set; }
+    [Parameter] public bool IsLoadingBtn2 { get; set; }
+    [Parameter] public bool IsLoadingBtn3 { get; set; }
+    [Parameter] public bool IsLoadingBtn4 { get; set; }
+    [Parameter] public bool IsLoadingBtn5 { get; set; }
 
     [Parameter] public bool MudFab1 { get; set; }
     [Parameter] public bool MudFab2 { get; set; }
@@ -184,11 +196,11 @@
     {
         return new List<BtnLayout>
         {
-            new BtnLayout { IsDisabled = LevelBtn1.HasValue || IsDisabledBtn1, IsDisabledBase = IsDisabledBtn1, Title = TextBtn1, Icon = IconBtn1, Color = ColorBtn1 ?? Color.Primary, IsVisibleBase = IsVisibleOrNotBtn1, Level = LevelBtn1, IsFab = MudFab1, OnClick = OnBtn1Click },
-            new BtnLayout { IsDisabled = LevelBtn2.HasValue || IsDisabledBtn2, IsDisabledBase = IsDisabledBtn2, Title = TextBtn2, Icon = IconBtn2, Color = ColorBtn2 ?? Color.Secondary, IsVisibleBase = IsVisibleOrNotBtn2, Level = LevelBtn2, IsFab = MudFab2, OnClick = OnBtn2Click },
-            new BtnLayout { IsDisabled = LevelBtn3.HasValue || IsDisabledBtn3, IsDisabledBase = IsDisabledBtn3, Title = TextBtn3, Icon = IconBtn3, Color = ColorBtn3 ?? Color.Tertiary, IsVisibleBase = IsVisibleOrNotBtn3, Level = LevelBtn3, IsFab = MudFab3, OnClick = OnBtn3Click },
-            new BtnLayout { IsDisabled = LevelBtn4.HasValue || IsDisabledBtn4, IsDisabledBase = IsDisabledBtn4, Title = TextBtn4, Icon = IconBtn4, Color = ColorBtn4 ?? Color.Tertiary, IsVisibleBase = IsVisibleOrNotBtn4, Level = LevelBtn4, IsFab = MudFab4, OnClick = OnBtn4Click },
-            new BtnLayout { IsDisabled = LevelBtn5.HasValue || IsDisabledBtn5, IsDisabledBase = IsDisabledBtn5, Title = TextBtn5, Icon = IconBtn5, Color = ColorBtn5 ?? Color.Tertiary, IsVisibleBase = IsVisibleOrNotBtn5, Level = LevelBtn5, IsFab = MudFab5, OnClick = OnBtn5Click }
+            new BtnLayout { Tooltip = TooltipBtn1 ?? TextBtn1, IsDisabled = LevelBtn1.HasValue || IsDisabledBtn1, IsDisabledBase = IsDisabledBtn1, Title = TextBtn1, Icon = IconBtn1, Color = ColorBtn1 ?? Color.Primary, IsVisibleBase = IsVisibleOrNotBtn1, Level = LevelBtn1, IsFab = MudFab1, IsLoading = IsLoadingBtn1, OnClick = OnBtn1Click },
+            new BtnLayout { Tooltip = TooltipBtn2 ?? TextBtn2, IsDisabled = LevelBtn2.HasValue || IsDisabledBtn2, IsDisabledBase = IsDisabledBtn2, Title = TextBtn2, Icon = IconBtn2, Color = ColorBtn2 ?? Color.Secondary, IsVisibleBase = IsVisibleOrNotBtn2, Level = LevelBtn2, IsFab = MudFab2, IsLoading = IsLoadingBtn2, OnClick = OnBtn2Click },
+            new BtnLayout { Tooltip = TooltipBtn3 ?? TextBtn3, IsDisabled = LevelBtn3.HasValue || IsDisabledBtn3, IsDisabledBase = IsDisabledBtn3, Title = TextBtn3, Icon = IconBtn3, Color = ColorBtn3 ?? Color.Tertiary, IsVisibleBase = IsVisibleOrNotBtn3, Level = LevelBtn3, IsFab = MudFab3, IsLoading = IsLoadingBtn3, OnClick = OnBtn3Click },
+            new BtnLayout { Tooltip = TooltipBtn4 ?? TextBtn4, IsDisabled = LevelBtn4.HasValue || IsDisabledBtn4, IsDisabledBase = IsDisabledBtn4, Title = TextBtn4, Icon = IconBtn4, Color = ColorBtn4 ?? Color.Tertiary, IsVisibleBase = IsVisibleOrNotBtn4, Level = LevelBtn4, IsFab = MudFab4, IsLoading = IsLoadingBtn4, OnClick = OnBtn4Click },
+            new BtnLayout { Tooltip = TooltipBtn5 ?? TextBtn5, IsDisabled = LevelBtn5.HasValue || IsDisabledBtn5, IsDisabledBase = IsDisabledBtn5, Title = TextBtn5, Icon = IconBtn5, Color = ColorBtn5 ?? Color.Tertiary, IsVisibleBase = IsVisibleOrNotBtn5, Level = LevelBtn5, IsFab = MudFab5, IsLoading = IsLoadingBtn5, OnClick = OnBtn5Click }
         };
     }
 
@@ -219,6 +231,7 @@
     public class BtnLayout
     {
         public string? Title { get; set; }
+        public string? Tooltip { get; set; }
         public Color Color { get; set; } = Color.Default;
         public bool IsVisibleBase { get; set; } = true;
         public bool IsVisibleOrNot { get; set; } = true;
@@ -231,5 +244,6 @@
         public string IsVisibleOrNotCss => !IsVisibleOrNot ? "display: none;" : string.Empty;
         public int? Level { get; set; }
         public bool IsFab { get; set; }
+        public bool IsLoading { get; set; }
     }
 }

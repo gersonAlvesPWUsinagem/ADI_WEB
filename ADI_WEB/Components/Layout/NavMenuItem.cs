@@ -13,6 +13,7 @@ public sealed class NavMenuItem
     public string? Rota { get; }
     public IReadOnlyDictionary<string, NavMenuItem>? Filhos { get; }
     public bool EhGrupo => Filhos is not null;
+    public bool EhImagem => Icone.StartsWith("data:image/", StringComparison.OrdinalIgnoreCase);
 
     public static NavMenuItem Pagina(string icone, string rota) => new(icone, rota, null);
 
