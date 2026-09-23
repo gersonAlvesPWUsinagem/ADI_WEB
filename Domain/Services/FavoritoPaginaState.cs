@@ -27,10 +27,10 @@ public class FavoritoPaginaState
         finally { _semaphore.Release(); }
     }
 
-    public bool Contem(string rota) => _favoritos.Any(x => x.Rota.Trim('/').Equals(rota.Trim('/'), StringComparison.OrdinalIgnoreCase));
+    public bool Contem(int paginaUrlId) => _favoritos.Any(x => x.PaginaUrlId == paginaUrlId);
     public void Alternar(FavoritoPaginaDto favorito)
     {
-        var atual = _favoritos.FirstOrDefault(x => x.Rota.Trim('/').Equals(favorito.Rota.Trim('/'), StringComparison.OrdinalIgnoreCase));
+        var atual = _favoritos.FirstOrDefault(x => x.PaginaUrlId == favorito.PaginaUrlId);
         if (atual is null) _favoritos.Add(favorito); else _favoritos.Remove(atual);
     }
     public void Limpar() { _favoritos = []; Carregado = false; }

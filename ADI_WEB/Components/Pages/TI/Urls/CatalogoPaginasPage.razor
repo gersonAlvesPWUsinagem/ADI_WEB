@@ -1,0 +1,150 @@
+@page "/ti/urls/catalogo-paginas"
+@attribute [Authorize]
+@rendermode InteractiveServer
+@inject IPaginaCatalogoService PaginaCatalogoService
+<PageTitle>Catálogo de páginas</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="my-6">
+    <HeaderComponent Title="Catálogo de páginas"
+                     TextBtn1="Atualizar" IconBtn1="@Icons.Material.Filled.Refresh"
+                     ColorBtn1="Color.Primary" OnBtn1Click="CarregarAsync"
+                     Processing="@_carregando" />
+
+    <MudPaper Class="pa-4" Elevation="1">
+        <MudDataGrid T="PaginaCatalogoDto" Items="@_paginas" Dense="true" Striped="true"
+                     Hover="true" Bordered="true" Filterable="true" Loading="@_carregando">
+            <Columns>
+                <TemplateColumn Title="STATUS" Sortable="false">
+                    <CellTemplate>
+                        <MudChip T="string" Color="@CorStatus(context.Item.Status)" Size="Size.Small">@TextoStatus(context.Item.Status, context.Item.IdCorreto)</MudChip>
+                        @if (false)
+                        {
+                        @if (context.Item.SomenteBanco)
+                        {
+                            <MudChip T="string" Color="Color.Dark" Size="Size.Small">Somente no banco</MudChip>
+                        }
+                        else if (context.Item.IdDivergente)
+                        {
+                            <MudChip T="string" Color="Color.Error" Size="Size.Small">ID errado</MudChip>
+                            <MudChip T="string" Color="Color.Error" Size="Size.Small">
+                                @(context.Item.IdCorreto is int correto ? $"ID correto: {correto}" : "ID não localizado")
+                            </MudChip>
+                        }
+                        else if (context.Item.NaoCadastrada)
+                        {
+                            <MudChip T="string" Color="Color.Warning" Size="Size.Small">Não cadastrada</MudChip>
+                        }
+                        else if (context.Item.IdAusente)
+                        {
+                            <MudChip T="string" Color="Color.Warning" Size="Size.Small">ID não informado</MudChip>
+                            <MudChip T="string" Color="Color.Info" Size="Size.Small">ID correto: @context.Item.IdCorreto</MudChip>
+                        }
+                        else if (context.Item.Integrada)
+                        {
+                            <MudChip T="string" Color="Color.Success" Size="Size.Small">Integrado</MudChip>
+                            @if (context.Item.RotaAlterada)
+                            {
+                                <MudChip T="string" Color="Color.Warning" Size="Size.Small">Rota alterada</MudChip>
+                            }
+                            @if (context.Item.IconeAlterado)
+                            {
+                                <MudChip T="string" Color="Color.Info" Size="Size.Small">Ícone alterado</MudChip>
+                            }
+                        }
+                        }
+                    </CellTemplate>
+                </TemplateColumn>
+                <PropertyColumn Property="x => x.Id" Title="ID NAVMENU" />
+                <PropertyColumn Property="x => x.IdUrlPages" Title="ID URLPAGES" />
+                <PropertyColumn Property="x => x.Nome" Title="NOME" />
+                <PropertyColumn Property="x => x.Modulo" Title="MÓDULO" />
+                <PropertyColumn Property="x => x.Permissao" Title="PERMISSÃO" />
+                <TemplateColumn Title="URL">
+                    <CellTemplate>
+                        <MudText Typo="Typo.body2">@(context.Item.RotaBanco ?? context.Item.Rota)</MudText>
+                    </CellTemplate>
+                </TemplateColumn>
+                <TemplateColumn Title="ÍCONE">
+                    <CellTemplate>
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                            <MudIcon Icon="@NavIconResolver.Resolve(context.Item.IconeBanco ?? context.Item.Icone)"
+                                     Color="Color.Primary" Size="Size.Medium" />
+                        </MudStack>
+                    </CellTemplate>
+                </TemplateColumn>
+            </Columns>
+            <PagerContent>
+                <MudDataGridPager T="PaginaCatalogoDto" PageSizeOptions="new int[] { 15, 30, 60 }" />
+            </PagerContent>
+        </MudDataGrid>
+    </MudPaper>
+</MudContainer>
+
+@code {
+    private List<PaginaCatalogoDto> _paginas = [];
+    private bool _carregando = true;
+
+    private static Color CorStatus(string status) => status switch
+    {
+        "Secondary" => Color.Secondary, "Warning" => Color.Warning, "Info" => Color.Info,
+        "Success" => Color.Success, "Error" => Color.Error, "Dark" => Color.Dark, _ => Color.Default
+    };
+
+    private static string TextoStatus(string status, int? idCorreto) => status switch
+    {
+        "Secondary" => "URL alterada", "Warning" => "URL diferente",
+        "Info" => idCorreto is int id ? $"ID divergente: {id}" : "ID não localizado",
+        "Success" => "Integrado", "Error" => "ID não informado", "Dark" => "Somente no banco", _ => "Não integrado"
+    };
+    private int? _salvandoId;
+
+    protected override async Task OnInitializedAsync() => await CarregarAsync();
+
+    private async Task CarregarAsync()
+    {
+        _carregando = true;
+        try
+        {
+            var resultado = await PaginaCatalogoService.CompararAsync(NavMenu.ObterDefinicoes());
+            if (resultado.Success)
+                _paginas = resultado.Value ?? [];
+            else
+                _snackbarComp.Message(resultado.Message ?? "Não foi possível carregar o catálogo.", Severity.Error, Color.Error);
+        }
+        finally
+        {
+            _carregando = false;
+        }
+    }
+
+    private async Task SalvarAsync(PaginaCatalogoDto pagina)
+    {
+        if (pagina.Id is not int id) return;
+
+        _salvandoId = id;
+        try
+        {
+            var resultado = await PaginaCatalogoService.AtualizarAsync(id, new PaginaCatalogoDto
+            {
+                Id = id,
+                Chave = pagina.Chave,
+                Nome = pagina.Nome,
+                Rota = pagina.RotaBanco ?? pagina.Rota,
+                Icone = pagina.IconeBanco ?? pagina.Icone,
+                Modulo = pagina.Modulo,
+                Permissao = pagina.Permissao
+            });
+
+            _snackbarComp.Message(resultado.Message ?? "Catálogo atualizado.",
+                resultado.Success ? Severity.Success : Severity.Error,
+                resultado.Success ? Color.Success : Color.Error);
+
+            if (resultado.Success)
+                await CarregarAsync();
+        }
+        finally
+        {
+            _salvandoId = null;
+        }
+    }
+}

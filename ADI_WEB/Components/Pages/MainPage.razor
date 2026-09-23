@@ -19,12 +19,14 @@ else
         <MudGrid>
             @foreach (var favorito in _favoritos)
             {
+                var pagina = NavMenu.ObterPaginaPorId(favorito.PaginaUrlId);
+                if (pagina is null) { continue; }
                 <MudItem xs="12" sm="6" md="4" lg="3">
-                    <MudCard Elevation="2" Style="height: 120px; cursor: pointer" @onclick="@(() => Navigation.NavigateTo(favorito.Rota))">
+                    <MudCard Elevation="2" Style="height: 120px; cursor: pointer" @onclick="@(() => Navigation.NavigateTo(pagina.Rota!))">
                         <MudCardContent>
                             <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
-                                <MudAvatar Color="Color.Primary"><MudIcon Icon="@(favorito.Icone ?? Icons.Material.Filled.Star)" /></MudAvatar>
-                                <MudText Typo="Typo.subtitle1">@favorito.Nome</MudText>
+                                <MudAvatar Color="Color.Primary"><MudIcon Icon="@pagina.Icone" /></MudAvatar>
+                                <MudText Typo="Typo.subtitle1">@(NavMenu.ObterNomePorId(favorito.PaginaUrlId) ?? pagina.Rota)</MudText>
                             </MudStack>
                         </MudCardContent>
                     </MudCard>

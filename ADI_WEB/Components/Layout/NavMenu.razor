@@ -1,3 +1,4 @@
+@using Domain.Dtos.Paginas
 @using Microsoft.AspNetCore.Components.Authorization
 @implements IDisposable
 @inject JwtAuthenticationService _jwtAuthenticationService
@@ -8,7 +9,7 @@
 @inject ILogger<NavMenu> Logger
 @inject IFavoritoPaginaService FavoritoService
 @inject FavoritoPaginaState FavoritosState
-@inject OperadorPortariaState OperadorPortariaState
+@inject IPaginaCatalogoService PaginaCatalogoService
 
 <MudStack Spacing="2" Class="pa-3 mt-12">
     <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
@@ -20,7 +21,7 @@
     </MudStack>
 </MudStack>
 
-@if (PaginaAtual is not null)
+@if (PaginaAtual is { Id: > 0 })
 {
     <MudButton FullWidth="true" Variant="Variant.Text" Color="@(_favoritoAtual ? Color.Warning : Color.Default)"
                StartIcon="@(_favoritoAtual ? Icons.Material.Filled.Star : Icons.Material.Outlined.StarOutline)"
@@ -43,49 +44,44 @@
 
     // O menu acompanha visualmente esta estrutura. Para incluir uma página,
     // adicione-a no dicionário do grupo em que ela deve aparecer.
-    private static readonly Dictionary<string, NavMenuItem> Paginas = new()
+    public static readonly Dictionary<string, NavMenuItem> Paginas = new()
     {
-        ["INÍCIO"] = NavMenuItem.Pagina(Icons.Material.Filled.Home, "/main"),
-        ["DOWNLOADS"] = NavMenuItem.Pagina(Icons.Material.Filled.Home, "/downloads"),
-        ["RAMAIS"] = NavMenuItem.Pagina(Icons.Material.Filled.ContactPhone, "/ramais"),
+        ["INÍCIO"] = NavMenuItem.Pagina(icone: Icons.Material.Filled.Home, rota: "/main", id: 1),
+        ["DOWNLOADS"] = NavMenuItem.Pagina(icone: Icons.Material.Filled.Download, rota: "/downloads", catalogo: false, id: 3),
+        ["RAMAIS"] = NavMenuItem.Pagina(icone: Icons.Material.Filled.ContactPhone, rota: "/ramais", id: 2),
 
-        // ["RAMAIS"] = NavMenuItem.Grupo(Icons.Material.Filled.ContactPhone, new Dictionary<string, NavMenuItem>
-        // {
-        //     ["RAMAIS"] = NavMenuItem.Pagina(Icons.Material.Filled.ContactPhone, "/ramais/gerenciamento")
-        // }),
 
         ["TI"] = NavMenuItem.Grupo(Icons.Material.Filled.Computer, new Dictionary<string, NavMenuItem>
         {
-            ["PUBLICAR ARQUIVO"] = NavMenuItem.Pagina(Icons.Material.Filled.Upload, "/downloads/publicar"),
-            ["GERADOR DE TERMO"] = NavMenuItem.Pagina(Icons.Material.Filled.Description, "/glpi/termo-concessao"),
-            ["LOGS DA API"] = NavMenuItem.Pagina(Icons.Material.Filled.ErrorOutline, "/ti/logs-api")
+            ["PUBLICAR ARQUIVO"] = NavMenuItem.Pagina(Icons.Material.Filled.Upload, "/downloads/publicar", id: 3),
+            ["GERADOR DE TERMO"] = NavMenuItem.Pagina(Icons.Material.Filled.Description, "/ti/termo/gerador", id: 4),
+            ["CATÁLOGO DE PÁGINAS"] = NavMenuItem.Pagina(icone: Icons.Material.Filled.ErrorOutline, rota: "/ti/urls/catalogo-paginas", id: 8),
+            ["LOGS DA API"] = NavMenuItem.Pagina(Icons.Material.Filled.ErrorOutline, "/ti/logs-api", id: 6)
         }),
 
         ["RH"] = NavMenuItem.Grupo(Icons.Material.Filled.Groups, new Dictionary<string, NavMenuItem>
         {
             ["PORTARIA"] = NavMenuItem.Grupo(Icons.Material.Filled.Security, new Dictionary<string, NavMenuItem>
             {
-                ["APT. COLABORADORES"] = NavMenuItem.Pagina(Icons.Material.Filled.Login, "/recursos-humanos/portaria/registrar-entrada-saida-colaborador"),
-                ["CTR. VEÍCULOS"] = NavMenuItem.Pagina(Icons.Material.Filled.DirectionsCar, "/recursos-humanos/portaria/contro-leveiculo"),
-                ["CTR. CRACHÁS"] = NavMenuItem.Pagina(Icons.Material.Filled.Badge, "/recursos-humanos/portaria/controle-cracha"),
-                ["CTR. CHAVES"] = NavMenuItem.Pagina(Icons.Material.Filled.VpnKey, "/recursos-humanos/portaria/controle-chave"),
-                // ["ACESSO CHAVES"] = NavMenuItem.Pagina(Icons.Material.Filled.AdminPanelSettings, "/recursos-humanos/portaria/controle-chave/estoques"),
-               // ["MOV. CHAVES"] = NavMenuItem.Pagina(Icons.Material.Filled.History, "/recursos-humanos/portaria/movimentacoes-chave"),
-                ["CTR. OPERADORES"] = NavMenuItem.Pagina(Icons.Material.Filled.ManageAccounts, "/recursos-humanos/portaria/gerenciamento-operadores"),
-                ["PESSOAS"] = NavMenuItem.Pagina(Icons.Material.Filled.Groups, "/recursos-humanos/portaria/gerenciamento-pessoas")
+                ["APT. COLABORADORES"] = NavMenuItem.Pagina(Icons.Material.Filled.Login, "/recursos-humanos/portaria/apontamento/registrar-entrada-saida-colaborador", id: 7),
+                ["CTR. VEÍCULOS"] = NavMenuItem.Pagina(Icons.Material.Filled.DirectionsCar, "/recursos-humanos/portaria/veiculo/controle-veiculo", id: 9),
+                ["CTR. CRACHÁS"] = NavMenuItem.Pagina(Icons.Material.Filled.Badge, "/recursos-humanos/portaria/cracha/controle-cracha", id: 10),
+                ["CTR. CHAVES"] = NavMenuItem.Pagina(Icons.Material.Filled.VpnKey, "/recursos-humanos/portaria/chave/controle-chave", id: 11),
+                ["CTR. OPERADORES"] = NavMenuItem.Pagina(Icons.Material.Filled.ManageAccounts, "/recursos-humanos/portaria/operador/gerenciamento-operadores", id: 12),
+                ["PESSOAS"] = NavMenuItem.Pagina(Icons.Material.Filled.Groups, "/recursos-humanos/portaria/apontamento/gerenciamento-pessoas", id: 13)
             }),
             ["CATRACA"] = NavMenuItem.Grupo(
                 Icons.Material.Filled.Toll,
                 new Dictionary<string, NavMenuItem>
                 {
-                    ["INTEGRAÇÃO"] = NavMenuItem.Pagina(Icons.Material.Filled.SyncAlt, "/recursos-humanos/catraca/integracao"),
-                    ["BIOMETRIA"] = NavMenuItem.Pagina(Icons.Material.Filled.Fingerprint, "/recursos-humanos/catraca/biometria")
+                    ["CRACHÁ"] = NavMenuItem.Pagina(Icons.Material.Filled.SyncAlt, "/recursos-humanos/catraca/cracha/integracao", id: 14),
+                    ["BIOMETRIA"] = NavMenuItem.Pagina(Icons.Material.Filled.Fingerprint, "/recursos-humanos/catraca/biometria/controle-biometrias", id: 15)
                 }
             )
         })
     };
 
-    private sealed record PaginaMenuAtual(string Nome, string Icone);
+    private sealed record PaginaMenuAtual(string Nome, string Icone, int? Id);
 
     private PaginaMenuAtual? PaginaAtual => EncontrarPagina(Paginas, _rotaAtual);
 
@@ -103,11 +99,98 @@
             }
             else if (string.Equals(item.Rota?.Trim('/'), rotaAtual, StringComparison.OrdinalIgnoreCase))
             {
-                return new PaginaMenuAtual(nome, item.Icone);
+                return new PaginaMenuAtual(nome, item.Icone, item.Id);
             }
         }
 
         return null;
+    }
+
+    public static NavMenuItem? ObterPaginaPorId(int id) => EncontrarPaginaPorId(Paginas, id);
+
+    public static string? ObterNomePorId(int id) => EncontrarNomePorId(Paginas, id);
+
+    private static string? EncontrarNomePorId(IReadOnlyDictionary<string, NavMenuItem> menu, int id)
+    {
+        foreach (var entrada in menu)
+        {
+            if (entrada.Value.EhGrupo)
+            {
+                var nomeFilho = EncontrarNomePorId(entrada.Value.Filhos!, id);
+                if (nomeFilho is not null) return nomeFilho;
+            }
+            else if (entrada.Value.Id == id)
+                return string.IsNullOrWhiteSpace(entrada.Value.Nome) ? entrada.Key : entrada.Value.Nome;
+        }
+        return null;
+    }
+
+    public static IReadOnlyList<PaginaCatalogoDto> ObterDefinicoes()
+    {
+        var resultado = new List<PaginaCatalogoDto>();
+        ColetarDefinicoes(Paginas, resultado);
+        return resultado;
+    }
+
+    private static void ColetarDefinicoes(IReadOnlyDictionary<string, NavMenuItem> menu, ICollection<PaginaCatalogoDto> resultado)
+    {
+        foreach (var entrada in menu)
+        {
+            var item = entrada.Value;
+            if (!item.ParticipaCatalogo) continue;
+            if (item.EhGrupo)
+            {
+                ColetarDefinicoes(item.Filhos!, resultado);
+                continue;
+            }
+
+            resultado.Add(new PaginaCatalogoDto
+            {
+                Id = item.Id,
+                Chave = item.Chave ?? item.Rota ?? string.Empty,
+                Nome = string.IsNullOrWhiteSpace(item.Nome) ? entrada.Key : item.Nome,
+                Rota = item.Rota ?? string.Empty,
+                Icone = item.Icone,
+                Modulo = item.Modulo,
+                Permissao = item.Permissao
+            });
+        }
+    }
+
+    private static NavMenuItem? EncontrarPaginaPorId(IReadOnlyDictionary<string, NavMenuItem> menu, int id)
+    {
+        foreach (var item in menu.Values)
+        {
+            if (item.EhGrupo)
+            {
+                var filha = EncontrarPaginaPorId(item.Filhos!, id);
+                if (filha is not null) return filha;
+            }
+            else if (item.Id == id)
+            {
+                return item;
+            }
+        }
+
+        return null;
+    }
+
+    private static void AplicarCatalogo(IReadOnlyDictionary<string, NavMenuItem> menu, IReadOnlyList<PaginaCatalogoDto> catalogo)
+    {
+        foreach (var item in menu.Values)
+        {
+            if (item.EhGrupo)
+            {
+                AplicarCatalogo(item.Filhos!, catalogo);
+                continue;
+            }
+
+            if (item.Id is int id)
+            {
+                var cadastro = catalogo.FirstOrDefault(x => x.Id == id);
+                item.AplicarCatalogo(cadastro?.RotaBanco, cadastro?.IconeBanco);
+            }
+        }
     }
 
     private string FirstName => string.IsNullOrWhiteSpace(_fullName)
@@ -124,7 +207,28 @@
         Navigation.LocationChanged += OnLocationChanged;
         AtualizarRotaAtual();
         await LoadUserAsync();
+        await CarregarCatalogoAsync();
         await CarregarEstadoFavoritoAsync();
+    }
+
+    private async Task CarregarCatalogoAsync()
+    {
+        try
+        {
+            var definicoes = ObterDefinicoes();
+#if DEBUG
+            var sincronizado = await PaginaCatalogoService.SincronizarDesenvolvimentoAsync(definicoes);
+            var resultado = sincronizado.Success ? sincronizado : await PaginaCatalogoService.ListarAsync();
+#else
+            var resultado = await PaginaCatalogoService.ListarAsync();
+#endif
+            if (resultado.Success && resultado.Value is not null)
+                AplicarCatalogo(Paginas, resultado.Value);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogDebug(ex, "Não foi possível carregar alterações do catálogo de páginas.");
+        }
     }
 
     private void AtualizarRotaAtual() => _rotaAtual = Navigation.ToBaseRelativePath(Navigation.Uri).Trim('/');
@@ -137,7 +241,7 @@
         try
         {
             await FavoritosState.GarantirCarregadoAsync();
-            _favoritoAtual = FavoritosState.Contem(_rotaAtual);
+            _favoritoAtual = PaginaAtual?.Id is int id && FavoritosState.Contem(id);
         }
         catch
         {
@@ -148,16 +252,14 @@
     private async Task AlternarFavoritoAsync()
     {
         var pagina = PaginaAtual;
-        if (pagina is null) return;
+        if (pagina?.Id is not int paginaUrlId) return;
 
         _salvandoFavorito = true;
         try
         {
             var favorito = new FavoritoPaginaDto
             {
-                Rota = "/" + _rotaAtual,
-                Nome = pagina.Nome,
-                Icone = pagina.Icone
+                PaginaUrlId = paginaUrlId
             };
             var resultado = await FavoritoService.AlternarAsync(favorito);
 
@@ -218,7 +320,6 @@
         try
         {
             await _jwtAuthenticationService.LogoutAsync();
-            OperadorPortariaState.Limpar();
             Snackbar.Add("Sessão encerrada com sucesso.", Severity.Info);
             Navigation.NavigateTo("/user/login", forceLoad: true);
         }

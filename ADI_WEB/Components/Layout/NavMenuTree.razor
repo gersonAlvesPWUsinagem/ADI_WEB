@@ -6,6 +6,11 @@
     var item = entrada.Value;
     var filhos = item.Filhos ?? new Dictionary<string, NavMenuItem>();
 
+    @if (!DeveExibir(item))
+    {
+        continue;
+    }
+
     @if (item.EhGrupo)
     {
         <MudNavGroup Title="@nome" Icon="@(item.EhImagem ? null : item.Icone)" Expanded="false"
@@ -30,7 +35,7 @@
     }
     else
     {
-        <MudNavLink Href="@item.Rota" Match="NavLinkMatch.Prefix" Icon="@item.Icone" Class="adi-nav-item">
+        <MudNavLink Href="@item.Rota" Match="NavLinkMatch.Prefix" Icon="@NavIconResolver.Resolve(item.Icone)" Class="adi-nav-item">
             @nome
         </MudNavLink>
     }
@@ -43,5 +48,11 @@
     private static string ClasseItem(NavMenuItem item) => item.EhImagem
         ? "adi-nav-item adi-nav-image"
         : "adi-nav-item";
+
+    // O NavMenu usa a lista local como fonte principal. Uma página só fica
+    // disponível para navegação depois que o desenvolvedor informa o ID
+    // gerado no cadastro SQLite. A tela de catálogo continua listando os
+    // itens sem ID para permitir a integração manual.
+    private static bool DeveExibir(NavMenuItem item) => item.EhGrupo || item.Id.HasValue;
 
 }
