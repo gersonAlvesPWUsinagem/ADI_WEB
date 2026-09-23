@@ -1,16 +1,15 @@
 @attribute [Authorize]
-@page "/recursos-humanos/catraca/biometria"
+@page "/recursos-humanos/catraca/biometria/controle-biometrias"
 @rendermode InteractiveServer
 @implements IDisposable
 @using Domain.Dtos.Catracas
-@using ADI_WEB.Components.Pages.RecursosHumano.Portaria
 
-<PageTitle>Biometria das Catracas</PageTitle>
+@* <PageTitle>Biometria das Catracas</PageTitle> *@
 <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="my-6">
-    <HeaderComponent Title="Biometria das Catracas" Modulo="ModuloEnum.Comercial" Permission="189"
+    <HeaderComponent Title="Biometria das Catracas" Modulo="ModuloEnum.Comercial" Permission="118"
         TextBtn1="Atualizar" TooltipBtn1="Iniciar atualização das biometrias em segundo plano"
         IconBtn1="@Icons.Material.Filled.Fingerprint" ColorBtn1="Color.Tertiary"
-        IsDisabledBtn1="@(!_equipamentoId.HasValue || _emProcessamento)" OnBtn1Click="IniciarAtualizacaoAsync" />
+        LevelBtn1="1" IsDisabledBtn1="@(!_equipamentoId.HasValue || _emProcessamento)" OnBtn1Click="IniciarAtualizacaoAsync" />
 
     @if (_emProcessamento)
     {

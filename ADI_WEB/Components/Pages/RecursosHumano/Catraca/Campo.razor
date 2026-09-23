@@ -1,0 +1,5 @@
+<div><MudText Typo="Typo.caption" Color="Color.Secondary">@Label</MudText><MudText Typo="Typo.body1"><b>@(string.IsNullOrWhiteSpace(Valor) ? "—" : Valor)</b></MudText></div>
+@code {
+    [Parameter] public string Label { get; set; } = string.Empty;
+    [Parameter] public string? Valor { get; set; }
+}

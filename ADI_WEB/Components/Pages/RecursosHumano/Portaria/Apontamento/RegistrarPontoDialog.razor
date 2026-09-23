@@ -1,5 +1,4 @@
 ﻿@using Domain.Dtos.Portaria
-@inject IDataSessionHelper DataSessionHelper
 
 <MudDialog>
     <TitleContent>
@@ -153,8 +152,6 @@
     protected override void OnInitialized()
     {
         var agora = DateTime.Now;
-        var user = DataSessionHelper.DataSession;
-
         _dto.ID = Colaborador.ID;
         _dto.Pessoa_Cod = Colaborador.PessoaId;
         _dto.DataAcao = !string.IsNullOrEmpty(Colaborador.DataOcorrencia) ? Colaborador.DataOcorrencia : agora.ToString("dd/MM/yyyy");
@@ -185,7 +182,9 @@
         _dto.Nome = Colaborador.NOME;
         _dto.TRADUCAO_CC = Colaborador.TRADUCAO_CC;
         _dto.SetorName = Colaborador.SetorName;
-        _dto.Emp_Fil = (Int32)DataSessionHelper.DataSession.Company.EmpFill;
+        // A empresa pertence ao colaborador apontado, não ao usuário principal
+        // que abriu a página. As duas autenticações têm propósitos distintos.
+        _dto.Emp_Fil = Colaborador.EMPFIL;
     }
     private void AtualizarOperadorParaAcaoAtual()
     {
@@ -205,12 +204,6 @@
         if (operadorIdAlvo.HasValue && ListPorteiroOperador.Any())
         {
             _operadorSelecionado = ListPorteiroOperador.FirstOrDefault(x => x.PoreteiroID == operadorIdAlvo.Value);
-        }
-
-        // Se não houver operador vinculado para este apontamento específico, mantém o operador logado atual
-        if (_operadorSelecionado == null)
-        {
-            _operadorSelecionado = ListPorteiroOperador.FirstOrDefault(x => x.PoreteiroID == DataSessionHelper.DataSession.Matricula);
         }
 
         if (_operadorSelecionado != null)

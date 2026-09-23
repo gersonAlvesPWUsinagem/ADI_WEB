@@ -15,11 +15,12 @@ public sealed class AuthorizeDialogAttribute : Attribute
 
     public bool Autoriza(ICurrentUser usuario)
     {
-        if (usuario is null || !usuario.IsAuthenticated || !int.TryParse(usuario.Level, out var nivelUsuario))
+        if (usuario is null || !usuario.IsAuthenticated)
         {
             return false;
         }
 
-        return NiveisPermitidos.Any(nivelPermitido => nivelUsuario <= nivelPermitido);
+        return NiveisPermitidos.Any(nivelPermitido =>
+            PermissionLevelPolicy.Allows(usuario.Level, nivelPermitido));
     }
 }

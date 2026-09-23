@@ -1,4 +1,5 @@
 @page "/recursos-humanos/portaria/controle-chave/estoques"
+@page "/recursos-humanos/portaria/chave/controle-chave/estoques"
 @attribute [Authorize]
 @rendermode InteractiveServer
 @using Domain.Dtos.ControleChaves
@@ -95,7 +96,7 @@
             if (!estoques.Success)
             {
                 Snackbar.Add(estoques.Message ?? "Acesso não autorizado.", Severity.Error);
-                Navigation.NavigateTo("/recursos-humanos/portaria/controle-chave");
+                Navigation.NavigateTo("/recursos-humanos/portaria/chave/controle-chave");
                 return;
             }
             _estoques = estoques.Value ?? [];
@@ -148,5 +149,5 @@
 
     private string ClasseLinha(ControleChaveAcessoUsuarioDto usuario, int _) =>
         usuario.UsuarioId == _selecionado?.UsuarioId ? "mud-theme-primary" : string.Empty;
-    private void Voltar() => Navigation.NavigateTo("/recursos-humanos/portaria/controle-chave");
+    private void Voltar() => Navigation.NavigateTo("/recursos-humanos/portaria/chave/controle-chave");
 }

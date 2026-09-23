@@ -1,24 +1,23 @@
 @attribute [Authorize]
-@page "/recursos-humanos/catraca/integracao"
+@page "/recursos-humanos/catraca/cracha/integracao"
 @rendermode InteractiveServer
 @implements IDisposable
 @using Domain.Dtos.Catracas
-@using ADI_WEB.Components.Pages.RecursosHumano.Portaria
 @using ADI_WEB.Services
 
-<PageTitle>Usuários das Catracas</PageTitle>
+
 <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="my-6">
-    <HeaderComponent Title="Usuários das Catracas" Modulo="ModuloEnum.Comercial" Permission="189"
-                     TextBtn1="Carregar catraca" TooltipBtn1="Carregar dados da catraca selecionada" IconBtn1="@Icons.Material.Filled.Download" ColorBtn1="Color.Primary" IsVisibleOrNotBtn1="true"
-                     IsLoadingBtn1="@_carregando" IsDisabledBtn1="@(_biometriaEmProcessamento || _processando)" OnBtn1Click="CarregarCatracaAsync"
+    <HeaderComponent Title="Usuários das Catracas" Modulo="ModuloEnum.Comercial" Permission="117"
+                     TextBtn1="Carregar catraca" TooltipBtn1="Carregar dados da catraca selecionada" IconBtn1="@Icons.Material.Filled.Download" ColorBtn1="@CorCarregarCatraca" IsVisibleOrNotBtn1="true"
+                     LevelBtn1="1" IsLoadingBtn1="@_carregando" IsDisabledBtn1="@(_biometriaEmProcessamento || _processando)" OnBtn1Click="CarregarCatracaAsync"
                      TextBtn2="Sincronizar" TooltipBtn2="Sincronizar selecionados com a catraca atual" IconBtn2="@Icons.Material.Filled.Sync" ColorBtn2="Color.Success" IsVisibleOrNotBtn2="true"
-                     IsLoadingBtn2="@_sincronizando" IsDisabledBtn2="@(!_catracaCarregada || _selecionados.Count == 0 || _processando)" OnBtn2Click="EnviarSelecionadosAsync"
+                     LevelBtn2="2" IsLoadingBtn2="@_sincronizando" IsDisabledBtn2="@(!_catracaCarregada || _selecionados.Count == 0 || _processando)" OnBtn2Click="EnviarSelecionadosAsync"
                      TextBtn3="Copiar"  TooltipBtn3="Copiar lista para outra catraca" IconBtn3="@Icons.Material.Filled.CompareArrows" ColorBtn3="Color.Secondary" IsVisibleOrNotBtn3="true"
-                     IsLoadingBtn3="@_copiando" IsDisabledBtn3="@(!_catracaCarregada || _selecionados.Count == 0 || _processando)" OnBtn3Click="CopiarParaOutraCatracaAsync"
+                     LevelBtn3="2" IsLoadingBtn3="@_copiando" IsDisabledBtn3="@(!_catracaCarregada || _selecionados.Count == 0 || _processando)" OnBtn3Click="CopiarParaOutraCatracaAsync"
                      TextBtn4="Rastrear" TooltipBtn4="Rastrear crachá no Secullum e nos snapshots das catracas" IconBtn4="@Icons.Material.Filled.Badge" ColorBtn4="Color.Info" IsVisibleOrNotBtn4="true"
-                     IsDisabledBtn4="@_processando" OnBtn4Click="AbrirRastreamentoCrachaAsync"
+                     LevelBtn4="1" IsDisabledBtn4="@_processando" OnBtn4Click="AbrirRastreamentoCrachaAsync"
                      TextBtn5="Sincronizar exclusões" TooltipBtn5="Excluir da catraca os registros marcados" IconBtn5="@Icons.Material.Filled.DeleteSweep" ColorBtn5="Color.Error" IsVisibleOrNotBtn5="@(_catracaCarregada && _filtroStatus == "FORA_SECULLUM" && _indicesParaRemocao.Count > 0)"
-                     IsLoadingBtn5="@_sincronizandoExclusoes" IsDisabledBtn5="@(!_catracaCarregada || _indicesParaRemocao.Count == 0 || _processando)" OnBtn5Click="SincronizarExclusoesAsync" />
+                     LevelBtn5="2" IsLoadingBtn5="@_sincronizandoExclusoes" IsDisabledBtn5="@(!_catracaCarregada || _indicesParaRemocao.Count == 0 || _processando)" OnBtn5Click="SincronizarExclusoesAsync" />
     
 @*     <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mr-4">
         <MudIcon Icon="@Icons.Material.Filled.Schedule" Size="Size.Small" Class="mr-1" />
@@ -160,6 +159,10 @@
     private string _tipoCopia = "TODOS";
     private bool _removerAnteriores;
     private DateTime? _ultimaSincronizacao;
+    private Color CorCarregarCatraca => _ultimaSincronizacao is DateTime ultima &&
+        ultima.ToLocalTime().Date == DateTime.Now.Date &&
+        DateTime.UtcNow - ultima.ToUniversalTime() >= TimeSpan.FromHours(6)
+            ? Color.Warning : Color.Primary;
     private bool _carregandoEquipamentos, _carregando, _processando, _sincronizando, _copiando,
         _sincronizandoExclusoes, _exibirBordas, _catracaCarregada, _biometriaEmProcessamento;
     private readonly CancellationTokenSource _monitorBiometriaCts = new();
@@ -177,7 +180,6 @@
         Loading.Show();
         _carregandoEquipamentos = true;
         _carregando = true;
-        await AbrirDialogProgressoAsync();
         try
         {
             var equipamentos = await Service.ListarEquipamentosAsync();
@@ -330,11 +332,20 @@
     private void Visualizar(CatracaCartaoDto item)
     {
         NavegacaoCatraca.RegistrarIdaParaDetalhe(item.EquipamentoId, _catracaCarregada);
-        Navigation.NavigateTo($"/recursos-humanos/catraca/integracao/{item.EquipamentoId}/{item.Indice}/{item.PessoaId ?? 0}");
+        Navigation.NavigateTo($"/recursos-humanos/catraca/cracha/integracao/{item.EquipamentoId}/{item.Indice}/{item.PessoaId ?? 0}");
     }
     private async Task EnviarSelecionadosAsync()
     {
         if (!_equipamentoId.HasValue || !_catracaCarregada) return;
+        if (_ultimaSincronizacao.HasValue && DateTime.UtcNow - _ultimaSincronizacao.Value.ToUniversalTime() <= TimeSpan.FromMinutes(15))
+        {
+            var confirmadoSnapshot = await DialogService.ShowMessageBoxAsync(
+                "Snapshot atualizado recentemente",
+                $"O snapshot desta catraca foi atualizado em {_ultimaSincronizacao.Value.ToLocalTime():dd/MM/yyyy HH:mm:ss}. Deseja iniciar a sincronização mesmo assim?",
+                yesText: "Sincronizar", cancelText: "Cancelar",
+                options: new DialogOptions { CloseOnEscapeKey = true });
+            if (confirmadoSnapshot != true) return;
+        }
         _processando = true;
         _sincronizando = true;
         Loading.Show();
@@ -420,6 +431,7 @@
         _processando = true;
         _copiando = true;
         Loading.Show();
+        await AbrirDialogProgressoAsync();
         try
         {
             var r = await Service.SincronizarCatracasAsync(new()
@@ -454,8 +466,8 @@
             {
                 MaxWidth = MaxWidth.Small,
                 FullWidth = true,
-                CloseButton = false,
-                BackdropClick = false
+                CloseButton = true,
+                BackdropClick = true
             });
     }
     private void Mensagem(string? texto, bool sucesso) => _snackbarComp.Message(texto ?? "Operação não concluída.", sucesso ? Severity.Success : Severity.Error, sucesso ? Color.Success : Color.Error);

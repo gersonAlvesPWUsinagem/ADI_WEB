@@ -1,4 +1,4 @@
-namespace ADI_WEB.Components.Pages.RecursosHumano.Catraca;
+namespace ADI_WEB.Components.Pages.RecursosHumano.Catraca.Cracha;
 
 public sealed record SincronizarCatracasDialogResultado(
     int EquipamentoDestinoId,

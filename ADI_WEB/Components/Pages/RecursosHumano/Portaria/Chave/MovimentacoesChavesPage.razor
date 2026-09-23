@@ -1,4 +1,5 @@
 @page "/recursos-humanos/portaria/movimentacoes-chave"
+@page "/recursos-humanos/portaria/chave/movimentacoes-chave"
 @attribute [Authorize]
 @rendermode InteractiveServer
 @inject IControleChaveService ControleChaveService
@@ -208,7 +209,7 @@
     {
         await CarregarAsync();
     }
-    private void VoltarAsync() => Navigation.NavigateTo("/recursos-humanos/portaria/controle-chave");
+    private void VoltarAsync() => Navigation.NavigateTo("/recursos-humanos/portaria/chave/controle-chave");
     private async Task CarregarAsync()
     {
         if (_carregando)

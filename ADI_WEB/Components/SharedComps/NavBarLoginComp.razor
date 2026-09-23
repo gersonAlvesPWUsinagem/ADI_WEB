@@ -54,7 +54,8 @@
             <MudFabMenuItem StartIcon="@Icons.Material.Outlined.Business"
                             Label="Configurar filial de acesso"
                             Color="Color.Tertiary"
-                            Style="color: rgb(33, 33, 33); font-size: 11px; font-weight: 600; white-space: nowrap; padding: 0 12px;" />
+                            Style="color: rgb(33, 33, 33); font-size: 11px; font-weight: 600; white-space: nowrap; padding: 0 12px;"
+                            OnClick='@(() => AbrirAjuda("filial"))' />
 
             <MudFabMenuItem StartIcon="@Icons.Material.Outlined.Monitor"
                             Label="Vincular minha máquina"
@@ -91,7 +92,8 @@
         switch (tipo)
         {
             case "filial":
-                Snackbar.Add("Instruções para configurar a filial: Acesse o menu X...", Severity.Info);
+                Snackbar.Add("Informe os códigos da empresa, filial e estabelecimento no botão Configurações e salve. Depois, tente o login novamente.", Severity.Info,
+                    opcoes => opcoes.VisibleStateDuration = 10000);
                 break;
 
             case "maquina":

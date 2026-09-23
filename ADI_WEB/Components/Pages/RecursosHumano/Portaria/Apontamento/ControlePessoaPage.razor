@@ -1,5 +1,5 @@
 ﻿@attribute [Authorize]
-@page "/recursos-humanos/portaria/registrar-entrada-saida-colaborador"
+@page "/recursos-humanos/portaria/apontamento/registrar-entrada-saida-colaborador"
 @using ADI_WEB.Components.Layout
 @using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.Extensions.Logging
@@ -76,9 +76,9 @@
                     SelectionMode="SelectionMode.SingleSelection"
                     Variant="Variant.Outlined" Color="Color.Primary">
             <MudChip Value="@("TODOS")">Todos</MudChip>
-            <MudChip Value="@("SEM_ENTRA_SAIDA")">S/ENTRADA OU SAÍDA</MudChip>
+            <MudChip Value="@("S_APONTAMENTO")">S/Apontamento</MudChip>
             <MudChip Value="@("SOMENTE_ENTRADA")">C/Entrada</MudChip>
-            <MudChip Value="@("SOMENTE_SAIDA")">C/Saída</MudChip>
+            <MudChip Value="@("CONCLUIDOS")">Concluídos</MudChip>
         </MudChipSet>
 
         <div class="d-flex align-center gap-3">
@@ -446,35 +446,21 @@
     }
     private async Task<bool> DialogConfirm(ResistrarEntradaSaidaDto dto)
     {
-        bool isEntrada = dto.TipoAcaoPortaria == TipoAcaoPortariaEnum.Entrada_1 ||
-                         dto.TipoAcaoPortaria == TipoAcaoPortariaEnum.Entrada_2;
-
-        string tipoAcaoTexto = isEntrada ? "ENTRADA" : "SAÍDA";
-        string botaoTexto = isEntrada ? "CONFIRMAR ENTRADA" : "CONFIRMAR SAÍDA";
-        Color corBotao = isEntrada ? Color.Success : Color.Warning;
-        string origemTexto = dto.PegarDadosCatraca ? "Hora da Catraca" : "Informado pela Portaria";
-
-        string mensagemHtml = $"Confirma o registro de <strong>{tipoAcaoTexto}</strong> para:<br />" +
-                            $"<span style='font-size: 1.1em;'><strong>{dto.Nome}</strong></span><br />" +
-                            $"Matrícula: <strong>{dto.Matricula}</strong><br />" +
-                            $"Horário: <strong>{dto.HoraDaAcao}</strong> <em>({origemTexto})</em>?";
-
-        var parameters = new DialogParameters<DialogToggleAtivo>
-        {
-            { x => x.ContentText, mensagemHtml },
-            { x => x.ButtonText, botaoTexto },
-            { x => x.Color, corBotao },
+        var parameters = new DialogParameters<ConfirmarApontamentoDialog> { 
+            { x => x.Selected, dto },
+            { x => x.TipoAcao,  (dto.TipoAcaoPortaria == TipoAcaoPortariaEnum.Entrada_1 || dto.TipoAcaoPortaria == TipoAcaoPortariaEnum.Entrada_2)},
+            {x => x.Operador, value2?.Nome}
         };
 
-        var options = new DialogOptions() { CloseButton = true, MaxWidth = MaxWidth.ExtraSmall };
+        var dialog = await DialogService.ShowAsync<ConfirmarApontamentoDialog>(string.Empty, parameters);
+        var result = await dialog.Result;
 
-        var dialog = await DialogService.ShowAsync<DialogToggleAtivo>("Revisão de Ponto", parameters, options);
-        var dialogResult = await dialog.Result;
-
-        if (dialogResult is not null && !dialogResult.Canceled)
+        if (result is not null && !result.Canceled)
+        {
             return true;
+        }
 
-        return false;
+        return false; 
     }
     private async Task GerarListaDeApontamentAsync()
     {
@@ -488,9 +474,14 @@
 
             if (result is null || !result.Success)
             {
-                throw new Exception(result?.Message ?? "Falha na comunicação");
+                if (result is not null)
+                    ExibirMensagemApi(result, "Falha na comunicação");
+                else
+                    _snackbarComp.Message("Falha na comunicação", Severity.Error, Color.Error);
+                return;
             }
 
+            ExibirMensagemApi(result, "Lista de apontamentos gerada com sucesso.");
             await CarregarListaDeControlados();
         }
         catch (Exception ex)
@@ -629,10 +620,7 @@
             value2 = validacao.Value;
             UserName = value2.Nome;
             OperadorPortariaState.Definir(value2);
-            _snackbarComp.Message(
-                $"Operador {value2.Nome} autenticado com sucesso.",
-                Severity.Success,
-                Color.Success);
+            ExibirMensagemApi(validacao, $"Operador {value2.Nome} autenticado com sucesso.");
             StateHasChanged();
         }
     }
@@ -676,7 +664,7 @@
         value2 = resultado.Value;
         UserName = value2.Nome;
         OperadorPortariaState.Definir(value2);
-        _snackbarComp.Message("Senha alterada com sucesso.", Severity.Success, Color.Success);
+        ExibirMensagemApi(resultado, "Senha alterada com sucesso.");
         StateHasChanged();
     }
     private async Task ApontarAsync(ControlePessoaDto colaborador)
@@ -689,10 +677,17 @@
                 return;
             }
 
+            if (value2 is null)
+            {
+                _snackbarComp.Message("Você não informou seu nome no campo operador", Severity.Error, Color.Error);
+                return;
+            }
+
             Loading.Show();
             _carregado = false;
 
             TipoAcaoPortariaEnum tipoAcaoDeterminado;
+         
 
             if (string.IsNullOrEmpty(colaborador.HoraEntrada))
             {
@@ -737,16 +732,17 @@
                 if (!confirmado)
                     return;
 
-                var employer = DataSessionHelper.DataSession;
-
                 requestDto.Codigo_OP = value2?.PoreteiroID ?? throw new Exception("Você não informou seu nome no campo operador");
-                requestDto.Emp_Fil = (Int32)employer.Company.EmpFill;
 
                 var apiResult = await _services.PutRegistrarHorasAsync(requestDto);
 
                 if (!apiResult.Success)
-                    throw new Exception(apiResult.Message);
+                {
+                    ExibirMensagemApi(apiResult, "Não foi possível registrar o apontamento.");
+                    return;
+                }
 
+                ExibirMensagemApi(apiResult, "Apontamento registrado com sucesso.");
                 await CarregarListaDeControlados();
             }
         }
@@ -780,12 +776,21 @@
         {
             var result = await _services.PatchRegistrarOcorrenciaAsync((PortariaOcorrenciaDto)dialogResult.Data!);
 
-            if (result.Value is not null)
+            if (!result.Success)
             {
-                colaborador.HoraEntrada = result.Value.HoraEntrada;
-                colaborador.HoraSaida = result.Value.HoraSaida;
-                colaborador.Operador1 = result.Value.Operador1;
-                colaborador.Operador2 = result.Value.Operador2;
+                ExibirMensagemApi(result, "Não foi possível registrar a ocorrência.");
+            }
+            else
+            {
+                ExibirMensagemApi(result, "Ocorrência registrada com sucesso.");
+
+                if (result.Value is not null)
+                {
+                    colaborador.HoraEntrada = result.Value.HoraEntrada;
+                    colaborador.HoraSaida = result.Value.HoraSaida;
+                    colaborador.Operador1 = result.Value.Operador1;
+                    colaborador.Operador2 = result.Value.Operador2;
+                }
             }
         }
         StateHasChanged();
@@ -939,14 +944,15 @@
 
             if (result is not null && !result.Canceled && result.Data is ResistrarEntradaSaidaDto requestDto)
             {
-                var employer = DataSessionHelper.DataSession;
-                requestDto.Emp_Fil = (Int32)employer.Company.EmpFill;
-
                 var apiResult = await _services.PutAlterarHorasAsync(requestDto);
 
                 if (!apiResult.Success)
-                    throw new Exception(apiResult.Message);
+                {
+                    ExibirMensagemApi(apiResult, "Não foi possível alterar o apontamento.");
+                    return;
+                }
 
+                ExibirMensagemApi(apiResult, "Apontamento alterado com sucesso.");
                 await CarregarListaDeControlados();
             }
         }
@@ -958,6 +964,22 @@
             _carregado = true;
             StateHasChanged();
         }
+    }
+    private void ExibirMensagemApi<T>(ApiDataService<T> resposta, string mensagemPadrao)
+    {
+        var texto = string.IsNullOrWhiteSpace(resposta.Message) ? mensagemPadrao : resposta.Message.Trim();
+        var aviso = texto.StartsWith("Aviso", StringComparison.OrdinalIgnoreCase) ||
+                    texto.StartsWith("Atenção", StringComparison.OrdinalIgnoreCase) ||
+                    resposta.StatusCode is 409 or 422;
+
+        var severity = aviso
+            ? Severity.Warning
+            : resposta.Success ? Severity.Success : Severity.Error;
+        var color = aviso
+            ? Color.Warning
+            : resposta.Success ? Color.Success : Color.Error;
+
+        _snackbarComp.Message(texto, severity, color);
     }
     private IEnumerable<ControlePessoaDto> GetFilteredItems()
     {
@@ -976,11 +998,11 @@
         {
             query = query.Where(x => !string.IsNullOrEmpty(x.HoraEntrada) && string.IsNullOrEmpty(x.HoraSaida));
         }
-        else if (_filtroStatusMovimentacao == "SOMENTE_SAIDA")
+        else if (_filtroStatusMovimentacao == "CONCLUIDOS")
         {
-            query = query.Where(x => string.IsNullOrEmpty(x.HoraEntrada) && !string.IsNullOrEmpty(x.HoraSaida));
+            query = query.Where(x => !string.IsNullOrEmpty(x.HoraEntrada) && !string.IsNullOrEmpty(x.HoraSaida));
         }
-        else if (_filtroStatusMovimentacao == "SEM_ENTRA_SAIDA")
+        else if (_filtroStatusMovimentacao == "S_APONTAMENTO")
         {
             query = query.Where(x => string.IsNullOrEmpty(x.HoraEntrada) && string.IsNullOrEmpty(x.HoraSaida));
         }

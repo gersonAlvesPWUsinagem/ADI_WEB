@@ -1,8 +1,7 @@
-@page "/recursos-humanos/catraca/integracao/{EquipamentoId:int}/{Indice:int}/{PessoaId:int}"
+@page "/recursos-humanos/catraca/cracha/integracao/{EquipamentoId:int}/{Indice:int}/{PessoaId:int}"
 @attribute [Authorize]
 @rendermode InteractiveServer
 @using Domain.Dtos.Catracas
-@using ADI_WEB.Components.Pages.RecursosHumano.Portaria
 
 <PageTitle>Detalhes do Usuário da Catraca</PageTitle>
 <NavigationLock ConfirmExternalNavigation="@_alterado" OnBeforeInternalNavigation="ConfirmarSaidaAsync" />
@@ -14,10 +13,10 @@
 @if (!_carregando && _usuario is not null)
 {
     <MudContainer MaxWidth="MaxWidth.Large" Class="my-6">
-        <HeaderComponent Title="Painel do Usuário da Catraca"
-                         TextBtn1="Voltar" IconBtn1="@Icons.Material.Filled.ArrowBack" ColorBtn1="Color.Primary" OnBtn1Click="Voltar"
+        <HeaderComponent Title="Painel do Usuário da Catraca"  Modulo=ModuloEnum.Comercial Permission="117"
+                         TextBtn1="Voltar" IconBtn1="@Icons.Material.Filled.ArrowBack" ColorBtn1="Color.Primary" LevelBtn1="1" OnBtn1Click="Voltar"
                          TextBtn2="Enviar para catraca" IconBtn2="@Icons.Material.Filled.Send" ColorBtn2="Color.Success"
-                         IsVisibleOrNotBtn2="@PodeEnviar" IsDisabledBtn2="_processando" OnBtn2Click="EnviarAsync" Processing="_processando" />
+                         LevelBtn2="2" IsVisibleOrNotBtn2="@PodeEnviar" IsDisabledBtn2="_processando" OnBtn2Click="EnviarAsync" Processing="_processando" />
 
         <MudGrid Spacing="4" Class="mt-2">
             <MudItem xs="12">
@@ -183,7 +182,7 @@
         var sair = await JSRuntime.InvokeAsync<bool>("confirm", "Existem alterações que ainda não foram enviadas para a catraca. Ao sair, elas não serão salvas. Deseja continuar?");
         if (!sair) contexto.PreventNavigation();
     }
-    private void Voltar() => Navigation.NavigateTo("/recursos-humanos/catraca/integracao");
+    private void Voltar() => Navigation.NavigateTo("/recursos-humanos/catraca/cracha/integracao");
     private static string SimNao(bool valor) => valor ? "Sim" : "Não";
     private static string DescricaoBiometria(int quantidade) => quantidade > 0
         ? $"Sim ({quantidade} template(s))"

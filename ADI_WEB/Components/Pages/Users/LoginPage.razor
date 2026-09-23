@@ -207,6 +207,13 @@
 
     private async Task OnValidSubmit(EditContext context)
     {
+        if (!SessaoPossuiContextoObrigatorio())
+        {
+            Snackbar.Add("Configure o código da empresa, filial e estabelecimento antes de entrar.", Severity.Warning);
+            await AbrirConfiguracaoSessaoComTutorialAsync();
+            return;
+        }
+
         _isProcessing = true;
         _errorMessage = null;
         StateHasChanged();
@@ -269,6 +276,30 @@
         {
             _isProcessing = false;
             StateHasChanged();
+        }
+    }
+
+    private bool SessaoPossuiContextoObrigatorio() =>
+        _currentSession.Empresa is > 0 &&
+        _currentSession.Filial is > 0 &&
+        _currentSession.Estabelecimento is > 0;
+
+    private async Task AbrirConfiguracaoSessaoComTutorialAsync()
+    {
+        var parameters = new DialogParameters<DefinicoesDialog>
+        {
+            { x => x.SessionModel, _currentSession },
+            { x => x.ModoExplicativo, false }
+        };
+        var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<DefinicoesDialog>("Configurar acesso da empresa", parameters, options);
+        var result = await dialog.Result;
+        if (result is not null && !result.Canceled && result.Data is DefSessionDtos dadosAtualizados)
+        {
+            _currentSession = dadosAtualizados;
+            await JS.InvokeVoidAsync("localStorage.setItem", LocalStorageKey,
+                System.Text.Json.JsonSerializer.Serialize(_currentSession));
+            Snackbar.Add("Configuração salva. Tente entrar novamente.", Severity.Success);
         }
     }
 

@@ -1,5 +1,6 @@
 @page "/recursos-humanos/portaria/controle-chave"
 @using Domain.Dtos.ControleChaves
+@page "/recursos-humanos/portaria/chave/controle-chave"
 @attribute [Authorize]
 @rendermode InteractiveServer
 @inject IControleChaveService ControleChaveService
@@ -20,15 +21,14 @@
                      LevelBtn1="1" IsDisabledBtn1="@(_estoqueSelecionadoId <= 0)"
                      TextBtn2="@TextoCadastro" IconBtn2="@IconeCadastro" ColorBtn2="@CorCadastro" OnBtn2Click="AbrirCadastroAsync"
                      LevelBtn2="@NivelCadastro" IsDisabledBtn2="@(_estoqueSelecionadoId <= 0)"
-                     TextBtn3="Emprestar chave" IconBtn3="@Icons.Material.Filled.Key" ColorBtn3="Color.Success"
-                     LevelBtn3="2" IsDisabledBtn3="@(_selecionada?.Disponivel != true)" OnBtn3Click="AbrirEmprestimoAsync"
+                     TextBtn3="Emprestar chave" IconBtn3="@Icons.Material.Filled.Key" ColorBtn3="Color.Success" LevelBtn3="2" IsDisabledBtn3="@(_selecionada?.Disponivel != true)" OnBtn3Click="AbrirEmprestimoAsync"
                      TextBtn4="Histórico" IconBtn4="@Icons.Material.Filled.History" ColorBtn4="Color.Tertiary" OnBtn4Click="AbrirHistorico"                    
                      LevelBtn4="1" IsDisabledBtn4="@(_estoqueSelecionadoId <= 0)"
 
                      MudFab5=true
                      IconBtn5="@Icons.Material.Filled.Settings"
                      ColorBtn5="Color.Tertiary"
-                     OnBtn5Click="@(() => Navigation.NavigateTo("/recursos-humanos/portaria/controle-chave/estoques"))"
+                     OnBtn5Click="@(() => Navigation.NavigateTo("/recursos-humanos/portaria/chave/controle-chave/estoques"))"
                      LevelBtn5="6"
                      Processing="@(_carregando || _processando)" />
 
@@ -414,10 +414,10 @@
     }
     private Task VisualizarAsync(ControleChaveDto chave)
     {
-        Navigation.NavigateTo($"/recursos-humanos/portaria/controle-chave/{chave.Id}");
+        Navigation.NavigateTo($"/recursos-humanos/portaria/chave/controle-chave/{chave.Id}");
         return Task.CompletedTask;
     }
-    private void AbrirHistorico() => Navigation.NavigateTo($"/recursos-humanos/portaria/movimentacoes-chave?estoqueId={_estoqueSelecionadoId}");
+    private void AbrirHistorico() => Navigation.NavigateTo($"/recursos-humanos/portaria/chave/movimentacoes-chave?estoqueId={_estoqueSelecionadoId}");
     private async Task AbrirEmprestimoAsync()
     {
         var chave = _selecionada;

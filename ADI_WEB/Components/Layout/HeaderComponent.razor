@@ -1,6 +1,7 @@
 ﻿@page "/exemplo-botoes"
 @using Domain.Dtos.Permission
 @inject ILoginService _loginService;
+@inject ICurrentUser CurrentUser
 @using Microsoft.AspNetCore.Components.Authorization
 
 <PageTitle>@Title</PageTitle>
@@ -188,8 +189,11 @@
     private bool TemPermissao(int nivelNecessario)
     {
         // A consulta da API já é filtrada pelo módulo e pelo código da permissão.
-        // Neste ponto precisamos validar somente se o nível retornado atende à ação.
-        return PermissionUserList?.Any(x => x.Level >= nivelNecessario) == true;
+        // Um nível maior sempre herda o acesso de todos os níveis menores.
+        return PermissionUserList is not null &&
+               PermissionLevelPolicy.Allows(
+                   PermissionUserList.Select(x => x.Level),
+                   nivelNecessario);
     }
 
     private List<BtnLayout> CriarListaCandidatos()
@@ -215,16 +219,13 @@
             item.IsVisibleOrNot = item.IsVisibleBase && (possuiTexto || possuiConteudoFab);
         }
 
-        if (PermissionUserList is not null && PermissionUserList.Count > 0)
+        foreach (var item in botoesCandidatos)
         {
-            foreach (var item in botoesCandidatos)
-            {
-                if (!item.Level.HasValue) continue;
+            if (!item.Level.HasValue) continue;
 
-                bool temPermissao = TemPermissao(item.Level.Value);
+            bool temPermissao = TemPermissao(item.Level.Value);
 
-                item.IsDisabled = item.IsDisabledBase || !temPermissao;
-            }
+            item.IsDisabled = item.IsDisabledBase || !temPermissao;
         }
     }
 

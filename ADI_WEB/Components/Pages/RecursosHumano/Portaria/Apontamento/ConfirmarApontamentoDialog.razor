@@ -1,0 +1,75 @@
+﻿<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">
+            <!-- Ícone dinâmico: Verifica se é Entrada (Login) ou Saída (Logout) -->
+            <MudIcon Icon="@(TipoAcao? Icons.Material.Filled.Login : Icons.Material.Filled.Logout)"
+                     Color="@(TipoAcao ? Color.Success : Color.Error)"
+                     Class="mr-3 mb-n1" />
+            @(tipoAcaoTexto)
+        </MudText>
+    </TitleContent>
+    <DialogContent>
+        <p class="mb-3">
+            Olá <strong>@(Operador)</strong>, por favor, confira os dados abaixo e confirme o registro de <strong>@(TipoAcao ? "Entrada" : "Saída")</strong>:
+        </p>
+        <MudPaper Elevation="3" Class="pa-4">
+            <MudGrid>
+                <!-- Linha 1: Campo Nome ocupa 100% da largura (xs="12") -->
+                <MudItem xs="12">
+                    <MudTextField @bind-Value="Selected.Nome"
+                                  Label="Nome do Colaborador"
+                                  Margin="Margin.Dense"
+                                  Variant="Variant.Filled"
+                                  ReadOnly="true"
+                                  FullWidth="true" />
+                </MudItem>
+
+                <!-- Linha 2: Campo Matrícula e Horário dividem o espaço -->
+                <MudItem xs="12" sm="6">
+                    <MudTextField @bind-Value="Selected.Matricula"
+                                  Label="Matrícula"
+                                  Margin="Margin.Dense"
+                                  Variant="Variant.Filled"
+                                  ReadOnly="true"
+                                  FullWidth="true" />
+                </MudItem>
+
+                <MudItem xs="12" sm="6">
+                    <MudTextField @bind-Value="Selected.HoraDaAcao"
+                                  Label="Horário"
+                                  Margin="Margin.Dense"
+                                  Variant="Variant.Filled"
+                                  ReadOnly="true"
+                                  FullWidth="true" />
+                </MudItem>
+            </MudGrid>
+        </MudPaper>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Outlined" Color="Color.Default" OnClick="Cancel">Cancelar</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Success" OnClick="ConfirmarApontamento">Confirmar</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter] public ResistrarEntradaSaidaDto Selected { get; set; } = new ResistrarEntradaSaidaDto();
+    [Parameter] public bool TipoAcao { get; set; }
+    [Parameter] public string? Operador { get; set; }
+
+    private string tipoAcaoTexto = string.Empty;
+
+    protected override void OnParametersSet()
+    {
+        base.OnParametersSet();
+        tipoAcaoTexto = TipoAcao ? "CONFIRMAR REGISTRO DE ENTRADA" : "CONFIRMAR REGISTRO DE SAÍDA";
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private void ConfirmarApontamento()
+    {
+        MudDialog.Close(DialogResult.Ok(Selected.ID));
+    }
+}

@@ -1,5 +1,6 @@
 @page "/recursos-humanos/portaria/controle-chave/{Id:int}"
 @using Domain.Dtos.ControleChaves
+@page "/recursos-humanos/portaria/chave/controle-chave/{Id:int}"
 @attribute [Authorize]
 @rendermode InteractiveServer
 @inject IControleChaveService Service
@@ -158,5 +159,5 @@
         return $"{Math.Max(0, (int)tempo.TotalDays)} dia(s) e {Math.Max(0, tempo.Hours)} hora(s)";
     }
 
-    private void Voltar() => Navigation.NavigateTo("/recursos-humanos/portaria/controle-chave");
+    private void Voltar() => Navigation.NavigateTo("/recursos-humanos/portaria/chave/controle-chave");
 }

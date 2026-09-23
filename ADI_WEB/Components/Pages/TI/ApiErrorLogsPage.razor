@@ -98,7 +98,8 @@
         {
             var acesso = await LoginService.ValidarPermissaoAsync(ModuloEnum.Comercial, 116);
             var podeConsultar = acesso.Success &&
-                                acesso.Value?.Any(x => x.Level >= 1) == true;
+                                acesso.Value is not null &&
+                                PermissionLevelPolicy.Allows(acesso.Value.Select(x => x.Level), 1);
 
             if (!podeConsultar)
             {

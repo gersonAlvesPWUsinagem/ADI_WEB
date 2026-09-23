@@ -29,7 +29,7 @@
 };
 
 window.safeBackOrFallback = function (fallbackPath, blockedPaths) {
-    const fallback = fallbackPath || '/recursos-humanos/portaria/controle-chave';
+    const fallback = fallbackPath || '/recursos-humanos/portaria/chave/controle-chave';
     const blocked = (blockedPaths || []).map(path => path.toLowerCase());
 
     if (!document.referrer) {

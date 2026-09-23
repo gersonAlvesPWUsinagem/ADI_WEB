@@ -1,7 +1,7 @@
 @inherits LayoutComponentBase
 @implements IDisposable
 @using Microsoft.AspNetCore.Components.Authorization
-@using ADI_WEB.Components.Pages.RecursosHumano.Catraca
+@using ADI_WEB.Components.Pages.RecursosHumano.Catraca.Cracha
 @inject NavigationManager Navigation
 @inject IJSRuntime JS
 @inject AuthenticationStateProvider AuthenticationStateProvider
@@ -11,7 +11,6 @@
 @inject FavoritoPaginaState FavoritosState
 @inject IHttpContextAccessor HttpContextAccessor
 @inject SessionExpirationState SessionExpirationState
-@inject OperadorPortariaState OperadorPortariaState
 @inject ICatracaService CatracaService
 
 <MudThemeProvider Theme="@_theme" IsDarkMode="_isDarkMode" />
@@ -35,7 +34,7 @@
         <MudProgressLinear Color="Color.Secondary"
                            Indeterminate="true"
                            Size="Size.Small"
-                           Style="position: absolute; top: 0; left: 0; right: 0; z-index: 2000; height: 4px;" />
+                           Style="position: fixed; top: 0; left: 0; right: 0; z-index: 2000; height: 4px;" />
     }
     @if (ShowAppBar)
     {
@@ -397,7 +396,6 @@
     {
         _isAuthenticated = false;
         PararMonitorBiometria();
-        OperadorPortariaState.Limpar();
         _returnUrlAposExpiracao = NormalizarReturnUrl(returnUrl);
         _exibirSessaoExpirada = true;
         return InvokeAsync(StateHasChanged);
@@ -420,7 +418,6 @@
         {
             await _jwtAuthenticationService.LogoutAsync();
             FavoritosState.Limpar();
-            OperadorPortariaState.Limpar();
 
             Snackbar.Add("Sessão encerrada com sucesso.", Severity.Info);
             Navigation.NavigateTo("/user/login", forceLoad: true);

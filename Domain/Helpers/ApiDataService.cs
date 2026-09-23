@@ -54,7 +54,7 @@ public class ApiDataService<T>
         Message = string.IsNullOrEmpty(message) ? string.Empty : message;
 
         Success = success;
-        StatusCode = StatusCode; // Mantido exatamente como no original
+        StatusCode = statusCode;
     }
 
     /// <summary>
